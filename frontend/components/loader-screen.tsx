@@ -32,10 +32,13 @@ export default function LoaderScreen() {
         <RetroAnimation type="pulse">
           <div className="relative">
             <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-press-start tracking-wider">
-              <span className="pixel-text-3d-green pixel-text-3d-float">A</span>
-              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.1s' }}>S</span>
-              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.2s' }}>U</span>
-              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.3s' }}>R</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float">P</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.1s' }}>E</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.2s' }}>P</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.3s' }}>A</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.4s' }}>S</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.5s' }}>U</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.6s' }}>R</span>
             </div>
             <div className="text-sm sm:text-base md:text-lg lg:text-xl font-press-start text-[#4A8C4A] mt-2 tracking-widest pixel-text-3d-green pixel-text-3d-glow">
               GALAXY MAFIA

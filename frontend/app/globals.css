@@ -184,13 +184,24 @@
   }
 }
 
-/* Gaming background with subtle grid */
+/* Gaming background with subtle grid and minimal Pacman-style dotted stars */
 .gaming-bg {
   background-color: #000000;
   background-image: 
+    /* Minimal Pacman-style dotted stars */
+    radial-gradient(circle at 25% 25%, #FFFFFF 1px, transparent 1px),
+    radial-gradient(circle at 75% 25%, #FFFFFF 1px, transparent 1px),
+    radial-gradient(circle at 25% 75%, #FFFFFF 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, #FFFFFF 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, #FFFFFF 1px, transparent 1px),
+    /* Subtle grid overlay */
     linear-gradient(rgba(30, 30, 30, 0.1) 1px, transparent 1px),
     linear-gradient(90deg, rgba(30, 30, 30, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-size: 
+    /* Star positions - minimal and clean */
+    200px 200px, 180px 180px, 220px 220px, 160px 160px, 240px 240px,
+    /* Grid */
+    20px 20px, 20px 20px;
   position: relative;
   overflow: hidden;
 }
