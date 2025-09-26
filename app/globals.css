@@ -1,0 +1,330 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #000000; /* Pure black */
+  --foreground: #FFFFFF; /* Bright White */
+  --card: #111111; /* Darker card background */
+  --card-foreground: #FFFFFF;
+  --popover: #111111;
+  --popover-foreground: #FFFFFF;
+  --primary: #4A8C4A; /* Subdued green */
+  --primary-foreground: #000000;
+  --secondary: #1a1a1a; /* Darker secondary */
+  --secondary-foreground: #FFFFFF;
+  --muted: #1a1a1a;
+  --muted-foreground: #CCCCCC;
+  --accent: #A259FF; /* Cosmic Purple */
+  --accent-foreground: #FFFFFF;
+  --destructive: #8B0000; /* Darker red */
+  --destructive-foreground: #FFFFFF;
+  --border: #2a2a2a; /* Subtle border */
+  --input: #1a1a1a;
+  --ring: #4A8C4A;
+  --chart-1: #4A8C4A;
+  --chart-2: #A259FF;
+  --chart-3: #8B0000;
+  --chart-4: #CCCC00;
+  --chart-5: #111111;
+  --radius: 0.375rem;
+  --sidebar: #111111;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #4A8C4A;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #4A8C4A;
+  
+  /* Gaming colors */
+  --gaming-black: #000000;
+  --gaming-dark: #111111;
+  --gaming-green: #4A8C4A;
+  --gaming-red: #8B0000;
+  --gaming-purple: #A259FF;
+  --gaming-yellow: #CCCC00;
+  --gaming-gray: #1a1a1a;
+  --gaming-white: #FFFFFF;
+  
+  /* Font families */
+  --font-press-start: 'Press Start 2P', sans-serif;
+  --font-vt323: 'VT323', monospace;
+  --font-silkscreen: 'Silkscreen', sans-serif;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #111111;
+  --card-foreground: #FFFFFF;
+  --popover: #111111;
+  --popover-foreground: #FFFFFF;
+  --primary: #4A8C4A;
+  --primary-foreground: #000000;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #FFFFFF;
+  --muted: #1a1a1a;
+  --muted-foreground: #CCCCCC;
+  --accent: #A259FF;
+  --accent-foreground: #FFFFFF;
+  --destructive: #8B0000;
+  --destructive-foreground: #FFFFFF;
+  --border: #2a2a2a;
+  --input: #1a1a1a;
+  --ring: #4A8C4A;
+  --chart-1: #4A8C4A;
+  --chart-2: #A259FF;
+  --chart-3: #8B0000;
+  --chart-4: #CCCC00;
+  --chart-5: #111111;
+  --sidebar: #111111;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #4A8C4A;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #4A8C4A;
+}
+
+@theme inline {
+  --font-orbitron: var(--font-orbitron);
+  --font-share-tech-mono: var(--font-share-tech-mono);
+  --font-press-start-2p: var(--font-press-start-2p);
+  --font-vt323: var(--font-vt323);
+  --font-silkscreen: var(--font-silkscreen);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Gaming colors */
+  --color-gaming-black: var(--gaming-black);
+  --color-gaming-dark: var(--gaming-dark);
+  --color-gaming-green: var(--gaming-green);
+  --color-gaming-red: var(--gaming-red);
+  --color-gaming-purple: var(--gaming-purple);
+  --color-gaming-yellow: var(--gaming-yellow);
+  --color-gaming-gray: var(--gaming-gray);
+  --color-gaming-white: var(--gaming-white);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-vt323);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-press-start);
+  }
+  
+  button, .pixel-button {
+    font-family: var(--font-press-start);
+  }
+  
+  code, pre {
+    font-family: var(--font-vt323);
+  }
+}
+
+/* Gaming background with subtle grid */
+.gaming-bg {
+  background-color: #000000;
+  background-image: 
+    linear-gradient(rgba(30, 30, 30, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 30, 30, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Pixelated image rendering for all sprites/assets */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Pixelated button styles */
+.pixel-button {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  border-radius: 0;
+  font-family: var(--font-press-start);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 2px currentColor;
+}
+
+.pixel-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 3px currentColor;
+}
+
+/* Retro font classes */
+.press-start {
+  font-family: var(--font-press-start);
+}
+
+.vt323 {
+  font-family: var(--font-vt323);
+}
+
+.silkscreen {
+  font-family: var(--font-silkscreen);
+}
+
+/* Minimal glow effects for colors */
+.glow-green {
+  text-shadow: 0 0 1px var(--gaming-green), 0 0 2px var(--gaming-green);
+  color: var(--gaming-green);
+}
+
+.glow-red {
+  text-shadow: 0 0 1px var(--gaming-red), 0 0 2px var(--gaming-red);
+  color: var(--gaming-red);
+}
+
+.glow-purple {
+  text-shadow: 0 0 1px var(--gaming-purple), 0 0 2px var(--gaming-purple);
+  color: var(--gaming-purple);
+}
+
+.glow-yellow {
+  text-shadow: 0 0 1px var(--gaming-yellow), 0 0 2px var(--gaming-yellow);
+  color: var(--gaming-yellow);
+}
+
+/* Retro animations with stepped transitions */
+@keyframes retro-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.retro-pulse {
+  animation: retro-pulse 2s steps(4) infinite;
+}
+
+@keyframes retro-blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.retro-blink {
+  animation: retro-blink 1s steps(2) infinite;
+}
+
+/* Pixel art loader */
+.pixel-loader {
+  width: 40px;
+  height: 40px;
+  border: 2px solid;
+  border-color: var(--gaming-green) transparent var(--gaming-red) transparent;
+  border-radius: 0;
+  animation: retro-spin 1s steps(8) infinite;
+}
+
+@keyframes retro-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Progress bar with pixel styling */
+.pixel-progress {
+  height: 16px;
+  border: 1px solid var(--gaming-green);
+  border-radius: 0;
+  background: var(--gaming-black);
+  overflow: hidden;
+  box-shadow: 0 0 1px var(--gaming-green);
+}
+
+.pixel-progress::-webkit-progress-bar {
+  background: var(--gaming-black);
+}
+
+.pixel-progress::-webkit-progress-value {
+  background: var(--gaming-green);
+  image-rendering: pixelated;
+}
+
+.pixel-progress::-moz-progress-bar {
+  background: var(--gaming-green);
+  image-rendering: pixelated;
+}
+
+/* Gaming pixel art animation */
+@keyframes pixel-breath {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.pixel-breath {
+  animation: pixel-breath 2s steps(4) infinite;
+}
+
+/* Scanline effect for retro gaming feel */
+.scanlines {
+  position: relative;
+}
+
+.scanlines::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
