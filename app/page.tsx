@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import LoaderScreen from "@/components/loader-screen"
 import WalletConnectScreen from "@/components/wallet-connect-screen"
 import LobbyScreen from "@/components/lobby-screen"
@@ -25,14 +25,14 @@ export default function Home() {
   const [walletConnected, setWalletConnected] = useState(false)
 
   // Auto-advance from loader after 3 seconds
-  useState(() => {
+  useEffect(() => {
     if (gameState === "loader") {
       const timer = setTimeout(() => {
         setGameState("wallet")
       }, 3000)
       return () => clearTimeout(timer)
     }
-  })
+  }, [gameState])
 
   const handleWalletConnect = () => {
     setWalletConnected(true)
@@ -95,7 +95,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen gaming-bg relative overflow-hidden">
       {gameState === "loader" && <LoaderScreen />}
       {gameState === "wallet" && (
         <WalletConnectScreen

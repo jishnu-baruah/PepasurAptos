@@ -38,15 +38,15 @@ export default function VotingScreen({ players, onComplete }: VotingScreenProps)
         <Card className="w-full max-w-lg p-8 bg-card border-4 border-destructive text-center">
           <div className="space-y-6">
             <div className="text-4xl">⚰️</div>
-            <div className="text-3xl font-bold font-mono text-destructive">PLAYER ELIMINATED</div>
+            <div className="text-3xl font-bold font-press-start text-destructive pixel-text-3d-red pixel-text-3d-float">PLAYER ELIMINATED</div>
             <div className="space-y-2">
               <div className="text-6xl">{eliminatedPlayer.avatar}</div>
-              <div className="text-2xl font-mono text-foreground">{eliminatedPlayer.name}</div>
+              <div className="text-2xl font-press-start text-foreground pixel-text-3d-glow">{eliminatedPlayer.name}</div>
               {eliminatedPlayer.role && (
-                <div className="text-lg font-mono text-muted-foreground">Role: {eliminatedPlayer.role}</div>
+                <div className="text-lg font-press-start text-muted-foreground pixel-text-3d-glow">Role: {eliminatedPlayer.role}</div>
               )}
             </div>
-            <div className="text-lg font-mono text-foreground">The game continues...</div>
+            <div className="text-lg font-press-start text-foreground pixel-text-3d-glow">The game continues...</div>
           </div>
         </Card>
       </div>
@@ -58,8 +58,8 @@ export default function VotingScreen({ players, onComplete }: VotingScreenProps)
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-4xl font-bold font-mono text-foreground mb-2">VOTING PHASE</h1>
-          <div className="text-lg font-mono text-muted-foreground">Vote to eliminate a player</div>
+          <h1 className="text-4xl font-bold font-press-start text-foreground mb-2 pixel-text-3d-glow">VOTING PHASE</h1>
+          <div className="text-lg font-press-start text-muted-foreground pixel-text-3d-glow">Vote to eliminate a player</div>
         </div>
 
         {/* Players Grid */}
@@ -76,8 +76,8 @@ export default function VotingScreen({ players, onComplete }: VotingScreenProps)
                 onClick={() => handleVote(player.id)}
               >
                 <div className="text-4xl mb-2">{player.avatar}</div>
-                <div className="font-mono text-sm text-foreground">{player.name}</div>
-                {isSelected && <div className="mt-2 text-xs font-mono font-bold text-destructive">VOTED</div>}
+                <div className="font-press-start text-sm text-foreground pixel-text-3d-glow">{player.name}</div>
+                {isSelected && <div className="mt-2 text-xs font-press-start font-bold text-destructive pixel-text-3d-red">VOTED</div>}
               </Card>
             )
           })}
@@ -88,11 +88,9 @@ export default function VotingScreen({ players, onComplete }: VotingScreenProps)
           <Button
             onClick={handleSubmitVote}
             disabled={!selectedVote}
-            className={`pixel-btn font-mono text-lg py-6 px-8 ${
-              selectedVote
-                ? "bg-destructive hover:bg-destructive/80 text-destructive-foreground"
-                : "bg-muted text-muted-foreground cursor-not-allowed"
-            }`}
+            variant={selectedVote ? "pixelRed" : "secondary"}
+            size="pixelXl"
+            className="text-lg"
           >
             🗳️ SUBMIT VOTE
           </Button>
@@ -101,7 +99,7 @@ export default function VotingScreen({ players, onComplete }: VotingScreenProps)
         {/* Vote Summary */}
         {selectedVote && (
           <Card className="p-4 bg-muted/20 border-2 border-dashed border-muted text-center">
-            <div className="font-mono text-sm text-foreground">
+            <div className="font-press-start text-sm text-foreground pixel-text-3d-glow">
               You voted to eliminate: {players.find((p) => p.id === selectedVote)?.name}
             </div>
           </Card>

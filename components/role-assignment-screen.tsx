@@ -54,7 +54,7 @@ export default function RoleAssignmentScreen({ role, onAcknowledge }: RoleAssign
         <div className="text-center space-y-8">
           {!showRole ? (
             <div className="space-y-4">
-              <div className="text-2xl font-vt323 text-foreground">ASSIGNING ROLE...</div>
+              <div className="text-2xl font-press-start pixel-text-3d-white">ASSIGNING ROLE...</div>
               <div className="flex justify-center">
                 <GifLoader size="xl" />
               </div>
@@ -66,15 +66,15 @@ export default function RoleAssignmentScreen({ role, onAcknowledge }: RoleAssign
               </RetroAnimation>
 
               <div className="space-y-2">
-                <div className="text-2xl font-bold font-press-start" style={{ color: config.color }}>
+                <div className="text-2xl font-bold font-press-start pixel-text-3d-white">
                   YOUR ROLE IS
                 </div>
-                <div className="text-3xl font-bold font-press-start glow-green" style={{ color: config.color }}>
+                <div className="text-3xl font-bold font-press-start pixel-text-3d-float" style={{ color: config.color }}>
                   {config.name}
                 </div>
               </div>
 
-              <Card className="text-lg font-vt323 text-foreground bg-[#111111]/50 p-4 border border-[#2a2a2a]">
+              <Card className="text-lg font-press-start pixel-text-3d-white bg-[#111111]/50 p-4 border border-[#2a2a2a]">
                 {config.description}
               </Card>
 

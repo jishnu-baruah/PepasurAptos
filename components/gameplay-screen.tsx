@@ -77,22 +77,22 @@ export default function GameplayScreen({ currentPlayer, players, onComplete }: G
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold font-mono text-foreground mb-2">NIGHT PHASE</h1>
-          <div className="text-lg font-mono" style={{ color: getActionColor() }}>
+          <h1 className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">NIGHT PHASE</h1>
+          <div className="text-base sm:text-lg font-press-start pixel-text-3d-white">
             {getActionText()}
           </div>
         </div>
 
         {/* Timer */}
-        <Card className="p-6 bg-card border-2 border-border text-center">
-          <div className="text-2xl font-mono text-foreground mb-2">TIME REMAINING</div>
-          <div className="text-6xl font-bold font-mono" style={{ color: getActionColor() }}>
+        <Card className="p-4 sm:p-6 bg-card border-2 border-border text-center">
+          <div className="text-lg sm:text-2xl font-press-start pixel-text-3d-white mb-2">TIME REMAINING</div>
+          <div className="text-4xl sm:text-6xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">
             {timeLeft}s
           </div>
         </Card>
 
         {/* Players Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
           {players
             .filter((p) => p.id !== currentPlayer.id)
             .map((player) => {
@@ -102,7 +102,7 @@ export default function GameplayScreen({ currentPlayer, players, onComplete }: G
               return (
                 <Card
                   key={player.id}
-                  className={`p-4 border-2 text-center cursor-pointer transition-all ${
+                  className={`p-3 sm:p-4 border-2 text-center cursor-pointer transition-all ${
                     canSelectPlayers && timeLeft > 0 && !actionTaken
                       ? "hover:scale-105 hover:border-primary"
                       : "cursor-not-allowed opacity-50"
@@ -113,10 +113,10 @@ export default function GameplayScreen({ currentPlayer, players, onComplete }: G
                   }}
                   onClick={() => handlePlayerSelect(player.id)}
                 >
-                  <div className="text-4xl mb-2">{player.avatar}</div>
-                  <div className="font-mono text-sm text-foreground">{player.name}</div>
+                  <div className="text-3xl sm:text-4xl mb-2">{player.avatar}</div>
+                  <div className="font-press-start text-xs sm:text-sm pixel-text-3d-white">{player.name}</div>
                   {isSelected && (
-                    <div className="mt-2 text-xs font-mono font-bold" style={{ color: cardColor }}>
+                    <div className="mt-2 text-xs font-press-start font-bold pixel-text-3d-red">
                       {currentPlayer.role === "ASUR" ? "TARGETED" : "PROTECTED"}
                     </div>
                   )}
@@ -126,10 +126,10 @@ export default function GameplayScreen({ currentPlayer, players, onComplete }: G
         </div>
 
         {/* Current Player Card */}
-        <Card className="p-4 bg-muted/20 border-2 border-dashed border-muted text-center">
-          <div className="text-4xl mb-2">{currentPlayer.avatar}</div>
-          <div className="font-mono text-sm text-foreground">{currentPlayer.name} (YOU)</div>
-          <div className="text-xs font-mono mt-1" style={{ color: getActionColor() }}>
+        <Card className="p-3 sm:p-4 bg-muted/20 border-2 border-dashed border-muted text-center">
+          <div className="text-3xl sm:text-4xl mb-2">{currentPlayer.avatar}</div>
+          <div className="font-press-start text-xs sm:text-sm pixel-text-3d-white">{currentPlayer.name} (YOU)</div>
+          <div className="text-xs font-press-start mt-1 pixel-text-3d-green">
             {currentPlayer.role}
           </div>
         </Card>
@@ -139,7 +139,7 @@ export default function GameplayScreen({ currentPlayer, players, onComplete }: G
       {showTimeUp && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <Card className="p-8 bg-card border-4 border-destructive text-center">
-            <div className="text-4xl font-bold font-mono text-destructive">⏰ TIME'S UP!</div>
+            <div className="text-4xl font-bold font-press-start text-destructive pixel-text-3d-red pixel-text-3d-float">⏰ TIME'S UP!</div>
           </Card>
         </div>
       )}

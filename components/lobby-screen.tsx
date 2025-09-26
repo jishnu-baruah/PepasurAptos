@@ -30,14 +30,14 @@ export default function LobbyScreen({ players, onStartGame }: LobbyScreenProps) 
       <div className="max-w-4xl mx-auto space-y-6 relative z-10">
         <RetroAnimation type="pulse">
           <div className="text-center">
-            <h1 className="text-3xl font-bold font-press-start text-white mb-2 glow-green">LOBBY</h1>
-            <div className="text-lg font-vt323 text-white/70">WAITING FOR PLAYERS...</div>
+            <h1 className="text-3xl font-bold font-press-start text-white mb-2 pixel-text-3d-glow">LOBBY</h1>
+            <div className="text-lg font-press-start text-white/70 pixel-text-3d-glow">WAITING FOR PLAYERS...</div>
           </div>
         </RetroAnimation>
 
         <Card className="p-6 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] text-center">
-          <div className="text-xl font-vt323 text-white mb-2">GAME STARTS IN</div>
-          <div className="text-5xl font-bold font-press-start text-[#4A8C4A] glow-green">{countdown > 0 ? countdown : "READY!"}</div>
+          <div className="text-xl font-press-start text-white mb-2 pixel-text-3d-glow">GAME STARTS IN</div>
+          <div className="text-5xl font-bold font-press-start text-[#4A8C4A] pixel-text-3d-green pixel-text-3d-float">{countdown > 0 ? countdown : "READY!"}</div>
           <div className="mt-4 flex justify-center">
             <GifLoader size="xl" />
           </div>
@@ -47,7 +47,7 @@ export default function LobbyScreen({ players, onStartGame }: LobbyScreenProps) 
           {players.map((player) => (
             <Card key={player.id} className="p-4 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] text-center">
               <div className="text-3xl mb-2">{player.avatar}</div>
-              <div className="font-vt323 text-sm text-white">{player.name}</div>
+              <div className="font-press-start text-sm text-white pixel-text-3d-glow">{player.name}</div>
             </Card>
           ))}
 
@@ -58,7 +58,7 @@ export default function LobbyScreen({ players, onStartGame }: LobbyScreenProps) 
               className="p-4 bg-[#1a1a1a]/50 backdrop-blur-sm border border-[#2a2a2a] text-center"
             >
               <div className="text-3xl mb-2 opacity-50">👤</div>
-              <div className="font-vt323 text-sm text-muted-foreground">WAITING...</div>
+              <div className="font-press-start text-sm text-muted-foreground pixel-text-3d-glow">WAITING...</div>
             </Card>
           ))}
         </div>

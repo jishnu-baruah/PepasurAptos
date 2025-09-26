@@ -55,7 +55,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${orbitron.variable} ${shareTechMono.variable} ${pressStart2P.variable} ${vt323.variable} ${silkscreen.variable} antialiased gaming-bg min-h-screen ${vt323.className}`}>
+      <body className={`${orbitron.variable} ${shareTechMono.variable} ${pressStart2P.variable} ${vt323.variable} ${silkscreen.variable} antialiased gaming-bg min-h-screen ${vt323.className} overflow-x-hidden`}>
         <Suspense>
           {children}
           <Analytics />

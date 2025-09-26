@@ -23,15 +23,15 @@ export default function WalletConnectScreen({
         <Card className="w-full max-w-md p-8 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a]">
           <div className="text-center space-y-8">
             <div className="text-6xl font-bold font-press-start tracking-wider">
-              <span className="text-[#4A8C4A] glow-green">A</span>
-              <span className="text-[#4A8C4A] glow-green">S</span>
-              <span className="text-[#4A8C4A] glow-green">U</span>
-              <span className="text-[#4A8C4A] glow-green">R</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float">A</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.1s' }}>S</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.2s' }}>U</span>
+              <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.3s' }}>R</span>
             </div>
 
             {!walletConnected ? (
               <div className="space-y-4">
-                <h2 className="text-xl font-vt323 text-white">CONNECT WALLET</h2>
+                <h2 className="text-xl font-press-start pixel-text-3d-white">CONNECT WALLET</h2>
                 <Button
                   onClick={onConnect}
                   variant="pixel"
@@ -46,7 +46,7 @@ export default function WalletConnectScreen({
                 <div className="flex justify-center">
                   <GifLoader size="xl" />
                 </div>
-                <div className="text-lg font-vt323 text-[#4A8C4A] glow-green">WALLET CONNECTED</div>
+                <div className="text-lg font-press-start pixel-text-3d-green pixel-text-3d-glow">WALLET CONNECTED</div>
 
                 <div className="space-y-4">
                   <Button
