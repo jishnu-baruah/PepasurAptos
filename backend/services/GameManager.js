@@ -126,8 +126,55 @@ class GameManager {
     game.startedAt = Date.now();
     game.timeLeft = parseInt(process.env.GAME_TIMEOUT_SECONDS) || 15;
 
+    // Start timer countdown
+    this.startTimer(gameId);
+
     console.log(`Game ${gameId} started with ${game.players.length} players`);
     return game;
+  }
+
+  // Start timer countdown
+  startTimer(gameId) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    // Clear existing timer if any
+    if (game.timerInterval) {
+      clearInterval(game.timerInterval);
+    }
+
+    game.timerInterval = setInterval(() => {
+      if (game.timeLeft > 0) {
+        game.timeLeft--;
+        console.log(`Game ${gameId} timer: ${game.timeLeft}s`);
+      } else {
+        // Timer expired, resolve current phase
+        this.handleTimerExpired(gameId);
+      }
+    }, 1000);
+  }
+
+  // Handle timer expiration
+  handleTimerExpired(gameId) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    console.log(`Timer expired for game ${gameId} in phase ${game.phase}`);
+    
+    // Clear timer
+    if (game.timerInterval) {
+      clearInterval(game.timerInterval);
+      game.timerInterval = null;
+    }
+
+    // Resolve current phase
+    if (game.phase === 'night') {
+      this.resolveNightPhase(gameId);
+    } else if (game.phase === 'task') {
+      this.resolveTaskPhase(gameId);
+    } else if (game.phase === 'voting') {
+      this.resolveVotingPhase(gameId);
+    }
   }
 
   // Assign roles to players
@@ -176,6 +223,8 @@ class GameManager {
 
     const { playerAddress, action, commit } = data;
     
+    console.log(`Night action submitted by ${playerAddress}:`, action);
+    
     if (!game.players.includes(playerAddress)) {
       throw new Error('Player not in game');
     }
@@ -187,11 +236,16 @@ class GameManager {
     game.pendingActions[playerAddress].commit = commit;
     game.pendingActions[playerAddress].action = action;
 
+    console.log(`Pending actions for game ${gameId}:`, game.pendingActions);
+
     // Check if all players have submitted actions
     const activePlayers = game.players.filter(p => !game.eliminated.includes(p));
     const submittedCount = Object.keys(game.pendingActions).length;
     
+    console.log(`Active players: ${activePlayers.length}, Submitted actions: ${submittedCount}`);
+    
     if (submittedCount >= activePlayers.length) {
+      console.log(`All players submitted actions, resolving night phase`);
       this.resolveNightPhase(gameId);
     }
   }
@@ -201,6 +255,8 @@ class GameManager {
     const game = this.games.get(gameId);
     if (!game) return;
 
+    console.log(`Resolving night phase for game ${gameId}`);
+
     // Process night actions
     const mafiaKill = this.processMafiaAction(game);
     const doctorSave = this.processDoctorAction(game);
@@ -208,6 +264,9 @@ class GameManager {
     // Apply results
     if (mafiaKill && mafiaKill !== doctorSave) {
       game.eliminated.push(mafiaKill);
+      console.log(`Player ${mafiaKill} was eliminated`);
+    } else {
+      console.log(`No one was eliminated this night`);
     }
 
     // Check win conditions
@@ -222,7 +281,60 @@ class GameManager {
     game.pendingActions = {};
     game.timeLeft = 30; // 30 seconds for task
 
-    console.log(`Night phase resolved for game ${gameId}`);
+    // Start timer for task phase
+    this.startTimer(gameId);
+
+    console.log(`Night phase resolved for game ${gameId}, moved to task phase`);
+  }
+
+  // Resolve task phase
+  resolveTaskPhase(gameId) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    console.log(`Resolving task phase for game ${gameId}`);
+
+    // Move to voting phase
+    game.phase = 'voting';
+    game.timeLeft = 10; // 10 seconds for voting
+    game.votes = {};
+
+    // Start timer for voting phase
+    this.startTimer(gameId);
+
+    console.log(`Task phase resolved for game ${gameId}, moved to voting phase`);
+  }
+
+  // Resolve voting phase
+  resolveVotingPhase(gameId) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    console.log(`Resolving voting phase for game ${gameId}`);
+
+    // Process votes and eliminate player
+    const eliminatedPlayer = this.processVotes(game);
+    if (eliminatedPlayer) {
+      game.eliminated.push(eliminatedPlayer);
+      console.log(`Player ${eliminatedPlayer} was eliminated by vote`);
+    }
+
+    // Check win conditions
+    if (this.checkWinConditions(game)) {
+      this.endGame(gameId);
+      return;
+    }
+
+    // Move to next night phase
+    game.phase = 'night';
+    game.timeLeft = 15; // 15 seconds for night
+    game.pendingActions = {};
+    game.day++;
+
+    // Start timer for next night phase
+    this.startTimer(gameId);
+
+    console.log(`Voting phase resolved for game ${gameId}, moved to night phase (day ${game.day})`);
   }
 
   // Process mafia action
