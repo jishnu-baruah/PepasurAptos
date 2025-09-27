@@ -24,6 +24,7 @@ interface NightResolutionScreenProps {
 export default function NightResolutionScreen({ resolution, onContinue, game, currentPlayer }: NightResolutionScreenProps) {
   const [showResults, setShowResults] = useState(false)
   const [hasTransitioned, setHasTransitioned] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(0)
 
   // Primary mechanism: Check if backend has moved to task phase
   useEffect(() => {
@@ -40,6 +41,21 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
     return () => clearTimeout(showTimer)
   }, [])
 
+  // Real-time timer sync with backend
+  useEffect(() => {
+    if (game?.timeLeft !== undefined) {
+      setTimeLeft(game.timeLeft)
+      
+      // Start local countdown to match backend
+      if (game.timeLeft > 0) {
+        const timer = setTimeout(() => {
+          setTimeLeft(prev => Math.max(0, prev - 1))
+        }, 1000)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [game?.timeLeft])
+
   // Backend timer is now working correctly, no fallback needed
 
   // Debug logging
@@ -47,10 +63,10 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
     console.log('NightResolutionScreen state:', {
       showResults,
       gamePhase: game?.phase,
-      timeLeft: game?.timeLeft,
+      timeLeft: timeLeft,
       hasTransitioned
     })
-  }, [showResults, game?.phase, game?.timeLeft, hasTransitioned])
+  }, [showResults, game?.phase, timeLeft, hasTransitioned])
 
   const getResolutionMessage = () => {
     const { killedPlayer, savedPlayer, investigatedPlayer, investigationResult, mafiaTarget, doctorTarget, detectiveTarget } = resolution
@@ -231,13 +247,8 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
                   Moving to task phase in:
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red">
-                  {game?.timeLeft || 10}s
+                  {timeLeft}s
                 </div>
-                {game?.timeLeft === undefined && (
-                  <div className="text-xs text-yellow-500 mt-1">
-                    Using backend timer
-                  </div>
-                )}
                 <div className="text-xs text-blue-400 mt-1">
                   Auto-transition in 15s if stuck
                 </div>
