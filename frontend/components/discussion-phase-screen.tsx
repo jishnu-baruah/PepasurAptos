@@ -72,20 +72,24 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
   useEffect(() => {
     if (socket && gameId) {
       const handleChatMessage = (data: any) => {
+        console.log('📨 Received chat message:', data)
         if (data.gameId === gameId) {
+          console.log('📨 Adding message to UI:', data.message)
           setMessages(prev => [...prev, {
             id: `${data.playerAddress}-${data.timestamp}`,
             playerAddress: data.playerAddress,
             message: data.message,
             timestamp: data.timestamp
           }])
+        } else {
+          console.log('📨 Message gameId mismatch:', data.gameId, 'vs', gameId)
         }
       }
 
-      socket.on('chatMessage', handleChatMessage)
+      socket.on('chat_message', handleChatMessage)
       
       return () => {
-        socket.off('chatMessage', handleChatMessage)
+        socket.off('chat_message', handleChatMessage)
       }
     }
   }, [socket, gameId])
@@ -118,7 +122,7 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
           message: message.trim(),
           timestamp: Date.now()
         })
-        setMessage("")
+      setMessage("")
         console.log('Chat message sent:', message.trim())
       } catch (error) {
         console.error('Failed to send chat message:', error)
