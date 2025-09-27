@@ -5,13 +5,35 @@ class GameManager {
   constructor() {
     this.games = new Map(); // gameId -> game state
     this.detectiveReveals = new Map(); // gameId -> reveals[]
+    this.roomCodes = new Map(); // roomCode -> gameId
+  }
+
+  // Generate a human-readable room code
+  generateRoomCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let roomCode = '';
+    
+    // Generate 6-character room code
+    for (let i = 0; i < 6; i++) {
+      roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    // Ensure uniqueness
+    if (this.roomCodes.has(roomCode)) {
+      return this.generateRoomCode(); // Recursive call to generate new code
+    }
+    
+    return roomCode;
   }
 
   // Create a new game
   createGame(creatorAddress, stakeAmount, minPlayers) {
     const gameId = uuidv4();
+    const roomCode = this.generateRoomCode();
+    
     const game = {
       gameId,
+      roomCode,
       creator: creatorAddress,
       players: [creatorAddress],
       roles: {}, // address -> role (only server knows)
@@ -32,11 +54,12 @@ class GameManager {
     };
 
     this.games.set(gameId, game);
-    console.log(`Game ${gameId} created by ${creatorAddress}`);
-    return gameId;
+    this.roomCodes.set(roomCode, gameId);
+    console.log(`Game ${gameId} (Room: ${roomCode}) created by ${creatorAddress}`);
+    return { gameId, roomCode };
   }
 
-  // Join a game
+  // Join a game by gameId
   joinGame(gameId, playerAddress) {
     const game = this.games.get(gameId);
     if (!game) {
@@ -63,6 +86,26 @@ class GameManager {
     }
 
     return game;
+  }
+
+  // Join a game by room code
+  joinGameByRoomCode(roomCode, playerAddress) {
+    const gameId = this.roomCodes.get(roomCode);
+    if (!gameId) {
+      throw new Error('Room code not found');
+    }
+    
+    return this.joinGame(gameId, playerAddress);
+  }
+
+  // Get game by room code
+  getGameByRoomCode(roomCode) {
+    const gameId = this.roomCodes.get(roomCode);
+    if (!gameId) {
+      return null;
+    }
+    
+    return this.games.get(gameId);
   }
 
   // Start the game

@@ -3,28 +3,43 @@
 import { useState, useEffect } from "react"
 import LoaderScreen from "@/components/loader-screen"
 import WalletConnectScreen from "@/components/wallet-connect-screen"
+import WalletConnect from "@/components/wallet-connect-rainbow"
 import LobbyScreen from "@/components/lobby-screen"
 import RoleAssignmentScreen from "@/components/role-assignment-screen"
 import GameplayScreen from "@/components/gameplay-screen"
+import RoomCodeInput from "@/components/room-code-input"
+import RoomCodeDisplay from "@/components/room-code-display"
+import ChatComponent from "@/components/chat-component"
+import TaskComponent from "@/components/task-component"
 import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
+import { useGame, Player } from "@/hooks/useGame"
 
-export type GameState = "loader" | "wallet" | "lobby" | "role-assignment" | "gameplay" | "discussion" | "voting"
+export type GameState = "loader" | "wallet" | "room-code-input" | "lobby" | "role-assignment" | "gameplay" | "discussion" | "voting"
 export type Role = "ASUR" | "DEVA" | "RISHI" | "MANAV"
-export type Player = {
-  id: string
-  name: string
-  avatar: string
-  role?: Role
-  isAlive: boolean
-  isCurrentPlayer?: boolean // To identify the current player
-}
 
 export default function Home() {
   const [gameState, setGameState] = useState<GameState>("loader")
-  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null)
-  const [players, setPlayers] = useState<Player[]>([])
   const [walletConnected, setWalletConnected] = useState(false)
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null)
+  
+  // Use the new game hook for backend integration
+  const {
+    game,
+    currentPlayer,
+    players,
+    isLoading,
+    error,
+    isConnected,
+    createGame,
+    joinGame,
+    joinGameByRoomCode,
+    submitNightAction,
+    submitTaskAnswer,
+    submitVote,
+    refreshGame
+  } = useGame()
 
   // Auto-advance from loader after 3 seconds
   useEffect(() => {
@@ -36,127 +51,143 @@ export default function Home() {
     }
   }, [gameState])
 
+  // Sync game state with backend
+  useEffect(() => {
+    if (game && currentPlayer) {
+      console.log("Game state sync:", {
+        backendPhase: game.phase,
+        frontendState: gameState,
+        players: game.players.length,
+        currentPlayer: currentPlayer.id,
+        gameId: game.gameId,
+        timeLeft: game.timeLeft
+      })
+      
+      // Sync frontend state with backend phase
+      if (game.phase === 'lobby' && gameState !== 'lobby') {
+        console.log("Switching to lobby phase")
+        setGameState('lobby')
+      } else if (game.phase === 'night' && gameState !== 'gameplay') {
+        console.log("Switching to gameplay phase (night)")
+        setGameState('gameplay')
+      } else if (game.phase === 'voting' && gameState !== 'voting') {
+        console.log("Switching to voting phase")
+        setGameState('voting')
+      } else if (game.phase === 'task' && gameState !== 'gameplay') {
+        console.log("Switching to gameplay phase (task)")
+        setGameState('gameplay')
+      }
+      
+      // If timer is 0 and we're in gameplay, try to refresh game state
+      if (game.timeLeft === 0 && gameState === 'gameplay') {
+        console.log("Timer expired, refreshing game state...")
+        refreshGame()
+      }
+    }
+  }, [game, gameState, currentPlayer, refreshGame])
+
   const handleWalletConnect = () => {
     setWalletConnected(true)
-    // Simulate wallet connection
-    console.log("[v0] Wallet connected")
+    setGameState("wallet")
+  }
+
+  const handleWalletAddressChange = (address: string | null) => {
+    setWalletAddress(address)
+    setWalletConnected(!!address)
+    if (address) {
+      console.log("Wallet address set:", address)
+    }
   }
 
   const handleJoinGame = () => {
-    setGameState("lobby")
-    // Add current player to lobby with 5 other players (6 total)
-    const newPlayer: Player = {
-      id: "player-1",
-      name: "Player 1",
-      avatar: "🚀",
-      isAlive: true,
-    }
-    setCurrentPlayer(newPlayer)
-    
-    // Create 6 players total
-    const allPlayers: Player[] = [
-      newPlayer,
-      { id: "player-2", name: "Player 2", avatar: "👾", isAlive: true },
-      { id: "player-3", name: "Player 3", avatar: "🤖", isAlive: true },
-      { id: "player-4", name: "Player 4", avatar: "👽", isAlive: true },
-      { id: "player-5", name: "Player 5", avatar: "🛸", isAlive: true },
-      { id: "player-6", name: "Player 6", avatar: "⭐", isAlive: true },
-    ]
-    setPlayers(allPlayers)
+    setGameState("room-code-input")
   }
 
-  const handleCreateLobby = () => {
-    setGameState("lobby")
-    const newPlayer: Player = {
-      id: "host",
-      name: "Host",
-      avatar: "👑",
-      isAlive: true,
+  const handleJoinByRoomCode = async (roomCode: string) => {
+    if (!walletAddress) {
+      alert("Please connect your wallet first")
+      return
     }
-    setCurrentPlayer(newPlayer)
     
-    // Create 6 players total for host
-    const allPlayers: Player[] = [
-      newPlayer,
-      { id: "player-2", name: "Player 2", avatar: "👾", isAlive: true },
-      { id: "player-3", name: "Player 3", avatar: "🤖", isAlive: true },
-      { id: "player-4", name: "Player 4", avatar: "👽", isAlive: true },
-      { id: "player-5", name: "Player 5", avatar: "🛸", isAlive: true },
-      { id: "player-6", name: "Player 6", avatar: "⭐", isAlive: true },
-    ]
-    setPlayers(allPlayers)
+    try {
+      console.log("Joining game with room code:", roomCode)
+      console.log("Using wallet address:", walletAddress)
+      
+      await joinGameByRoomCode(roomCode, walletAddress)
+      setCurrentRoomCode(roomCode)
+      setGameState("lobby")
+      console.log("Successfully joined game")
+    } catch (error) {
+      console.error("Failed to join game:", error)
+      // Show error to user
+      alert(`Failed to join game: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const handleCancelJoin = () => {
+    setGameState("wallet")
+  }
+
+  const handleCreateLobby = async () => {
+    if (!walletAddress) {
+      alert("Please connect your wallet first")
+      return
+    }
+    
+    try {
+      console.log("Creating lobby...")
+      console.log("Using wallet address:", walletAddress)
+      
+      const { gameId, roomCode } = await createGame(walletAddress)
+      console.log("Game created:", { gameId, roomCode })
+      setCurrentRoomCode(roomCode)
+      setGameState("lobby")
+    } catch (error) {
+      console.error("Failed to create game:", error)
+      // Show error to user
+      alert(`Failed to create game: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   const handleStartGame = () => {
-    // Assign roles for 6 players: 1 ASUR, 1 DEVA, 1 RISHI, 3 MANAV
-    const roles: Role[] = ["ASUR", "DEVA", "RISHI", "MANAV", "MANAV", "MANAV"]
-    
-    // Shuffle roles randomly
-    const shuffledRoles = [...roles].sort(() => Math.random() - 0.5)
-    
-    // Define avatar mapping for each role
-    const getAvatarForRole = (role: Role): string => {
-      switch (role) {
-        case "ASUR":
-          return "https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/asur.png?updatedAt=1758922659571"
-        case "DEVA":
-          return "https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/dev.png?updatedAt=1758923141278"
-        case "RISHI":
-          return "https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/sage.png?updatedAt=1758922659655"
-        case "MANAV":
-          // Randomly assign one of the villager avatars
-          const villagerAvatars = [
-            "https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560",
-            "https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/richKid.png?updatedAt=1758922659555",
-            "https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/spacePepe.png?updatedAt=1758922659529",
-            "https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/headphone.png?updatedAt=1758922659505",
-            "https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/hoodie.png?updatedAt=1758922659494"
-          ]
-          return villagerAvatars[Math.floor(Math.random() * villagerAvatars.length)]
-        default:
-          return "🚀"
-      }
-    }
-    
-    const updatedPlayers = players.map((player, index) => ({
-      ...player,
-      role: shuffledRoles[index],
-      avatar: getAvatarForRole(shuffledRoles[index]),
-    }))
-    setPlayers(updatedPlayers)
-
-    if (currentPlayer) {
-      const updatedCurrentPlayer = updatedPlayers.find((p) => p.id === currentPlayer.id)
-      setCurrentPlayer(updatedCurrentPlayer || currentPlayer)
-    }
-
-    setGameState("role-assignment")
+    // Game will start automatically when minimum players join
+    // The backend handles role assignment and game progression
+    console.log("Game starting...")
   }
 
   const handleRoleAcknowledged = () => {
     setGameState("gameplay")
   }
 
-  const handleGameplayComplete = (killedPlayer?: Player) => {
-    // Mark the killed player as not alive
-    if (killedPlayer) {
-      setPlayers(prevPlayers => 
-        prevPlayers.map(player => 
-          player.id === killedPlayer.id 
-            ? { ...player, isAlive: false }
-            : player
-        )
-      )
+  const handleGameplayComplete = async (killedPlayer?: Player) => {
+    // Backend handles the night phase resolution
+    // We just need to move to the next phase
+    if (game?.phase === 'night') {
+      // Wait for backend to resolve night phase
+      setTimeout(() => {
+        setGameState("discussion")
+      }, 2000)
     }
-    setGameState("discussion")
   }
 
   const handleDiscussionComplete = () => {
     setGameState("voting")
   }
 
-  const handleVotingComplete = () => {
-    setGameState("gameplay") // Loop back to gameplay
+  const handleVotingComplete = async () => {
+    // Backend handles voting resolution
+    // Check if game is still active or if we need to go to next day
+    if (game?.phase === 'voting') {
+      // Wait for backend to resolve voting
+      setTimeout(() => {
+        if (game?.phase === 'night') {
+          setGameState("gameplay") // Next night phase
+        } else if (game?.phase === 'ended') {
+          // Game ended, show results
+          console.log("Game ended!")
+        }
+      }, 2000)
+    }
   }
 
   // Function to get public player data (hiding roles and avatars from other players)
@@ -172,25 +203,69 @@ export default function Home() {
 
   return (
     <main className="min-h-screen gaming-bg relative overflow-hidden w-full">
+      {/* Error Display */}
+      {error && (
+        <div className="fixed top-4 right-4 z-50 bg-red-900/90 text-red-100 p-4 rounded border border-red-500">
+          <div className="font-press-start text-sm">ERROR:</div>
+          <div className="text-sm">{error}</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 px-2 py-1 bg-red-700 hover:bg-red-600 rounded text-xs"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Connection Status */}
+      {!isConnected && gameState !== "loader" && (
+        <div className="fixed top-4 left-4 z-50 bg-yellow-900/90 text-yellow-100 p-3 rounded border border-yellow-500">
+          <div className="font-press-start text-sm">DISCONNECTED</div>
+          <div className="text-xs">Reconnecting...</div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
+          <div className="bg-[#111111]/90 p-6 rounded border border-[#2a2a2a] text-center">
+            <div className="font-press-start text-white mb-2">LOADING...</div>
+            <div className="text-sm text-gray-400">Connecting to game server</div>
+          </div>
+        </div>
+      )}
+
       {gameState === "loader" && <LoaderScreen />}
       {gameState === "wallet" && (
-        <WalletConnectScreen
-          onConnect={handleWalletConnect}
+        <WalletConnect 
+          onAddressChange={handleWalletAddressChange}
           onJoinGame={handleJoinGame}
           onCreateLobby={handleCreateLobby}
-          walletConnected={walletConnected}
+        />
+      )}
+      {gameState === "room-code-input" && (
+        <RoomCodeInput
+          onJoin={handleJoinByRoomCode}
+          onCancel={handleCancelJoin}
         />
       )}
       {gameState === "lobby" && currentPlayer && (
-        <LobbyScreen 
-          players={getPublicPlayerData(players, currentPlayer.id)} 
-          onStartGame={handleStartGame} 
-        />
+        <>
+          <LobbyScreen 
+            players={getPublicPlayerData(players, currentPlayer.id)} 
+            onStartGame={handleStartGame} 
+          />
+          {currentRoomCode && (
+            <div className="fixed top-4 right-4 z-50">
+              <RoomCodeDisplay roomCode={currentRoomCode} />
+            </div>
+          )}
+        </>
       )}
       {gameState === "role-assignment" && currentPlayer?.role && (
         <RoleAssignmentScreen 
-          role={currentPlayer.role} 
-          avatar={currentPlayer.avatar}
+          role={currentPlayer.role as Role} 
+          avatar={currentPlayer.avatar || "👤"}
           onAcknowledge={handleRoleAcknowledged} 
         />
       )}
@@ -198,6 +273,7 @@ export default function Home() {
         <GameplayScreen 
           currentPlayer={currentPlayer} 
           players={getPublicPlayerData(players, currentPlayer.id)} 
+          game={game}
           onComplete={handleGameplayComplete} 
         />
       )}
@@ -208,6 +284,22 @@ export default function Home() {
         <VotingScreen 
           players={getPublicPlayerData(players, currentPlayer.id, true)} 
           onComplete={handleVotingComplete} 
+        />
+      )}
+
+      {/* Chat Component - Show in lobby and gameplay phases */}
+      {currentPlayer?.address && game?.gameId && (gameState === "lobby" || gameState === "gameplay" || gameState === "discussion" || gameState === "voting") && (
+        <ChatComponent 
+          gameId={game.gameId} 
+          currentPlayerAddress={currentPlayer.address} 
+        />
+      )}
+
+      {/* Task Component - Show during task phase */}
+      {game?.phase === 'task' && currentPlayer?.address && game?.gameId && (
+        <TaskComponent 
+          gameId={game.gameId} 
+          currentPlayerAddress={currentPlayer.address} 
         />
       )}
     </main>

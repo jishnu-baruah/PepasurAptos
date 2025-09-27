@@ -6,6 +6,8 @@ import { Press_Start_2P, VT323, Silkscreen } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
+import { SocketProvider } from "@/contexts/SocketContext"
+import { Providers } from "@/components/providers"
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -56,10 +58,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${orbitron.variable} ${shareTechMono.variable} ${pressStart2P.variable} ${vt323.variable} ${silkscreen.variable} antialiased gaming-bg min-h-screen ${vt323.className} overflow-x-hidden`}>
-        <Suspense>
-          {children}
-          <Analytics />
-        </Suspense>
+        <Providers>
+          <SocketProvider>
+            <Suspense>
+              {children}
+              <Analytics />
+            </Suspense>
+          </SocketProvider>
+        </Providers>
       </body>
     </html>
   )

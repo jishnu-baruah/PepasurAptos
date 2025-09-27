@@ -2,78 +2,127 @@
 
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
-import type { Player } from "@/app/page"
+import { useGame, Player } from "@/hooks/useGame"
+import { Game } from "@/services/api"
 
 interface GameplayScreenProps {
   currentPlayer: Player
   players: Player[]
+  game: Game | null // Game state from parent component
   onComplete: (killedPlayer?: Player) => void
 }
 
-export default function GameplayScreen({ currentPlayer, players, onComplete }: GameplayScreenProps) {
-  const [timeLeft, setTimeLeft] = useState(10)
+export default function GameplayScreen({ currentPlayer, players, game, onComplete }: GameplayScreenProps) {
+  const { submitNightAction, isConnected, refreshGame } = useGame()
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null)
-  const [showTimeUp, setShowTimeUp] = useState(false)
   const [actionTaken, setActionTaken] = useState(false)
   const [showDeathAnnouncement, setShowDeathAnnouncement] = useState(false)
   const [killedPlayer, setKilledPlayer] = useState<Player | null>(null)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [showTimeUp, setShowTimeUp] = useState(false)
 
+  // Debug game state
   useEffect(() => {
-    if (timeLeft > 0 && !actionTaken) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
-      return () => clearTimeout(timer)
-    } else if (timeLeft === 0) {
-      setShowTimeUp(true)
-      setTimeout(() => {
-        setShowTimeUp(false)
-        // Simulate night phase actions and check for kills
-        simulateNightPhaseActions()
-      }, 2000)
-    }
-  }, [timeLeft, actionTaken])
+    console.log('GameplayScreen debug:', {
+      gamePhase: game?.phase,
+      timeLeft: game?.timeLeft,
+      currentPlayerRole: currentPlayer?.role,
+      currentPlayerAddress: currentPlayer?.address,
+      currentPlayerId: currentPlayer?.id,
+      playersCount: players.length,
+      isConnected
+    })
+  }, [game, currentPlayer, players, isConnected])
 
-  const simulateNightPhaseActions = () => {
-    // Simulate ASUR (Mafia) action - randomly kill a MANAV
-    const asurPlayer = players.find(p => p.role === "ASUR")
-    const manavPlayers = players.filter(p => p.role === "MANAV" && p.isAlive)
-    
-    if (asurPlayer && manavPlayers.length > 0) {
-      // Randomly select a MANAV to kill
-      const randomManav = manavPlayers[Math.floor(Math.random() * manavPlayers.length)]
+  // Auto-refresh when timer is 0
+  useEffect(() => {
+    if (game?.timeLeft === 0) {
+      const interval = setInterval(() => {
+        console.log("Auto-refreshing game state (timer expired)")
+        refreshGame()
+      }, 3000) // Refresh every 3 seconds
       
-      // Check if DEVA (Doctor) saved the target
-      const devaPlayer = players.find(p => p.role === "DEVA")
-      const isSaved = devaPlayer && Math.random() < 0.3 // 30% chance to save
+      return () => clearInterval(interval)
+    }
+  }, [game?.timeLeft, refreshGame])
+
+  // Get real-time timer from backend
+  useEffect(() => {
+    if (game?.timeLeft !== undefined) {
+      setTimeLeft(game.timeLeft)
       
-      if (!isSaved) {
-        // Player was killed
-        setKilledPlayer(randomManav)
-        setShowDeathAnnouncement(true)
-        
-        // Show death announcement for 3 seconds, then go to discussion phase
-        setTimeout(() => {
-          setShowDeathAnnouncement(false)
-          onComplete(killedPlayer)
-        }, 3000)
-      } else {
-        // Player was saved, go directly to discussion phase
-        setTimeout(() => {
-          onComplete()
-        }, 1000)
+      // Show time up popup when timer reaches zero
+      if (game.timeLeft === 0) {
+        setShowTimeUp(true)
+        // Hide popup after 3 seconds
+        setTimeout(() => setShowTimeUp(false), 3000)
       }
-    } else {
-      // No kill happened, go directly to discussion phase
+    }
+  }, [game?.timeLeft])
+
+  // Handle game phase changes
+  useEffect(() => {
+    if (game?.phase === 'task') {
+      // Night phase ended, move to task phase
+      setTimeout(() => {
+        onComplete()
+      }, 1000)
+    } else if (game?.phase === 'voting') {
+      // Task phase ended, move to voting
       setTimeout(() => {
         onComplete()
       }, 1000)
     }
-  }
+  }, [game?.phase, onComplete])
 
-  const handlePlayerSelect = (playerId: string) => {
-    if (timeLeft > 0 && !actionTaken) {
+  // Handle player eliminations
+  useEffect(() => {
+    if (game?.eliminated && game.eliminated.length > 0) {
+      const lastEliminated = game.eliminated[game.eliminated.length - 1]
+      const eliminatedPlayer = players.find(p => p.address === lastEliminated)
+      if (eliminatedPlayer) {
+        setKilledPlayer(eliminatedPlayer)
+        setShowDeathAnnouncement(true)
+        setTimeout(() => {
+          setShowDeathAnnouncement(false)
+          onComplete(eliminatedPlayer)
+        }, 3000)
+      }
+    }
+  }, [game?.eliminated, players, onComplete])
+
+  const handlePlayerSelect = async (playerId: string) => {
+    if (timeLeft > 0 && !actionTaken && game?.phase === 'night') {
       setSelectedPlayer(playerId)
       setActionTaken(true)
-      console.log(`[v0] ${currentPlayer.role} selected player ${playerId}`)
+      
+      try {
+        // Map frontend roles to backend roles
+        const roleMapping: Record<string, string> = {
+          'ASUR': 'Mafia',
+          'DEVA': 'Doctor', 
+          'RISHI': 'Detective',
+          'MANAV': 'Villager'
+        }
+        
+        const backendRole = roleMapping[currentPlayer.role || '']
+        if (!backendRole) {
+          console.error('Unknown role:', currentPlayer.role)
+          return
+        }
+        
+        // Submit action to backend
+        await submitNightAction({
+          type: backendRole.toLowerCase(),
+          target: playerId
+        })
+        
+        console.log(`[${backendRole}] Selected player ${playerId}`)
+      } catch (error) {
+        console.error('Failed to submit action:', error)
+        setActionTaken(false)
+        setSelectedPlayer(null)
+      }
     }
   }
 
@@ -115,10 +164,24 @@ export default function GameplayScreen({ currentPlayer, players, onComplete }: G
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">NIGHT PHASE</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">
+            {game?.phase === 'night' ? 'NIGHT PHASE' : 
+             game?.phase === 'task' ? 'TASK PHASE' : 
+             game?.phase === 'voting' ? 'VOTING PHASE' : 'GAMEPLAY'}
+          </h1>
           <div className="text-sm sm:text-base md:text-lg font-press-start pixel-text-3d-white">
             {getActionText()}
           </div>
+          {!isConnected && (
+            <div className="text-xs text-yellow-400 mt-1">⚠️ DISCONNECTED</div>
+          )}
+          {/* Manual refresh button */}
+          <button 
+            onClick={() => refreshGame()} 
+            className="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
+          >
+            🔄 Refresh Game State
+          </button>
         </div>
 
         {/* Timer */}

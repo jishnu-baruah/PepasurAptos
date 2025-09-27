@@ -9,7 +9,7 @@ import type { Role } from "@/app/page"
 
 interface RoleAssignmentScreenProps {
   role: Role
-  avatar: string
+  avatar: string | undefined
   onAcknowledge: () => void
 }
 
@@ -72,7 +72,7 @@ export default function RoleAssignmentScreen({ role, avatar, onAcknowledge }: Ro
             <div className="space-y-4 sm:space-y-6">
               <RetroAnimation type="bounce">
                 <div className="text-4xl sm:text-5xl md:text-6xl">
-                  {avatar.startsWith('http') ? (
+                  {avatar && avatar.startsWith('http') ? (
                     <img 
                       src={avatar} 
                       alt={`${role} avatar`}

@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import type { Player } from "@/app/page"
+import { useGame, Player } from "@/hooks/useGame"
 
 interface VotingScreenProps {
   players: Player[]
@@ -11,24 +11,58 @@ interface VotingScreenProps {
 }
 
 export default function VotingScreen({ players, onComplete }: VotingScreenProps) {
+  const { game, submitVote, isConnected, currentPlayer } = useGame()
   const [selectedVote, setSelectedVote] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
   const [showResult, setShowResult] = useState(false)
   const [eliminatedPlayer, setEliminatedPlayer] = useState<Player | null>(null)
+  const [timeLeft, setTimeLeft] = useState(0)
+
+  // Get real-time timer from backend
+  useEffect(() => {
+    if (game?.timeLeft !== undefined) {
+      setTimeLeft(game.timeLeft)
+    }
+  }, [game?.timeLeft])
+
+  // Check if player already voted
+  useEffect(() => {
+    if (game?.votes && game.votes[currentPlayer?.address || '']) {
+      setSubmitted(true)
+      setSelectedVote(game.votes[currentPlayer?.address || ''])
+    }
+  }, [game?.votes, currentPlayer?.address])
+
+  // Handle voting results
+  useEffect(() => {
+    if (game?.phase === 'night' && game?.eliminated && game.eliminated.length > 0) {
+      const lastEliminated = game.eliminated[game.eliminated.length - 1]
+      const eliminated = players.find(p => p.address === lastEliminated)
+      if (eliminated) {
+        setEliminatedPlayer(eliminated)
+        setShowResult(true)
+        setTimeout(() => {
+          onComplete()
+        }, 4000)
+      }
+    }
+  }, [game?.phase, game?.eliminated, players, onComplete])
 
   const handleVote = (playerId: string) => {
-    setSelectedVote(playerId)
+    if (!submitted && game?.phase === 'voting') {
+      setSelectedVote(playerId)
+    }
   }
 
-  const handleSubmitVote = () => {
-    if (selectedVote) {
-      // Simulate voting result - eliminate the selected player
-      const eliminated = players.find((p) => p.id === selectedVote)
-      setEliminatedPlayer(eliminated || null)
-      setShowResult(true)
+  const handleSubmitVote = async () => {
+    if (!selectedVote || submitted || !game?.phase === 'voting') return
 
-      setTimeout(() => {
-        onComplete()
-      }, 4000) // Increased time to show the ASUR winning message
+    try {
+      await submitVote(selectedVote)
+      setSubmitted(true)
+      console.log('Vote submitted for:', selectedVote)
+    } catch (error) {
+      console.error('Failed to submit vote:', error)
     }
   }
 

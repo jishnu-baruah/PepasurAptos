@@ -12,11 +12,12 @@ module.exports = (gameManager, flowService) => {
         return res.status(400).json({ error: 'Creator address is required' });
       }
 
-      const gameId = gameManager.createGame(creatorAddress, stakeAmount, minPlayers);
+      const { gameId, roomCode } = gameManager.createGame(creatorAddress, stakeAmount, minPlayers);
       
       res.json({
         success: true,
         gameId,
+        roomCode,
         message: 'Game created successfully'
       });
     } catch (error) {
@@ -69,26 +70,45 @@ module.exports = (gameManager, flowService) => {
     }
   });
 
-  // Join game
-  router.post('/:gameId/player/join', async (req, res) => {
+  // Join game by room code
+  router.post('/join-by-code', async (req, res) => {
     try {
-      const { gameId } = req.params;
-      const { playerAddress } = req.body;
+      const { roomCode, playerAddress } = req.body;
       
-      if (!playerAddress) {
-        return res.status(400).json({ error: 'Player address is required' });
+      if (!roomCode || !playerAddress) {
+        return res.status(400).json({ error: 'Room code and player address are required' });
       }
 
-      const game = gameManager.joinGame(gameId, playerAddress);
+      const game = gameManager.joinGameByRoomCode(roomCode, playerAddress);
       
       res.json({
         success: true,
-        game: gameManager.getPublicGameState(gameId),
+        game: gameManager.getPublicGameState(game.gameId),
         message: 'Player joined successfully'
       });
     } catch (error) {
-      console.error('Error joining game:', error);
+      console.error('Error joining game by room code:', error);
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get game by room code
+  router.get('/room/:roomCode', (req, res) => {
+    try {
+      const { roomCode } = req.params;
+      const game = gameManager.getGameByRoomCode(roomCode);
+      
+      if (!game) {
+        return res.status(404).json({ error: 'Room code not found' });
+      }
+
+      res.json({
+        success: true,
+        game: gameManager.getPublicGameState(game.gameId)
+      });
+    } catch (error) {
+      console.error('Error getting game by room code:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 
