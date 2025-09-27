@@ -12,9 +12,15 @@ interface RoomCodeDisplayProps {
 export default function RoomCodeDisplay({ roomCode }: RoomCodeDisplayProps) {
   const [copied, setCopied] = useState(false)
 
+  // Debug: Log the room code to see what we're receiving
+  console.log('RoomCodeDisplay received roomCode:', roomCode, 'Type:', typeof roomCode)
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(roomCode)
+      // Clean the room code to ensure only the actual code is copied
+      const cleanRoomCode = roomCode.trim().replace(/\s+/g, '')
+      console.log('Copying room code:', cleanRoomCode)
+      await navigator.clipboard.writeText(cleanRoomCode)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
@@ -49,3 +55,5 @@ export default function RoomCodeDisplay({ roomCode }: RoomCodeDisplayProps) {
     </Card>
   )
 }
+
+
