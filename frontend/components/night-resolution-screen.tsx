@@ -23,6 +23,7 @@ interface NightResolutionScreenProps {
 export default function NightResolutionScreen({ resolution, onContinue, game }: NightResolutionScreenProps) {
   const [showResults, setShowResults] = useState(false)
   const [countdown, setCountdown] = useState(5)
+  const [hasTransitioned, setHasTransitioned] = useState(false)
 
   // Check if backend has moved to task phase (fallback mechanism)
   useEffect(() => {
@@ -32,9 +33,6 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
       onContinue()
     }
   }, [game?.phase, onContinue, hasTransitioned])
-
-  // Prevent multiple transitions
-  const [hasTransitioned, setHasTransitioned] = useState(false)
 
   useEffect(() => {
     // Show results after a brief delay

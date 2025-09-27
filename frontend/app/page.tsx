@@ -85,6 +85,9 @@ export default function Home() {
       } else if (game.phase === 'resolution' && gameState !== 'night-resolution') {
         console.log("Switching to night resolution phase")
         setGameState('night-resolution')
+      } else if (game.phase === 'resolution' && gameState === 'gameplay') {
+        console.log("Forcing transition from gameplay to resolution phase")
+        setGameState('night-resolution')
       } else if (game.phase === 'task' && (gameState !== 'discussion' && gameState !== 'night-resolution')) {
         console.log("Switching to discussion phase from task phase")
         setGameState('discussion')
