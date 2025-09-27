@@ -51,6 +51,9 @@ export default function Home() {
     }
   }, [gameState])
 
+  // Track if player has seen their role
+  const [hasSeenRole, setHasSeenRole] = useState(false)
+
   // Sync game state with backend
   useEffect(() => {
     if (game && currentPlayer) {
@@ -59,15 +62,23 @@ export default function Home() {
         frontendState: gameState,
         players: game.players.length,
         currentPlayer: currentPlayer.id,
+        currentPlayerRole: currentPlayer.role,
+        hasSeenRole: hasSeenRole,
         gameId: game.gameId,
-        timeLeft: game.timeLeft
+        timeLeft: game.timeLeft,
+        shouldShowRoleAssignment: game.phase === 'night' && currentPlayer.role && !hasSeenRole
       })
       
       // Sync frontend state with backend phase
       if (game.phase === 'lobby' && gameState !== 'lobby') {
         console.log("Switching to lobby phase")
         setGameState('lobby')
-      } else if (game.phase === 'night' && gameState !== 'gameplay') {
+        setHasSeenRole(false) // Reset role visibility when in lobby
+      } else if (game.phase === 'night' && currentPlayer.role && !hasSeenRole) {
+        // Player has a role but hasn't seen it yet - show role assignment
+        console.log("Player has role but hasn't seen it - showing role assignment")
+        setGameState('role-assignment')
+      } else if (game.phase === 'night' && gameState !== 'gameplay' && gameState !== 'role-assignment') {
         console.log("Switching to gameplay phase (night)")
         setGameState('gameplay')
       } else if (game.phase === 'voting' && gameState !== 'voting') {
@@ -84,7 +95,15 @@ export default function Home() {
         refreshGame()
       }
     }
-  }, [game, gameState, currentPlayer, refreshGame])
+  }, [game, gameState, currentPlayer, hasSeenRole, refreshGame])
+
+  // Fallback: If we're in night phase but currentPlayer has no role, try to refresh
+  useEffect(() => {
+    if (game?.phase === 'night' && currentPlayer && !currentPlayer.role && walletAddress) {
+      console.log("Fallback: Player in night phase but no role assigned, refreshing game state")
+      refreshGame()
+    }
+  }, [game?.phase, currentPlayer?.role, walletAddress, refreshGame])
 
   const handleWalletConnect = () => {
     setWalletConnected(true)
@@ -115,6 +134,7 @@ export default function Home() {
       
       await joinGameByRoomCode(roomCode, walletAddress)
       setCurrentRoomCode(roomCode)
+      setHasSeenRole(false) // Reset role visibility when joining
       setGameState("lobby")
       console.log("Successfully joined game")
     } catch (error) {
@@ -141,6 +161,7 @@ export default function Home() {
       const { gameId, roomCode } = await createGame(walletAddress)
       console.log("Game created:", { gameId, roomCode })
       setCurrentRoomCode(roomCode)
+      setHasSeenRole(false) // Reset role visibility when creating
       setGameState("lobby")
     } catch (error) {
       console.error("Failed to create game:", error)
@@ -156,6 +177,8 @@ export default function Home() {
   }
 
   const handleRoleAcknowledged = () => {
+    console.log("Role acknowledged, moving to gameplay")
+    setHasSeenRole(true)
     setGameState("gameplay")
   }
 
@@ -253,6 +276,8 @@ export default function Home() {
         <>
           <LobbyScreen 
             players={getPublicPlayerData(players, currentPlayer.id)} 
+            game={game}
+            isConnected={isConnected}
             onStartGame={handleStartGame} 
           />
           {currentRoomCode && (
@@ -274,6 +299,9 @@ export default function Home() {
           currentPlayer={currentPlayer} 
           players={getPublicPlayerData(players, currentPlayer.id)} 
           game={game}
+          submitNightAction={submitNightAction}
+          isConnected={isConnected}
+          refreshGame={refreshGame}
           onComplete={handleGameplayComplete} 
         />
       )}
@@ -283,6 +311,10 @@ export default function Home() {
       {gameState === "voting" && currentPlayer && (
         <VotingScreen 
           players={getPublicPlayerData(players, currentPlayer.id, true)} 
+          game={game}
+          currentPlayer={currentPlayer}
+          submitVote={submitVote}
+          isConnected={isConnected}
           onComplete={handleVotingComplete} 
         />
       )}
@@ -291,7 +323,8 @@ export default function Home() {
       {currentPlayer?.address && game?.gameId && (gameState === "lobby" || gameState === "gameplay" || gameState === "discussion" || gameState === "voting") && (
         <ChatComponent 
           gameId={game.gameId} 
-          currentPlayerAddress={currentPlayer.address} 
+          currentPlayerAddress={currentPlayer.address}
+          players={players}
         />
       )}
 
@@ -299,7 +332,9 @@ export default function Home() {
       {game?.phase === 'task' && currentPlayer?.address && game?.gameId && (
         <TaskComponent 
           gameId={game.gameId} 
-          currentPlayerAddress={currentPlayer.address} 
+          currentPlayerAddress={currentPlayer.address}
+          game={game}
+          submitTaskAnswer={submitTaskAnswer}
         />
       )}
     </main>

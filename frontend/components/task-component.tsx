@@ -3,15 +3,16 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useGame } from "@/hooks/useGame"
+import { Game } from "@/services/api"
 
 interface TaskComponentProps {
   gameId: string
   currentPlayerAddress: string
+  game: Game | null
+  submitTaskAnswer: (answer: any) => Promise<void>
 }
 
-export default function TaskComponent({ gameId, currentPlayerAddress }: TaskComponentProps) {
-  const { game, submitTaskAnswer, timeLeft } = useGame()
+export default function TaskComponent({ gameId, currentPlayerAddress, game, submitTaskAnswer }: TaskComponentProps) {
   const [answer, setAnswer] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<"correct" | "incorrect" | null>(null)
@@ -185,3 +186,5 @@ export default function TaskComponent({ gameId, currentPlayerAddress }: TaskComp
     </div>
   )
 }
+
+

@@ -89,22 +89,40 @@ export function useGame(gameId?: string): GameState & GameActions {
       console.log('🎮 Current player before update:', currentPlayer)
       setGame(data.game)
       
-      if (data.game && currentPlayer?.address) {
-        console.log('Converting players with currentPlayer address:', currentPlayer.address)
-        const convertedPlayers = convertPlayers(data.game, currentPlayer.address)
+      if (data.game) {
+        // Try to get current player address from multiple sources
+        const currentPlayerAddress = currentPlayer?.address || 
+                                   (currentPlayer?.id && currentPlayer.id !== 'You' ? currentPlayer.id : null)
+        
+        console.log('Converting players with currentPlayer address:', currentPlayerAddress)
+        const convertedPlayers = convertPlayers(data.game, currentPlayerAddress)
         setPlayers(convertedPlayers)
         
         // Update current player from converted players
-        const currentPlayerFromConverted = convertedPlayers.find(p => p.address === currentPlayer.address)
+        const currentPlayerFromConverted = convertedPlayers.find(p => 
+          p.address === currentPlayerAddress || 
+          (currentPlayerAddress && p.address === currentPlayerAddress)
+        )
+        
         if (currentPlayerFromConverted && currentPlayerFromConverted.role) {
           console.log(`[handleGameState] Updating current player role: ${currentPlayerFromConverted.role}`)
           setCurrentPlayer(prev => prev ? {
             ...prev,
             role: currentPlayerFromConverted.role
-          } : null)
+          } : {
+            id: currentPlayerFromConverted.id,
+            name: 'You',
+            avatar: '👤',
+            isAlive: true,
+            isCurrentPlayer: true,
+            address: currentPlayerFromConverted.address,
+            role: currentPlayerFromConverted.role
+          })
+        } else {
+          console.log('No role found for current player:', currentPlayerFromConverted)
         }
       } else {
-        console.log('No currentPlayer address available:', currentPlayer)
+        console.log('No game data available')
       }
     }
 
@@ -209,6 +227,9 @@ export function useGame(gameId?: string): GameState & GameActions {
         
         // Set current player with role from converted players
         const currentPlayerFromConverted = convertedPlayers.find(p => p.address === playerAddress)
+        console.log('🔍 joinGameByRoomCode - currentPlayerFromConverted:', currentPlayerFromConverted)
+        console.log('🔍 joinGameByRoomCode - game roles:', response.game.roles)
+        
         setCurrentPlayer({
           id: playerAddress,
           name: 'You',
@@ -279,6 +300,8 @@ export function useGame(gameId?: string): GameState & GameActions {
         commit
       }
       
+      console.log('🚀 Submitting night action:', actionData)
+      
       // Send via Socket.IO for real-time updates
       submitAction({
         gameId: game.gameId,
@@ -287,8 +310,11 @@ export function useGame(gameId?: string): GameState & GameActions {
       
       // Also send via REST API as backup
       await apiService.submitNightAction(game.gameId, actionData)
+      
+      console.log('✅ Night action submitted successfully')
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit action'
+      console.error('❌ Failed to submit night action:', errorMessage)
       setError(errorMessage)
       throw err
     }
@@ -368,7 +394,7 @@ export function useGame(gameId?: string): GameState & GameActions {
     setError(null)
     
     try {
-      const response = await apiService.getGame(currentGameId)
+      const response = await apiService.getGame(currentGameId, currentPlayer?.address)
       console.log('🔄 refreshGame API response:', response)
       
       if (response.success) {

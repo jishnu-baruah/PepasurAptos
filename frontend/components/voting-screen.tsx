@@ -3,15 +3,19 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useGame, Player } from "@/hooks/useGame"
+import { Player } from "@/hooks/useGame"
+import { Game } from "@/services/api"
 
 interface VotingScreenProps {
   players: Player[]
+  game: Game | null
+  currentPlayer: Player | null
+  submitVote: (vote: string) => Promise<void>
+  isConnected: boolean
   onComplete: () => void
 }
 
-export default function VotingScreen({ players, onComplete }: VotingScreenProps) {
-  const { game, submitVote, isConnected, currentPlayer } = useGame()
+export default function VotingScreen({ players, game, currentPlayer, submitVote, isConnected, onComplete }: VotingScreenProps) {
   const [selectedVote, setSelectedVote] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [showResult, setShowResult] = useState(false)

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useSocket } from "@/contexts/SocketContext"
-import { useGame } from "@/hooks/useGame"
+import { Player } from "@/hooks/useGame"
 
 interface ChatMessage {
   id: string
@@ -17,11 +17,11 @@ interface ChatMessage {
 interface ChatComponentProps {
   gameId: string
   currentPlayerAddress: string
+  players: Player[]
 }
 
-export default function ChatComponent({ gameId, currentPlayerAddress }: ChatComponentProps) {
+export default function ChatComponent({ gameId, currentPlayerAddress, players }: ChatComponentProps) {
   const { socket, sendChatMessage } = useSocket()
-  const { players } = useGame()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isOpen, setIsOpen] = useState(false)

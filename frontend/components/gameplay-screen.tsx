@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
-import { useGame, Player } from "@/hooks/useGame"
+import { Player } from "@/hooks/useGame"
 import { Game } from "@/services/api"
 
 interface GameplayScreenProps {
   currentPlayer: Player
   players: Player[]
   game: Game | null // Game state from parent component
+  submitNightAction: (action: any, commit?: string) => Promise<void>
+  isConnected: boolean
+  refreshGame: () => Promise<void>
   onComplete: (killedPlayer?: Player) => void
 }
 
-export default function GameplayScreen({ currentPlayer, players, game, onComplete }: GameplayScreenProps) {
-  const { submitNightAction, isConnected, refreshGame } = useGame()
+export default function GameplayScreen({ currentPlayer, players, game, submitNightAction, isConnected, refreshGame, onComplete }: GameplayScreenProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null)
   const [actionTaken, setActionTaken] = useState(false)
   const [showDeathAnnouncement, setShowDeathAnnouncement] = useState(false)
@@ -92,6 +94,15 @@ export default function GameplayScreen({ currentPlayer, players, game, onComplet
   }, [game?.eliminated, players, onComplete])
 
   const handlePlayerSelect = async (playerId: string) => {
+    console.log('🎯 handlePlayerSelect called:', {
+      playerId,
+      timeLeft,
+      actionTaken,
+      gamePhase: game?.phase,
+      currentPlayerRole: currentPlayer?.role,
+      currentPlayerAddress: currentPlayer?.address
+    })
+    
     if (timeLeft > 0 && !actionTaken && game?.phase === 'night') {
       setSelectedPlayer(playerId)
       setActionTaken(true)
@@ -111,18 +122,27 @@ export default function GameplayScreen({ currentPlayer, players, game, onComplet
           return
         }
         
+        console.log(`🎯 Submitting action: ${backendRole} targeting ${playerId}`)
+        
         // Submit action to backend
         await submitNightAction({
           type: backendRole.toLowerCase(),
           target: playerId
         })
         
-        console.log(`[${backendRole}] Selected player ${playerId}`)
+        console.log(`✅ Action submitted successfully: ${backendRole} targeting ${playerId}`)
       } catch (error) {
-        console.error('Failed to submit action:', error)
+        console.error('❌ Failed to submit action:', error)
         setActionTaken(false)
         setSelectedPlayer(null)
       }
+    } else {
+      console.log('❌ Cannot submit action:', {
+        timeLeft,
+        actionTaken,
+        gamePhase: game?.phase,
+        reason: timeLeft <= 0 ? 'Timer expired' : actionTaken ? 'Action already taken' : 'Not in night phase'
+      })
     }
   }
 
