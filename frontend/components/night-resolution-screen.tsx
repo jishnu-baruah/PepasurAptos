@@ -24,9 +24,8 @@ interface NightResolutionScreenProps {
 export default function NightResolutionScreen({ resolution, onContinue, game, currentPlayer }: NightResolutionScreenProps) {
   const [showResults, setShowResults] = useState(false)
   const [hasTransitioned, setHasTransitioned] = useState(false)
-  const [fallbackTimer, setFallbackTimer] = useState(5)
 
-  // Check if backend has moved to task phase (primary mechanism)
+  // Primary mechanism: Check if backend has moved to task phase
   useEffect(() => {
     if (game?.phase === 'task' && !hasTransitioned) {
       console.log('Backend moved to task phase, transitioning to task')
@@ -35,30 +34,24 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
     }
   }, [game?.phase, onContinue, hasTransitioned])
 
+  // Show results after a brief delay
   useEffect(() => {
-    // Show results after a brief delay
     const showTimer = setTimeout(() => setShowResults(true), 1000)
     return () => clearTimeout(showTimer)
   }, [])
 
-  // Fallback timer in case backend timer doesn't work
+  // Robust fallback: If backend timer fails, transition after 15 seconds
   useEffect(() => {
-    if (showResults && !hasTransitioned) {
-      const fallbackInterval = setInterval(() => {
-        setFallbackTimer(prev => {
-          if (prev <= 1) {
-            console.log('Fallback timer expired, forcing transition')
-            setHasTransitioned(true)
-            onContinue()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
+    if (showResults && !hasTransitioned && game?.phase === 'resolution') {
+      const fallbackTimer = setTimeout(() => {
+        console.log('Fallback timer expired (15s), forcing transition to task')
+        setHasTransitioned(true)
+        onContinue()
+      }, 15000) // 15 seconds fallback
 
-      return () => clearInterval(fallbackInterval)
+      return () => clearTimeout(fallbackTimer)
     }
-  }, [showResults, hasTransitioned, onContinue])
+  }, [showResults, hasTransitioned, game?.phase, onContinue])
 
   // Debug logging
   useEffect(() => {
@@ -66,10 +59,9 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
       showResults,
       gamePhase: game?.phase,
       timeLeft: game?.timeLeft,
-      fallbackTimer,
       hasTransitioned
     })
-  }, [showResults, game?.phase, game?.timeLeft, fallbackTimer, hasTransitioned])
+  }, [showResults, game?.phase, game?.timeLeft, hasTransitioned])
 
   const getResolutionMessage = () => {
     const { killedPlayer, savedPlayer, investigatedPlayer, investigationResult, mafiaTarget, doctorTarget, detectiveTarget } = resolution
@@ -250,15 +242,15 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
                   Moving to task phase in:
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red">
-                  {game?.timeLeft || fallbackTimer}s
+                  {game?.timeLeft || 10}s
                 </div>
                 {game?.timeLeft === undefined && (
                   <div className="text-xs text-yellow-500 mt-1">
-                    Using fallback timer
+                    Using backend timer
                   </div>
                 )}
                 <div className="text-xs text-blue-400 mt-1">
-                  Force transition in 3s if stuck
+                  Auto-transition in 15s if stuck
                 </div>
               </div>
             </div>

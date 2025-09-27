@@ -101,14 +101,8 @@ export default function Home() {
       } else if (game.phase === 'resolution' && gameState !== 'resolution') {
         console.log("Switching to resolution phase")
         setGameState('resolution')
-      } else if (game.phase === 'resolution' && gameState === 'night') {
-        console.log("Forcing transition from night to resolution phase")
-        setGameState('resolution')
-      } else if (game.phase === 'task' && (gameState !== 'task' && gameState !== 'resolution')) {
-        console.log("Switching to task phase from task phase")
-        setGameState('task')
-      } else if (game.phase === 'task' && gameState === 'resolution') {
-        console.log("Resolution phase completed, moving to task")
+      } else if (game.phase === 'task' && gameState !== 'task') {
+        console.log("Switching to task phase")
         setGameState('task')
       } else if (game.phase === 'voting' && gameState !== 'voting') {
         console.log("Switching to voting phase")

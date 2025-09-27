@@ -392,9 +392,9 @@ class GameManager {
       return;
     }
 
-    // Move to resolution phase (5 seconds)
+    // Move to resolution phase (10 seconds - increased for stability)
     game.phase = 'resolution';
-    game.timeLeft = 5; // 5 seconds for resolution screen
+    game.timeLeft = 10; // Increased from 5 to 10 seconds for stability
 
     // Reset timer state for resolution phase
     if (game.timerInterval) {
