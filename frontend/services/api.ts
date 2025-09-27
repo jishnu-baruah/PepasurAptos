@@ -161,12 +161,13 @@ class ApiService {
   }
 
   // Signal that frontend is ready for timer
-  async signalReady(gameId: string) {
+  async signalReady(gameId: string, playerAddress: string) {
     return this.request<{
       success: boolean
       message: string
     }>(`/api/game/${gameId}/ready`, {
       method: 'POST',
+      body: JSON.stringify({ playerAddress }),
     })
   }
 

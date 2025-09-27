@@ -161,19 +161,24 @@ module.exports = (gameManager, flowService) => {
   router.post('/:gameId/ready', (req, res) => {
     try {
       const { gameId } = req.params;
+      const { playerAddress } = req.body;
       
       if (!gameId) {
         return res.status(400).json({ error: 'Game ID is required' });
       }
 
-      gameManager.startTimerWhenReady(gameId);
+      if (!playerAddress) {
+        return res.status(400).json({ error: 'Player address is required' });
+      }
+
+      gameManager.startTimerWhenReady(gameId, playerAddress);
       
       res.json({
         success: true,
-        message: 'Timer started - frontend is ready'
+        message: 'Player ready signal received'
       });
     } catch (error) {
-      console.error('Error starting timer:', error);
+      console.error('Error processing ready signal:', error);
       res.status(500).json({ error: error.message });
     }
   });

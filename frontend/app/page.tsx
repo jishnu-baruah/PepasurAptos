@@ -340,6 +340,8 @@ export default function Home() {
         <DiscussionPhaseScreen 
           onComplete={handleDiscussionComplete}
           game={game}
+          gameId={game?.gameId}
+          currentPlayerAddress={currentPlayer?.address}
         />
       )}
       {gameState === "voting" && currentPlayer && (

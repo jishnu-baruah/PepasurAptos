@@ -143,20 +143,53 @@ class GameManager {
       clearInterval(game.timerInterval);
     }
 
-    // Don't start timer immediately - wait for frontend ready signal
+    // Don't start timer immediately - wait for all users to be ready
     game.timerReady = false;
-    console.log(`Timer prepared for game ${gameId}, waiting for frontend ready signal`);
+    game.readyPlayers = new Set(); // Track which players are ready
+    game.readyTimer = null; // Timer for auto-start after grace period
+    console.log(`Timer prepared for game ${gameId}, waiting for all players to be ready`);
   }
 
   // Start timer when frontend is ready
-  startTimerWhenReady(gameId) {
+  startTimerWhenReady(gameId, playerAddress) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    // Add player to ready set
+    game.readyPlayers.add(playerAddress);
+    console.log(`Player ${playerAddress} is ready. Ready players: ${game.readyPlayers.size}/${game.players.length}`);
+
+    // Check if all active players are ready
+    const activePlayers = game.players.filter(p => !game.eliminated.includes(p));
+    
+    if (game.readyPlayers.size >= activePlayers.length) {
+      console.log(`All players ready, starting timer immediately`);
+      this.startActualTimer(gameId);
+    } else if (!game.readyTimer) {
+      // Start grace period timer (5 seconds)
+      console.log(`Starting 5-second grace period for remaining players`);
+      game.readyTimer = setTimeout(() => {
+        console.log(`Grace period expired, starting timer with ${game.readyPlayers.size}/${activePlayers.length} players ready`);
+        this.startActualTimer(gameId);
+      }, 5000);
+    }
+  }
+
+  // Actually start the timer countdown
+  startActualTimer(gameId) {
     const game = this.games.get(gameId);
     if (!game) return;
 
     if (game.timerReady) return; // Already started
 
+    // Clear grace period timer
+    if (game.readyTimer) {
+      clearTimeout(game.readyTimer);
+      game.readyTimer = null;
+    }
+
     game.timerReady = true;
-    console.log(`Starting timer for game ${gameId} - frontend is ready`);
+    console.log(`Starting timer for game ${gameId} - all players ready or grace period expired`);
 
     game.timerInterval = setInterval(() => {
       if (game.timeLeft > 0) {

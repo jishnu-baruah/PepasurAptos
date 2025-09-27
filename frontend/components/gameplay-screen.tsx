@@ -50,18 +50,18 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
 
   // Signal backend that frontend is ready for timer
   useEffect(() => {
-    if (game?.gameId && game.phase === 'night' && !game.timerReady) {
+    if (game?.gameId && game.phase === 'night' && !game.timerReady && currentPlayer?.address) {
       console.log('Frontend ready for night phase timer')
-      // Send ready signal to backend
-      apiService.signalReady(game.gameId)
+      // Send ready signal to backend with player address
+      apiService.signalReady(game.gameId, currentPlayer.address)
         .then(data => {
-          console.log('Timer started:', data)
+          console.log('Player ready signal sent:', data)
         })
         .catch(error => {
-          console.error('Error starting timer:', error)
+          console.error('Error sending ready signal:', error)
         })
     }
-  }, [game?.gameId, game?.phase, game?.timerReady])
+  }, [game?.gameId, game?.phase, game?.timerReady, currentPlayer?.address])
 
   // Get real-time timer from backend
   useEffect(() => {
@@ -77,13 +77,15 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
     }
   }, [game?.timeLeft])
 
-  // Sync timer with backend every second
+  // Sync timer with backend every 2 seconds (reduced frequency)
   useEffect(() => {
     if (game?.timeLeft !== undefined && game.timeLeft > 0) {
       const interval = setInterval(() => {
-        // Refresh game state to get updated timer
-        refreshGame()
-      }, 1000)
+        // Only refresh if timer is still running
+        if (game.timeLeft > 0) {
+          refreshGame()
+        }
+      }, 2000) // Reduced from 1000ms to 2000ms
       
       return () => clearInterval(interval)
     }

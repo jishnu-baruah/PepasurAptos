@@ -4,10 +4,13 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { PixelInput } from "@/components/ui/pixel-input"
+import { useSocket } from "@/contexts/SocketContext"
 
 interface DiscussionPhaseScreenProps {
   onComplete: () => void
   game?: any // Add game prop to get timer from backend
+  gameId?: string // Add gameId for chat
+  currentPlayerAddress?: string // Add current player address
 }
 
 interface Task {
@@ -19,10 +22,11 @@ interface Task {
   reward: string
 }
 
-export default function DiscussionPhaseScreen({ onComplete, game }: DiscussionPhaseScreenProps) {
+export default function DiscussionPhaseScreen({ onComplete, game, gameId, currentPlayerAddress }: DiscussionPhaseScreenProps) {
   const [timeLeft, setTimeLeft] = useState(60) // 60 seconds for discussion
   const [message, setMessage] = useState("")
   const [activeTab, setActiveTab] = useState<'chat' | 'tasks'>('chat')
+  const { socket, sendChatMessage } = useSocket()
   const [tasks, setTasks] = useState<Task[]>([
     {
       id: '1',
@@ -57,14 +61,34 @@ export default function DiscussionPhaseScreen({ onComplete, game }: DiscussionPh
       reward: '+60 XP'
     }
   ])
-  const [messages, setMessages] = useState<string[]>([
-    "🚀 Player1: Anyone suspicious?",
-    "👁️ Player2: I think Player3 is acting weird...",
-    "🤖 Player3: I was just observing!",
-    "💫 Player4: The binary code might be a clue!",
-    "⭐ Player5: We need to vote carefully!",
-    "🛸 Player6: I agree, let's discuss this properly."
-  ])
+  const [messages, setMessages] = useState<Array<{
+    id: string
+    playerAddress: string
+    message: string
+    timestamp: number
+  }>>([])
+
+  // Listen for chat messages
+  useEffect(() => {
+    if (socket && gameId) {
+      const handleChatMessage = (data: any) => {
+        if (data.gameId === gameId) {
+          setMessages(prev => [...prev, {
+            id: `${data.playerAddress}-${data.timestamp}`,
+            playerAddress: data.playerAddress,
+            message: data.message,
+            timestamp: data.timestamp
+          }])
+        }
+      }
+
+      socket.on('chatMessage', handleChatMessage)
+      
+      return () => {
+        socket.off('chatMessage', handleChatMessage)
+      }
+    }
+  }, [socket, gameId])
 
   useEffect(() => {
     // Use backend timer if available, otherwise use local timer
@@ -86,9 +110,14 @@ export default function DiscussionPhaseScreen({ onComplete, game }: DiscussionPh
   }, [timeLeft, onComplete, game?.timeLeft])
 
   const handleSendMessage = () => {
-    if (message.trim()) {
-      setMessages([...messages, `🎮 You: ${message}`])
-      setMessage("")
+    if (message.trim() && gameId && currentPlayerAddress && sendChatMessage) {
+      try {
+        sendChatMessage(gameId, currentPlayerAddress, message.trim())
+        setMessage("")
+        console.log('Chat message sent:', message.trim())
+      } catch (error) {
+        console.error('Failed to send chat message:', error)
+      }
     }
   }
 
@@ -150,11 +179,25 @@ export default function DiscussionPhaseScreen({ onComplete, game }: DiscussionPh
             <>
               {/* Chat Messages */}
               <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto space-y-2 sm:space-y-3 bg-[#111111]/50 min-h-0">
-                {messages.map((msg, i) => (
-                  <div key={i} className="font-press-start text-xs sm:text-sm md:text-base pixel-text-3d-white bg-[#1A1A1A]/80 p-2 sm:p-3 md:p-4 border border-[#2A2A2A] chat-message-glow chat-message-enter">
-                    {msg}
+                {messages.length === 0 ? (
+                  <div className="text-center text-gray-500 font-press-start text-sm">
+                    No messages yet. Start the discussion!
                   </div>
-                ))}
+                ) : (
+                  messages.map((msg) => (
+                    <div key={msg.id} className="font-press-start text-xs sm:text-sm md:text-base pixel-text-3d-white bg-[#1A1A1A]/80 p-2 sm:p-3 md:p-4 border border-[#2A2A2A] chat-message-glow chat-message-enter">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[#4A8C4A]">
+                          {msg.playerAddress === currentPlayerAddress ? '🎮 You' : '👤 Player'}
+                        </span>
+                        <span className="text-gray-400 text-xs">
+                          {new Date(msg.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <div className="mt-1">{msg.message}</div>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Quick Task Panel */}
