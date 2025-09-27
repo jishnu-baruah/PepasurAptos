@@ -146,12 +146,14 @@ class GameManager {
     // Clear existing timer if any
     if (game.timerInterval) {
       clearInterval(game.timerInterval);
+      game.timerInterval = null;
     }
 
-    // Don't start timer immediately - wait for all users to be ready
+    // Reset timer state for new phase
     game.timerReady = false;
     game.readyPlayers = new Set(); // Track which players are ready
     game.readyTimer = null; // Timer for auto-start after grace period
+    
     console.log(`Timer prepared for game ${gameId}, waiting for all players to be ready`);
   }
 
@@ -187,19 +189,24 @@ class GameManager {
 
     console.log(`startActualTimer called for game ${gameId}, timerReady: ${game.timerReady}, phase: ${game.phase}, timeLeft: ${game.timeLeft}`);
 
-    if (game.timerReady) {
-      console.log(`Timer already ready for game ${gameId}, skipping start`);
-      return; // Already started
+    // Prevent multiple timer starts
+    if (game.timerReady && game.timerInterval) {
+      console.log(`Timer already running for game ${gameId}, skipping start`);
+      return;
     }
 
-    // Clear grace period timer
+    // Clear any existing timers
+    if (game.timerInterval) {
+      clearInterval(game.timerInterval);
+      game.timerInterval = null;
+    }
     if (game.readyTimer) {
       clearTimeout(game.readyTimer);
       game.readyTimer = null;
     }
 
     game.timerReady = true;
-    console.log(`Starting timer for game ${gameId} - all players ready or grace period expired. Phase: ${game.phase}, TimeLeft: ${game.timeLeft}`);
+    console.log(`Starting timer for game ${gameId} - Phase: ${game.phase}, TimeLeft: ${game.timeLeft}`);
 
     game.timerInterval = setInterval(() => {
       if (game.timeLeft > 0) {
@@ -207,6 +214,7 @@ class GameManager {
         console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
       } else {
         // Timer expired, resolve current phase
+        console.log(`Timer expired for game ${gameId}, resolving phase: ${game.phase}`);
         this.handleTimerExpired(gameId);
       }
     }, 1000);
@@ -224,6 +232,11 @@ class GameManager {
       clearInterval(game.timerInterval);
       game.timerInterval = null;
     }
+    if (game.readyTimer) {
+      clearTimeout(game.readyTimer);
+      game.readyTimer = null;
+    }
+    game.timerReady = false;
 
     // Resolve current phase
     if (game.phase === 'night') {
@@ -399,14 +412,6 @@ class GameManager {
     // Start timer immediately for resolution phase (no need to wait for players)
     this.startActualTimer(gameId);
 
-    // Force transition to task phase after 3 seconds as backup
-    setTimeout(() => {
-      if (game.phase === 'resolution') {
-        console.log(`Force transitioning from resolution to task phase for game ${gameId}`);
-        this.resolveResolutionPhase(gameId);
-      }
-    }, 3000);
-
     console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
   }
 
@@ -444,14 +449,6 @@ class GameManager {
     // Start timer for task phase
     this.startTimer(gameId);
 
-    // Force transition to voting phase after 30 seconds as backup
-    setTimeout(() => {
-      if (game.phase === 'task') {
-        console.log(`Force transitioning from task to voting phase for game ${gameId}`);
-        this.resolveTaskPhase(gameId);
-      }
-    }, 30000);
-
     console.log(`Resolution phase resolved for game ${gameId}, moved to task phase`);
   }
 
@@ -486,11 +483,28 @@ class GameManager {
 
     console.log(`Resolving voting phase for game ${gameId}`);
 
-    // Process votes and eliminate player
-    const eliminatedPlayer = this.processVotes(game);
-    if (eliminatedPlayer) {
-      game.eliminated.push(eliminatedPlayer);
-      console.log(`Player ${eliminatedPlayer} was eliminated by vote`);
+    // Count votes
+    const voteCounts = {};
+    for (const [voter, target] of Object.entries(game.votes)) {
+      if (!game.eliminated.includes(target)) {
+        voteCounts[target] = (voteCounts[target] || 0) + 1;
+      }
+    }
+
+    // Find player with most votes
+    let maxVotes = 0;
+    let eliminated = null;
+    for (const [player, votes] of Object.entries(voteCounts)) {
+      if (votes > maxVotes) {
+        maxVotes = votes;
+        eliminated = player;
+      }
+    }
+
+    // Eliminate player
+    if (eliminated) {
+      game.eliminated.push(eliminated);
+      console.log(`Player ${eliminated} was eliminated by vote`);
     }
 
     // Check win conditions
@@ -503,6 +517,7 @@ class GameManager {
     game.phase = 'night';
     game.timeLeft = 30; // 30 seconds for night
     game.pendingActions = {};
+    game.votes = {};
     game.day++;
 
     // Start timer for next night phase
@@ -655,50 +670,6 @@ class GameManager {
     if (votedCount >= activePlayers.length) {
       this.resolveVotingPhase(gameId);
     }
-  }
-
-  // Resolve voting phase
-  resolveVotingPhase(gameId) {
-    const game = this.games.get(gameId);
-    if (!game) return;
-
-    // Count votes
-    const voteCounts = {};
-    for (const [voter, target] of Object.entries(game.votes)) {
-      if (!game.eliminated.includes(target)) {
-        voteCounts[target] = (voteCounts[target] || 0) + 1;
-      }
-    }
-
-    // Find player with most votes
-    let maxVotes = 0;
-    let eliminated = null;
-    for (const [player, votes] of Object.entries(voteCounts)) {
-      if (votes > maxVotes) {
-        maxVotes = votes;
-        eliminated = player;
-      }
-    }
-
-    // Eliminate player
-    if (eliminated) {
-      game.eliminated.push(eliminated);
-    }
-
-    // Check win conditions
-    if (this.checkWinConditions(game)) {
-      this.endGame(gameId);
-      return;
-    }
-
-    // Move to next day
-    game.day++;
-    game.phase = 'night';
-    game.pendingActions = {};
-    game.votes = {};
-    game.timeLeft = 10; // 10 seconds for night
-
-    console.log(`Voting phase resolved for game ${gameId}, eliminated: ${eliminated}`);
   }
 
   // Check win conditions

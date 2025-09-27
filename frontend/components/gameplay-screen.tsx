@@ -36,13 +36,21 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
     })
   }, [game, currentPlayer, players, isConnected])
 
-  // Auto-refresh when timer is 0
+  // Auto-refresh when timer is 0 or every 3 seconds for state sync
   useEffect(() => {
     if (game?.timeLeft === 0) {
+      // When timer expires, refresh every 3 seconds until phase changes
       const interval = setInterval(() => {
         console.log("Auto-refreshing game state (timer expired)")
         refreshGame()
-      }, 3000) // Refresh every 3 seconds
+      }, 3000)
+      
+      return () => clearInterval(interval)
+    } else if (game?.timeLeft !== undefined && game.timeLeft > 0) {
+      // When timer is running, refresh every 3 seconds (reduced frequency)
+      const interval = setInterval(() => {
+        refreshGame()
+      }, 3000) // Consolidated to single 3-second interval
       
       return () => clearInterval(interval)
     }
@@ -76,20 +84,6 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
       }
     }
   }, [game?.timeLeft])
-
-  // Sync timer with backend every 2 seconds (reduced frequency)
-  useEffect(() => {
-    if (game?.timeLeft !== undefined && game.timeLeft > 0) {
-      const interval = setInterval(() => {
-        // Only refresh if timer is still running
-        if (game.timeLeft > 0) {
-          refreshGame()
-        }
-      }, 2000) // Reduced from 1000ms to 2000ms
-      
-      return () => clearInterval(interval)
-    }
-  }, [game?.timeLeft, refreshGame])
 
   // Handle game phase changes
   useEffect(() => {

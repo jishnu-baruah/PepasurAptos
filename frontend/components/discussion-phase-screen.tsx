@@ -120,19 +120,6 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
     }
   }, [timeLeft, onComplete, game?.timeLeft, hasTransitioned])
 
-  // Force transition after 30 seconds to ensure voting phase starts
-  useEffect(() => {
-    if (!hasTransitioned) {
-      const forceTransitionTimer = setTimeout(() => {
-        console.log('Force transition from task to voting phase after 30 seconds')
-        setHasTransitioned(true)
-        onComplete()
-      }, 30000) // Force transition after 30 seconds
-
-      return () => clearTimeout(forceTransitionTimer)
-    }
-  }, [hasTransitioned, onComplete])
-
   const handleSendMessage = () => {
     if (message.trim() && gameId && currentPlayerAddress && sendChatMessage) {
       try {
