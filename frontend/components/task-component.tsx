@@ -16,6 +16,9 @@ export default function TaskComponent({ gameId, currentPlayerAddress, game, subm
   const [answer, setAnswer] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<"correct" | "incorrect" | null>(null)
+  
+  // Get timeLeft from game prop
+  const timeLeft = game?.timeLeft || 0
 
   // Check if player already submitted
   useEffect(() => {
