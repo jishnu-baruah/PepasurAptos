@@ -480,8 +480,9 @@ class GameManager {
     game.pendingActions = {};
     game.timeLeft = 30; // 30 seconds for task/discussion
 
-    // Start timer for task phase
-    this.startTimer(gameId);
+    // Start timer immediately for task phase (no need to wait for players)
+    console.log(`Starting task phase timer immediately for game ${gameId}`);
+    this.startActualTimer(gameId);
 
     console.log(`Resolution phase resolved for game ${gameId}, moved to task phase`);
   }
