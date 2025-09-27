@@ -1,5 +1,5 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { defineChain } from 'viem';
+import { defineChain, http } from 'viem';
 
 // Define Flow Testnet chain
 export const flowTestnet = defineChain({
@@ -36,10 +36,8 @@ export const config = getDefaultConfig({
   projectId: projectId,
   chains: [flowTestnet],
   ssr: true, // Enable SSR support
-  // Add network configuration for better compatibility
+  // Fix transports configuration - use functions instead of objects
   transports: {
-    [flowTestnet.id]: {
-      http: ['https://testnet.evm.nodes.onflow.org'],
-    },
+    [flowTestnet.id]: http('https://testnet.evm.nodes.onflow.org'),
   },
 });
