@@ -372,12 +372,24 @@ class GameManager {
     const game = this.games.get(gameId);
     if (!game) return;
 
+    // Safety check: only resolve if we're actually in resolution phase
+    if (game.phase !== 'resolution') {
+      console.log(`Skipping resolution phase resolve - current phase is ${game.phase}`);
+      return;
+    }
+
     console.log(`Resolving resolution phase for game ${gameId}`);
 
     // Clear any existing timer
     if (game.timerInterval) {
       clearInterval(game.timerInterval);
       game.timerInterval = null;
+    }
+
+    // Clear ready timer if it exists
+    if (game.readyTimer) {
+      clearTimeout(game.readyTimer);
+      game.readyTimer = null;
     }
 
     // Move to task phase

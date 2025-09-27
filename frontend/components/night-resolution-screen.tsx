@@ -22,13 +22,12 @@ interface NightResolutionScreenProps {
 
 export default function NightResolutionScreen({ resolution, onContinue, game }: NightResolutionScreenProps) {
   const [showResults, setShowResults] = useState(false)
-  const [countdown, setCountdown] = useState(5)
   const [hasTransitioned, setHasTransitioned] = useState(false)
 
-  // Check if backend has moved to task phase (fallback mechanism)
+  // Check if backend has moved to task phase (primary mechanism)
   useEffect(() => {
     if (game?.phase === 'task' && !hasTransitioned) {
-      console.log('Backend moved to task phase, forcing transition to discussion')
+      console.log('Backend moved to task phase, transitioning to task')
       setHasTransitioned(true)
       onContinue()
     }
@@ -40,27 +39,15 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
     return () => clearTimeout(showTimer)
   }, [])
 
-  useEffect(() => {
-    if (showResults && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
-      return () => clearTimeout(timer)
-    } else if (showResults && countdown === 0 && !hasTransitioned) {
-      console.log('Resolution countdown completed, calling onContinue')
-      setHasTransitioned(true)
-      onContinue()
-    }
-  }, [showResults, countdown, onContinue, hasTransitioned])
-
   // Debug logging
   useEffect(() => {
     console.log('NightResolutionScreen state:', {
       showResults,
-      countdown,
       gamePhase: game?.phase,
       timeLeft: game?.timeLeft,
       hasTransitioned
     })
-  }, [showResults, countdown, game?.phase, game?.timeLeft, hasTransitioned])
+  }, [showResults, game?.phase, game?.timeLeft, hasTransitioned])
 
   const getResolutionMessage = () => {
     const { killedPlayer, savedPlayer, investigatedPlayer, investigationResult, mafiaTarget, doctorTarget, detectiveTarget } = resolution
@@ -214,10 +201,10 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
 
               <div className="text-center">
                 <div className="text-sm sm:text-base font-press-start pixel-text-3d-white mb-2">
-                  Moving to discussion phase in:
+                  Moving to task phase in:
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red">
-                  {countdown}s
+                  {game?.timeLeft || 0}s
                 </div>
               </div>
             </div>
