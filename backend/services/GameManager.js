@@ -185,7 +185,12 @@ class GameManager {
     const game = this.games.get(gameId);
     if (!game) return;
 
-    if (game.timerReady) return; // Already started
+    console.log(`startActualTimer called for game ${gameId}, timerReady: ${game.timerReady}, phase: ${game.phase}, timeLeft: ${game.timeLeft}`);
+
+    if (game.timerReady) {
+      console.log(`Timer already ready for game ${gameId}, skipping start`);
+      return; // Already started
+    }
 
     // Clear grace period timer
     if (game.readyTimer) {
@@ -365,6 +370,17 @@ class GameManager {
     // Move to resolution phase (5 seconds)
     game.phase = 'resolution';
     game.timeLeft = 5; // 5 seconds for resolution screen
+
+    // Reset timer state for resolution phase
+    if (game.timerInterval) {
+      clearInterval(game.timerInterval);
+      game.timerInterval = null;
+    }
+    if (game.readyTimer) {
+      clearTimeout(game.readyTimer);
+      game.readyTimer = null;
+    }
+    game.timerReady = false;
 
     // Start timer immediately for resolution phase (no need to wait for players)
     this.startActualTimer(gameId);
