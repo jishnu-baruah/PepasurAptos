@@ -12,6 +12,7 @@ import RoomCodeDisplay from "@/components/room-code-display"
 import ChatComponent from "@/components/chat-component"
 import TaskComponent from "@/components/task-component"
 import NightResultsScreen from "@/components/night-results-screen"
+import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
 import { useGame, Player } from "@/hooks/useGame"
 
@@ -336,7 +337,10 @@ export default function Home() {
         />
       )}
       {gameState === "discussion" && (
-        <DiscussionPhaseScreen onComplete={handleDiscussionComplete} />
+        <DiscussionPhaseScreen 
+          onComplete={handleDiscussionComplete}
+          game={game}
+        />
       )}
       {gameState === "voting" && currentPlayer && (
         <VotingScreen 

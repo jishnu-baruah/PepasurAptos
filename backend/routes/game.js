@@ -157,6 +157,27 @@ module.exports = (gameManager, flowService) => {
     }
   });
 
+  // Signal that frontend is ready for timer
+  router.post('/:gameId/ready', (req, res) => {
+    try {
+      const { gameId } = req.params;
+      
+      if (!gameId) {
+        return res.status(400).json({ error: 'Game ID is required' });
+      }
+
+      gameManager.startTimerWhenReady(gameId);
+      
+      res.json({
+        success: true,
+        message: 'Timer started - frontend is ready'
+      });
+    } catch (error) {
+      console.error('Error starting timer:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Submit night action
   router.post('/:gameId/action/night', (req, res) => {
     try {

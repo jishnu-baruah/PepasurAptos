@@ -122,11 +122,15 @@ class ApiService {
     }>(`/api/game/room/${roomCode}`)
   }
 
-  async getGame(gameId: string) {
+  async getGame(gameId: string, playerAddress?: string) {
+    const url = playerAddress 
+      ? `/api/game/${gameId}?playerAddress=${encodeURIComponent(playerAddress)}`
+      : `/api/game/${gameId}`
+    
     return this.request<{
       success: boolean
       game: Game
-    }>(`/api/game/${gameId}`)
+    }>(url)
   }
 
   async joinGame(gameId: string, data: JoinGameRequest) {
@@ -154,6 +158,16 @@ class ApiService {
         startedAt: number | null
       }>
     }>('/api/game')
+  }
+
+  // Signal that frontend is ready for timer
+  async signalReady(gameId: string) {
+    return this.request<{
+      success: boolean
+      message: string
+    }>(`/api/game/${gameId}/ready`, {
+      method: 'POST',
+    })
   }
 
   // Game Actions

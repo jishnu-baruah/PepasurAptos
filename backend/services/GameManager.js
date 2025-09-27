@@ -143,6 +143,21 @@ class GameManager {
       clearInterval(game.timerInterval);
     }
 
+    // Don't start timer immediately - wait for frontend ready signal
+    game.timerReady = false;
+    console.log(`Timer prepared for game ${gameId}, waiting for frontend ready signal`);
+  }
+
+  // Start timer when frontend is ready
+  startTimerWhenReady(gameId) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    if (game.timerReady) return; // Already started
+
+    game.timerReady = true;
+    console.log(`Starting timer for game ${gameId} - frontend is ready`);
+
     game.timerInterval = setInterval(() => {
       if (game.timeLeft > 0) {
         game.timeLeft--;

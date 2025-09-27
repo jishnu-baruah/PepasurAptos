@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Player } from "@/hooks/useGame"
-import { Game } from "@/services/api"
+import { Game, apiService } from "@/services/api"
 
 interface GameplayScreenProps {
   currentPlayer: Player
@@ -47,6 +47,21 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
       return () => clearInterval(interval)
     }
   }, [game?.timeLeft, refreshGame])
+
+  // Signal backend that frontend is ready for timer
+  useEffect(() => {
+    if (game?.gameId && game.phase === 'night' && !game.timerReady) {
+      console.log('Frontend ready for night phase timer')
+      // Send ready signal to backend
+      apiService.signalReady(game.gameId)
+        .then(data => {
+          console.log('Timer started:', data)
+        })
+        .catch(error => {
+          console.error('Error starting timer:', error)
+        })
+    }
+  }, [game?.gameId, game?.phase, game?.timerReady])
 
   // Get real-time timer from backend
   useEffect(() => {
