@@ -101,10 +101,25 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
     
     if (!investigatedPlayer || !investigationResult) return null
 
+    // Map backend role names to frontend role names and emojis
+    const roleMapping = {
+      'Mafia': { name: 'ASUR', emoji: '🔴', color: '#FF4444' },
+      'Doctor': { name: 'DEVA', emoji: '🛡️', color: '#44AA44' },
+      'Detective': { name: 'RISHI', emoji: '🔍', color: '#4444FF' },
+      'Villager': { name: 'MANAV', emoji: '👤', color: '#AAAAAA' }
+    }
+
+    const roleInfo = roleMapping[investigationResult] || { 
+      name: investigationResult, 
+      emoji: '❓', 
+      color: '#AAAAAA' 
+    }
+
     return {
       player: investigatedPlayer.name,
-      result: investigationResult,
-      emoji: investigationResult === "Mafia" ? "🔴" : "🟢"
+      result: roleInfo.name,
+      emoji: roleInfo.emoji,
+      color: roleInfo.color
     }
   }
 
@@ -160,18 +175,20 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
                 ))}
               </div>
 
-              {/* Investigation Results */}
-              {investigation && (
-                <Card className="p-3 sm:p-4 bg-[#2A2A2A]/50 border border-[#4A8C4A]">
-                  <div className="text-sm sm:text-base font-press-start pixel-text-3d-white">
-                    <div className="text-[#4A8C4A] mb-2">DETECTIVE INVESTIGATION:</div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xl">{investigation.emoji}</span>
-                      <span>{investigation.player} is {investigation.result}</span>
-                    </div>
-                  </div>
-                </Card>
-              )}
+               {/* Investigation Results */}
+               {investigation && (
+                 <Card className="p-3 sm:p-4 bg-[#2A2A2A]/50 border border-[#4A8C4A]">
+                   <div className="text-sm sm:text-base font-press-start pixel-text-3d-white">
+                     <div className="text-[#4A8C4A] mb-2">DETECTIVE INVESTIGATION:</div>
+                     <div className="flex items-center space-x-2">
+                       <span className="text-xl">{investigation.emoji}</span>
+                       <span style={{ color: investigation.color }}>
+                         {investigation.player} is {investigation.result}
+                       </span>
+                     </div>
+                   </div>
+                 </Card>
+               )}
 
               {/* Eliminated Player */}
               {result.title === "PLAYER ELIMINATED" && (

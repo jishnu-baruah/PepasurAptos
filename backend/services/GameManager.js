@@ -90,11 +90,16 @@ class GameManager {
 
   // Join a game by room code
   joinGameByRoomCode(roomCode, playerAddress) {
+    console.log(`Attempting to join game with room code: ${roomCode}`);
+    console.log(`Available room codes:`, Array.from(this.roomCodes.keys()));
+    
     const gameId = this.roomCodes.get(roomCode);
     if (!gameId) {
+      console.log(`Room code ${roomCode} not found in roomCodes map`);
       throw new Error('Room code not found');
     }
     
+    console.log(`Found game ${gameId} for room code ${roomCode}`);
     return this.joinGame(gameId, playerAddress);
   }
 
@@ -361,8 +366,8 @@ class GameManager {
     game.phase = 'resolution';
     game.timeLeft = 5; // 5 seconds for resolution screen
 
-    // Start timer for resolution phase
-    this.startTimer(gameId);
+    // Start timer immediately for resolution phase (no need to wait for players)
+    this.startActualTimer(gameId);
 
     console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
   }
