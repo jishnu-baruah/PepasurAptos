@@ -399,6 +399,14 @@ class GameManager {
     // Start timer immediately for resolution phase (no need to wait for players)
     this.startActualTimer(gameId);
 
+    // Force transition to task phase after 3 seconds as backup
+    setTimeout(() => {
+      if (game.phase === 'resolution') {
+        console.log(`Force transitioning from resolution to task phase for game ${gameId}`);
+        this.resolveResolutionPhase(gameId);
+      }
+    }, 3000);
+
     console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
   }
 

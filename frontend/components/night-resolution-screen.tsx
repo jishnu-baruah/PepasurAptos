@@ -35,6 +35,19 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
     }
   }, [game?.phase, onContinue, hasTransitioned])
 
+  // Force transition after 3 seconds to break any loops
+  useEffect(() => {
+    if (showResults && !hasTransitioned) {
+      const forceTransitionTimer = setTimeout(() => {
+        console.log('Force transition triggered - breaking resolution loop')
+        setHasTransitioned(true)
+        onContinue()
+      }, 3000) // Force transition after 3 seconds
+
+      return () => clearTimeout(forceTransitionTimer)
+    }
+  }, [showResults, hasTransitioned, onContinue])
+
   useEffect(() => {
     // Show results after a brief delay
     const showTimer = setTimeout(() => setShowResults(true), 1000)
@@ -257,6 +270,9 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
                     Using fallback timer
                   </div>
                 )}
+                <div className="text-xs text-blue-400 mt-1">
+                  Force transition in 3s if stuck
+                </div>
               </div>
             </div>
           )}
