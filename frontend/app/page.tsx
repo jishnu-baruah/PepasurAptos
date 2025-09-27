@@ -203,39 +203,27 @@ export default function Home() {
   }
 
   const handleResolutionComplete = () => {
-    console.log("Resolution acknowledged, moving to task")
-    setGameState("task")
+    console.log("Resolution acknowledged, backend will handle phase transition")
+    // Don't manually set game state - let backend control the flow
+    // The useEffect will automatically sync when backend changes phase
   }
 
   const handleNightComplete = async (killedPlayer?: Player) => {
-    // Backend handles the night phase resolution
-    // We just need to move to the next phase
-    if (game?.phase === 'night') {
-      // Wait for backend to resolve night phase
-      setTimeout(() => {
-        setGameState("task")
-      }, 2000)
-    }
+    console.log("Night phase complete, backend will handle phase transition")
+    // Don't manually set game state - let backend control the flow
+    // The useEffect will automatically sync when backend changes phase
   }
 
   const handleTaskComplete = () => {
-    setGameState("voting")
+    console.log("Task phase complete, backend will handle phase transition")
+    // Don't manually set game state - let backend control the flow
+    // The useEffect will automatically sync when backend changes phase
   }
 
   const handleVotingComplete = async () => {
-    // Backend handles voting resolution
-    // Check if game is still active or if we need to go to next day
-    if (game?.phase === 'voting') {
-      // Wait for backend to resolve voting
-      setTimeout(() => {
-        if (game?.phase === 'night') {
-          setGameState("gameplay") // Next night phase
-        } else if (game?.phase === 'ended') {
-          // Game ended, show results
-          console.log("Game ended!")
-        }
-      }, 2000)
-    }
+    console.log("Voting phase complete, backend will handle phase transition")
+    // Don't manually set game state - let backend control the flow
+    // The useEffect will automatically sync when backend changes phase
   }
 
   // Function to get public player data (hiding roles and avatars from other players)

@@ -40,18 +40,7 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
     return () => clearTimeout(showTimer)
   }, [])
 
-  // Robust fallback: If backend timer fails, transition after 15 seconds
-  useEffect(() => {
-    if (showResults && !hasTransitioned && game?.phase === 'resolution') {
-      const fallbackTimer = setTimeout(() => {
-        console.log('Fallback timer expired (15s), forcing transition to task')
-        setHasTransitioned(true)
-        onContinue()
-      }, 15000) // 15 seconds fallback
-
-      return () => clearTimeout(fallbackTimer)
-    }
-  }, [showResults, hasTransitioned, game?.phase, onContinue])
+  // Backend timer is now working correctly, no fallback needed
 
   // Debug logging
   useEffect(() => {
