@@ -505,8 +505,9 @@ class GameManager {
     game.timeLeft = 10; // 10 seconds for voting
     game.votes = {};
 
-    // Start timer for voting phase
-    this.startTimer(gameId);
+    // Start timer immediately for voting phase (no need to wait for players)
+    console.log(`Starting voting phase timer immediately for game ${gameId}`);
+    this.startActualTimer(gameId);
 
     console.log(`Task phase resolved for game ${gameId}, moved to voting phase`);
   }
@@ -555,8 +556,9 @@ class GameManager {
     game.votes = {};
     game.day++;
 
-    // Start timer for next night phase
-    this.startTimer(gameId);
+    // Start timer immediately for next night phase (no need to wait for players)
+    console.log(`Starting next night phase timer immediately for game ${gameId}`);
+    this.startActualTimer(gameId);
 
     console.log(`Voting phase resolved for game ${gameId}, moved to night phase (day ${game.day})`);
   }
