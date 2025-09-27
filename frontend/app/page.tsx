@@ -85,8 +85,11 @@ export default function Home() {
       } else if (game.phase === 'resolution' && gameState !== 'night-resolution') {
         console.log("Switching to night resolution phase")
         setGameState('night-resolution')
-      } else if (game.phase === 'task' && gameState !== 'discussion') {
-        console.log("Switching to discussion phase")
+      } else if (game.phase === 'task' && (gameState !== 'discussion' && gameState !== 'night-resolution')) {
+        console.log("Switching to discussion phase from task phase")
+        setGameState('discussion')
+      } else if (game.phase === 'task' && gameState === 'night-resolution') {
+        console.log("Resolution phase completed, moving to discussion")
         setGameState('discussion')
       } else if (game.phase === 'voting' && gameState !== 'voting') {
         console.log("Switching to voting phase")
@@ -323,6 +326,7 @@ export default function Home() {
         <NightResolutionScreen 
           resolution={game.nightResolution}
           onContinue={handleNightResolutionComplete}
+          game={game}
         />
       )}
       {gameState === "discussion" && (

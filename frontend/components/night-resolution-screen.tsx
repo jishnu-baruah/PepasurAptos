@@ -17,11 +17,20 @@ interface NightResolutionScreenProps {
     detectiveTarget: Player | null
   }
   onContinue: () => void
+  game?: any // Add game prop to check phase changes
 }
 
-export default function NightResolutionScreen({ resolution, onContinue }: NightResolutionScreenProps) {
+export default function NightResolutionScreen({ resolution, onContinue, game }: NightResolutionScreenProps) {
   const [showResults, setShowResults] = useState(false)
   const [countdown, setCountdown] = useState(5)
+
+  // Check if backend has moved to task phase (fallback mechanism)
+  useEffect(() => {
+    if (game?.phase === 'task') {
+      console.log('Backend moved to task phase, forcing transition to discussion')
+      onContinue()
+    }
+  }, [game?.phase, onContinue])
 
   useEffect(() => {
     // Show results after a brief delay
@@ -34,9 +43,20 @@ export default function NightResolutionScreen({ resolution, onContinue }: NightR
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
       return () => clearTimeout(timer)
     } else if (showResults && countdown === 0) {
+      console.log('Resolution countdown completed, calling onContinue')
       onContinue()
     }
   }, [showResults, countdown, onContinue])
+
+  // Debug logging
+  useEffect(() => {
+    console.log('NightResolutionScreen state:', {
+      showResults,
+      countdown,
+      gamePhase: game?.phase,
+      timeLeft: game?.timeLeft
+    })
+  }, [showResults, countdown, game?.phase, game?.timeLeft])
 
   const getResolutionMessage = () => {
     const { killedPlayer, savedPlayer, investigatedPlayer, investigationResult, mafiaTarget, doctorTarget, detectiveTarget } = resolution
