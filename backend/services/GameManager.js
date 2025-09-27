@@ -189,13 +189,7 @@ class GameManager {
 
     console.log(`startActualTimer called for game ${gameId}, timerReady: ${game.timerReady}, phase: ${game.phase}, timeLeft: ${game.timeLeft}`);
 
-    // Prevent multiple timer starts
-    if (game.timerReady && game.timerInterval) {
-      console.log(`Timer already running for game ${gameId}, skipping start`);
-      return;
-    }
-
-    // Clear any existing timers
+    // Clear any existing timers FIRST
     if (game.timerInterval) {
       clearInterval(game.timerInterval);
       game.timerInterval = null;
@@ -205,6 +199,10 @@ class GameManager {
       game.readyTimer = null;
     }
 
+    // Reset timer state
+    game.timerReady = false;
+
+    // Now start the new timer
     game.timerReady = true;
     console.log(`Starting timer for game ${gameId} - Phase: ${game.phase}, TimeLeft: ${game.timeLeft}`);
 
@@ -218,6 +216,9 @@ class GameManager {
         this.handleTimerExpired(gameId);
       }
     }, 1000);
+
+    // Verify timer was started
+    console.log(`Timer verification for game ${gameId}: timerInterval=${!!game.timerInterval}, timerReady=${game.timerReady}`);
   }
 
   // Handle timer expiration
@@ -410,7 +411,9 @@ class GameManager {
     console.log(`Resolution phase setup complete for game ${gameId}: timerReady=${game.timerReady}, timeLeft=${game.timeLeft}, phase=${game.phase}`);
 
     // Start timer immediately for resolution phase (no need to wait for players)
+    console.log(`About to start resolution timer for game ${gameId}`);
     this.startActualTimer(gameId);
+    console.log(`Resolution timer start attempted for game ${gameId}`);
 
     console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
   }
