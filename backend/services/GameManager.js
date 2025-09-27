@@ -560,6 +560,8 @@ class GameManager {
     delete publicGame.roles;
     delete publicGame.roleSalt;
     delete publicGame.pendingActions;
+    // Remove timer interval to prevent circular reference in JSON serialization
+    delete publicGame.timerInterval;
 
     return publicGame;
   }
@@ -583,6 +585,8 @@ class GameManager {
     // Remove other sensitive information
     delete gameState.roleSalt;
     delete gameState.pendingActions;
+    // Remove timer interval to prevent circular reference in JSON serialization
+    delete gameState.timerInterval;
 
     return gameState;
   }
