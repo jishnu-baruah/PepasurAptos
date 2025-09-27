@@ -34,7 +34,6 @@ export default function WalletConnectScreen({
 
             {!walletConnected ? (
               <div className="space-y-3 sm:space-y-4">
-                <h2 className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">CONNECT WALLET</h2>
                 <Button
                   onClick={onConnect}
                   variant="pixel"
