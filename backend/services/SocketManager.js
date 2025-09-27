@@ -152,6 +152,7 @@ class SocketManager {
     }
 
     this.io.to(`game-${gameId}`).emit('chat_message', {
+      gameId,
       playerAddress: data.playerAddress,
       message,
       timestamp: Date.now()

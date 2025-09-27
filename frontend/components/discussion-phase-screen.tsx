@@ -100,19 +100,24 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
       }
     } else {
       // Fallback to local timer
-      if (timeLeft > 0) {
-        const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
-        return () => clearTimeout(timer)
-      } else {
-        onComplete()
-      }
+    if (timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
+      return () => clearTimeout(timer)
+    } else {
+      onComplete()
+    }
     }
   }, [timeLeft, onComplete, game?.timeLeft])
 
   const handleSendMessage = () => {
     if (message.trim() && gameId && currentPlayerAddress && sendChatMessage) {
       try {
-        sendChatMessage(gameId, currentPlayerAddress, message.trim())
+        sendChatMessage({
+          gameId,
+          playerAddress: currentPlayerAddress,
+          message: message.trim(),
+          timestamp: Date.now()
+        })
         setMessage("")
         console.log('Chat message sent:', message.trim())
       } catch (error) {

@@ -610,6 +610,8 @@ class GameManager {
     delete publicGame.pendingActions;
     // Remove timer interval to prevent circular reference in JSON serialization
     delete publicGame.timerInterval;
+    // Remove ready timer to prevent circular reference in JSON serialization
+    delete publicGame.readyTimer;
 
     return publicGame;
   }
@@ -635,6 +637,8 @@ class GameManager {
     delete gameState.pendingActions;
     // Remove timer interval to prevent circular reference in JSON serialization
     delete gameState.timerInterval;
+    // Remove ready timer to prevent circular reference in JSON serialization
+    delete gameState.readyTimer;
 
     return gameState;
   }
