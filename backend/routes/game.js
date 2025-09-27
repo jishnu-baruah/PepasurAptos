@@ -30,7 +30,16 @@ module.exports = (gameManager, flowService) => {
   router.get('/:gameId', (req, res) => {
     try {
       const { gameId } = req.params;
-      const game = gameManager.getPublicGameState(gameId);
+      const { playerAddress } = req.query; // Get player address from query params
+      
+      let game;
+      if (playerAddress) {
+        // Include player's role if address provided
+        game = gameManager.getGameStateWithPlayerRole(gameId, playerAddress);
+      } else {
+        // Public game state without roles
+        game = gameManager.getPublicGameState(gameId);
+      }
       
       if (!game) {
         return res.status(404).json({ error: 'Game not found' });

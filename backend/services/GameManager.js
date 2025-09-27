@@ -452,6 +452,29 @@ class GameManager {
     return publicGame;
   }
 
+  // Get game state with current player's role
+  getGameStateWithPlayerRole(gameId, playerAddress) {
+    const game = this.games.get(gameId);
+    if (!game) return null;
+
+    const gameState = { ...game };
+    
+    // Include only the current player's role
+    if (game.roles && game.roles[playerAddress]) {
+      gameState.roles = {
+        [playerAddress]: game.roles[playerAddress]
+      };
+    } else {
+      gameState.roles = {};
+    }
+    
+    // Remove other sensitive information
+    delete gameState.roleSalt;
+    delete gameState.pendingActions;
+
+    return gameState;
+  }
+
   // Store detective reveal
   storeDetectiveReveal(gameId, reveal) {
     if (!this.detectiveReveals.has(gameId)) {
