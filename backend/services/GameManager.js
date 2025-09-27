@@ -185,48 +185,63 @@ class GameManager {
   // Actually start the timer countdown
   startActualTimer(gameId) {
     const game = this.games.get(gameId);
-    if (!game) return;
+    if (!game) {
+      console.log(`ERROR: Game not found for gameId ${gameId}`);
+      return;
+    }
 
     console.log(`startActualTimer called for game ${gameId}, timerReady: ${game.timerReady}, phase: ${game.phase}, timeLeft: ${game.timeLeft}`);
 
     // Clear any existing timers FIRST
     if (game.timerInterval) {
+      console.log(`Clearing existing timer interval for game ${gameId}`);
       clearInterval(game.timerInterval);
       game.timerInterval = null;
     }
     if (game.readyTimer) {
+      console.log(`Clearing existing ready timer for game ${gameId}`);
       clearTimeout(game.readyTimer);
       game.readyTimer = null;
     }
 
     // Reset timer state
     game.timerReady = false;
+    console.log(`Timer state reset for game ${gameId}`);
 
     // Now start the new timer
     game.timerReady = true;
     console.log(`Starting timer for game ${gameId} - Phase: ${game.phase}, TimeLeft: ${game.timeLeft}`);
 
-    game.timerInterval = setInterval(() => {
-      if (game.timeLeft > 0) {
-        game.timeLeft--;
-        console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
-      } else {
-        // Timer expired, resolve current phase
-        console.log(`Timer expired for game ${gameId}, resolving phase: ${game.phase}`);
-        this.handleTimerExpired(gameId);
-      }
-    }, 1000);
+    try {
+      game.timerInterval = setInterval(() => {
+        console.log(`Timer tick for game ${gameId}: timeLeft=${game.timeLeft}, phase=${game.phase}`);
+        if (game.timeLeft > 0) {
+          game.timeLeft--;
+          console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
+        } else {
+          // Timer expired, resolve current phase
+          console.log(`Timer expired for game ${gameId}, resolving phase: ${game.phase}`);
+          this.handleTimerExpired(gameId);
+        }
+      }, 1000);
 
-    // Verify timer was started
-    console.log(`Timer verification for game ${gameId}: timerInterval=${!!game.timerInterval}, timerReady=${game.timerReady}`);
+      // Verify timer was started
+      console.log(`Timer verification for game ${gameId}: timerInterval=${!!game.timerInterval}, timerReady=${game.timerReady}`);
+    } catch (error) {
+      console.error(`ERROR starting timer for game ${gameId}:`, error);
+    }
   }
 
   // Handle timer expiration
   handleTimerExpired(gameId) {
     const game = this.games.get(gameId);
-    if (!game) return;
+    if (!game) {
+      console.log(`ERROR: Game not found in handleTimerExpired for gameId ${gameId}`);
+      return;
+    }
 
-    console.log(`Timer expired for game ${gameId} in phase ${game.phase}`);
+    console.log(`=== TIMER EXPIRED FOR GAME ${gameId} ===`);
+    console.log(`Current phase: ${game.phase}, timeLeft: ${game.timeLeft}`);
     
     // Clear timer
     if (game.timerInterval) {
@@ -241,13 +256,19 @@ class GameManager {
 
     // Resolve current phase
     if (game.phase === 'night') {
+      console.log(`Calling resolveNightPhase for game ${gameId}`);
       this.resolveNightPhase(gameId);
     } else if (game.phase === 'resolution') {
+      console.log(`Calling resolveResolutionPhase for game ${gameId}`);
       this.resolveResolutionPhase(gameId);
     } else if (game.phase === 'task') {
+      console.log(`Calling resolveTaskPhase for game ${gameId}`);
       this.resolveTaskPhase(gameId);
     } else if (game.phase === 'voting') {
+      console.log(`Calling resolveVotingPhase for game ${gameId}`);
       this.resolveVotingPhase(gameId);
+    } else {
+      console.log(`Unknown phase ${game.phase} for game ${gameId}`);
     }
   }
 
@@ -352,9 +373,13 @@ class GameManager {
   // Resolve night phase
   resolveNightPhase(gameId) {
     const game = this.games.get(gameId);
-    if (!game) return;
+    if (!game) {
+      console.log(`ERROR: Game not found in resolveNightPhase for gameId ${gameId}`);
+      return;
+    }
 
-    console.log(`Resolving night phase for game ${gameId}`);
+    console.log(`=== RESOLVING NIGHT PHASE FOR GAME ${gameId} ===`);
+    console.log(`Game state: phase=${game.phase}, timeLeft=${game.timeLeft}, timerReady=${game.timerReady}`);
 
     // Process night actions
     const mafiaKill = this.processMafiaAction(game);
