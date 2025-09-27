@@ -444,6 +444,14 @@ class GameManager {
     // Start timer for task phase
     this.startTimer(gameId);
 
+    // Force transition to voting phase after 30 seconds as backup
+    setTimeout(() => {
+      if (game.phase === 'task') {
+        console.log(`Force transitioning from task to voting phase for game ${gameId}`);
+        this.resolveTaskPhase(gameId);
+      }
+    }, 30000);
+
     console.log(`Resolution phase resolved for game ${gameId}, moved to task phase`);
   }
 
@@ -451,6 +459,12 @@ class GameManager {
   resolveTaskPhase(gameId) {
     const game = this.games.get(gameId);
     if (!game) return;
+
+    // Safety check: only resolve if we're actually in task phase
+    if (game.phase !== 'task') {
+      console.log(`Skipping task phase resolve - current phase is ${game.phase}`);
+      return;
+    }
 
     console.log(`Resolving task phase for game ${gameId}`);
 

@@ -25,9 +25,10 @@ interface Task {
 }
 
 export default function DiscussionPhaseScreen({ onComplete, game, gameId, currentPlayerAddress, submitTaskAnswer }: DiscussionPhaseScreenProps) {
-  const [timeLeft, setTimeLeft] = useState(60) // 60 seconds for discussion
+  const [timeLeft, setTimeLeft] = useState(30) // 30 seconds for discussion
   const [message, setMessage] = useState("")
   const [activeTab, setActiveTab] = useState<'chat' | 'tasks'>('chat')
+  const [hasTransitioned, setHasTransitioned] = useState(false)
   const { socket, sendChatMessage } = useSocket()
   const [tasks, setTasks] = useState<Task[]>([
     {
@@ -101,19 +102,36 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
       
-      if (game.timeLeft === 0) {
+      if (game.timeLeft === 0 && !hasTransitioned) {
+        console.log('Backend timer expired, transitioning to voting')
+        setHasTransitioned(true)
         onComplete()
       }
     } else {
       // Fallback to local timer
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
-      return () => clearTimeout(timer)
-    } else {
-      onComplete()
+      if (timeLeft > 0) {
+        const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
+        return () => clearTimeout(timer)
+      } else if (timeLeft === 0 && !hasTransitioned) {
+        console.log('Local timer expired, transitioning to voting')
+        setHasTransitioned(true)
+        onComplete()
+      }
     }
+  }, [timeLeft, onComplete, game?.timeLeft, hasTransitioned])
+
+  // Force transition after 30 seconds to ensure voting phase starts
+  useEffect(() => {
+    if (!hasTransitioned) {
+      const forceTransitionTimer = setTimeout(() => {
+        console.log('Force transition from task to voting phase after 30 seconds')
+        setHasTransitioned(true)
+        onComplete()
+      }, 30000) // Force transition after 30 seconds
+
+      return () => clearTimeout(forceTransitionTimer)
     }
-  }, [timeLeft, onComplete, game?.timeLeft])
+  }, [hasTransitioned, onComplete])
 
   const handleSendMessage = () => {
     if (message.trim() && gameId && currentPlayerAddress && sendChatMessage) {
