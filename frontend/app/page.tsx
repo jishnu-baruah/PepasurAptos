@@ -325,6 +325,7 @@ export default function Home() {
           resolution={game.nightResolution}
           onContinue={handleResolutionComplete}
           game={game}
+          currentPlayer={currentPlayer}
         />
       )}
       {gameState === "task" && (

@@ -323,6 +323,18 @@ class GameManager {
     }
   }
 
+  // Helper method to get player object with name and address
+  getPlayerObject(game, playerAddress) {
+    // For now, we'll create a simple player object
+    // In a real implementation, you might want to store player names in the game state
+    return {
+      address: playerAddress,
+      name: `Player ${playerAddress.slice(0, 6)}...`, // Shortened address as name
+      id: playerAddress,
+      role: game.roles[playerAddress] || 'Unknown'
+    };
+  }
+
   // Resolve night phase
   resolveNightPhase(gameId) {
     const game = this.games.get(gameId);
@@ -335,24 +347,24 @@ class GameManager {
     const doctorSave = this.processDoctorAction(game);
     const detectiveInvestigation = this.processDetectiveAction(game);
     
-    // Create detailed resolution data
+    // Create detailed resolution data with player objects
     const resolution = {
-      mafiaTarget: mafiaKill,
-      doctorTarget: doctorSave,
-      detectiveTarget: detectiveInvestigation.target,
+      mafiaTarget: mafiaKill ? this.getPlayerObject(game, mafiaKill) : null,
+      doctorTarget: doctorSave ? this.getPlayerObject(game, doctorSave) : null,
+      detectiveTarget: detectiveInvestigation.target ? this.getPlayerObject(game, detectiveInvestigation.target) : null,
       investigationResult: detectiveInvestigation.result,
       killedPlayer: null,
       savedPlayer: null,
-      investigationPlayer: detectiveInvestigation.target
+      investigationPlayer: detectiveInvestigation.target ? this.getPlayerObject(game, detectiveInvestigation.target) : null
     };
     
     // Apply results
     if (mafiaKill && mafiaKill !== doctorSave) {
       game.eliminated.push(mafiaKill);
-      resolution.killedPlayer = mafiaKill;
+      resolution.killedPlayer = this.getPlayerObject(game, mafiaKill);
       console.log(`Player ${mafiaKill} was eliminated`);
     } else if (mafiaKill && mafiaKill === doctorSave) {
-      resolution.savedPlayer = doctorSave;
+      resolution.savedPlayer = this.getPlayerObject(game, doctorSave);
       console.log(`Player ${mafiaKill} was saved by doctor`);
     } else {
       console.log(`No one was eliminated this night`);
@@ -381,6 +393,8 @@ class GameManager {
       game.readyTimer = null;
     }
     game.timerReady = false;
+
+    console.log(`Resolution phase setup complete for game ${gameId}: timerReady=${game.timerReady}, timeLeft=${game.timeLeft}, phase=${game.phase}`);
 
     // Start timer immediately for resolution phase (no need to wait for players)
     this.startActualTimer(gameId);

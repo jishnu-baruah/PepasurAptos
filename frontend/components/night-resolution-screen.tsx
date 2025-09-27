@@ -18,11 +18,13 @@ interface NightResolutionScreenProps {
   }
   onContinue: () => void
   game?: any // Add game prop to check phase changes
+  currentPlayer?: Player // Add current player to check if they were eliminated
 }
 
-export default function NightResolutionScreen({ resolution, onContinue, game }: NightResolutionScreenProps) {
+export default function NightResolutionScreen({ resolution, onContinue, game, currentPlayer }: NightResolutionScreenProps) {
   const [showResults, setShowResults] = useState(false)
   const [hasTransitioned, setHasTransitioned] = useState(false)
+  const [fallbackTimer, setFallbackTimer] = useState(5)
 
   // Check if backend has moved to task phase (primary mechanism)
   useEffect(() => {
@@ -39,24 +41,49 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
     return () => clearTimeout(showTimer)
   }, [])
 
+  // Fallback timer in case backend timer doesn't work
+  useEffect(() => {
+    if (showResults && !hasTransitioned) {
+      const fallbackInterval = setInterval(() => {
+        setFallbackTimer(prev => {
+          if (prev <= 1) {
+            console.log('Fallback timer expired, forcing transition')
+            setHasTransitioned(true)
+            onContinue()
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      return () => clearInterval(fallbackInterval)
+    }
+  }, [showResults, hasTransitioned, onContinue])
+
   // Debug logging
   useEffect(() => {
     console.log('NightResolutionScreen state:', {
       showResults,
       gamePhase: game?.phase,
       timeLeft: game?.timeLeft,
+      fallbackTimer,
       hasTransitioned
     })
-  }, [showResults, game?.phase, game?.timeLeft, hasTransitioned])
+  }, [showResults, game?.phase, game?.timeLeft, fallbackTimer, hasTransitioned])
 
   const getResolutionMessage = () => {
     const { killedPlayer, savedPlayer, investigatedPlayer, investigationResult, mafiaTarget, doctorTarget, detectiveTarget } = resolution
 
+    // Check if current player was eliminated
+    const isCurrentPlayerEliminated = currentPlayer && killedPlayer && currentPlayer.address === killedPlayer.address
+
     // Case 1: Someone was killed but saved by doctor
-    if (killedPlayer && savedPlayer && killedPlayer.id === savedPlayer.id) {
+    if (killedPlayer && savedPlayer && killedPlayer.address === savedPlayer.address) {
       return {
         title: "DOCTOR SAVED THE DAY!",
-        message: `${killedPlayer.name} was targeted by the mafia but saved by the doctor!`,
+        message: isCurrentPlayerEliminated ? 
+          "You were targeted by the mafia but saved by the doctor!" :
+          `${killedPlayer.name} was targeted by the mafia but saved by the doctor!`,
         color: "#4A8C4A",
         emoji: "🛡️",
         details: [
@@ -70,14 +97,16 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
     // Case 2: Someone was killed
     if (killedPlayer) {
       return {
-        title: "PLAYER ELIMINATED",
-        message: `${killedPlayer.name} was eliminated during the night!`,
+        title: isCurrentPlayerEliminated ? "YOU WERE ELIMINATED" : "PLAYER ELIMINATED",
+        message: isCurrentPlayerEliminated ? 
+          "You were eliminated during the night!" :
+          `${killedPlayer.name} was eliminated during the night!`,
         color: "#8B0000",
         emoji: "💀",
         details: [
           `🎯 Mafia targeted: ${mafiaTarget?.name || "Unknown"}`,
           `🛡️ Doctor target: ${doctorTarget?.name || "No save"}`,
-          `❌ Result: ${killedPlayer.name} eliminated`
+          `❌ Result: ${isCurrentPlayerEliminated ? "You eliminated" : killedPlayer.name + " eliminated"}`
         ]
       }
     }
@@ -221,8 +250,13 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
                   Moving to task phase in:
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red">
-                  {game?.timeLeft || 0}s
+                  {game?.timeLeft || fallbackTimer}s
                 </div>
+                {game?.timeLeft === undefined && (
+                  <div className="text-xs text-yellow-500 mt-1">
+                    Using fallback timer
+                  </div>
+                )}
               </div>
             </div>
           )}
