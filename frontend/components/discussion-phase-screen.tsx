@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { PixelInput } from "@/components/ui/pixel-input"
 import { useSocket } from "@/contexts/SocketContext"
+import TaskComponent from "./task-component"
 
 interface DiscussionPhaseScreenProps {
   onComplete: () => void
   game?: any // Add game prop to get timer from backend
   gameId?: string // Add gameId for chat
   currentPlayerAddress?: string // Add current player address
+  submitTaskAnswer?: (answer: any) => Promise<void> // Add task submission function
 }
 
 interface Task {
@@ -22,7 +24,7 @@ interface Task {
   reward: string
 }
 
-export default function DiscussionPhaseScreen({ onComplete, game, gameId, currentPlayerAddress }: DiscussionPhaseScreenProps) {
+export default function DiscussionPhaseScreen({ onComplete, game, gameId, currentPlayerAddress, submitTaskAnswer }: DiscussionPhaseScreenProps) {
   const [timeLeft, setTimeLeft] = useState(60) // 60 seconds for discussion
   const [message, setMessage] = useState("")
   const [activeTab, setActiveTab] = useState<'chat' | 'tasks'>('chat')
@@ -236,39 +238,20 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
               </div>
             </>
           ) : (
-            /* Tasks Tab */
+            /* Tasks Tab - Real Task Component */
             <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto min-h-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-                {tasks.map((task) => (
-                  <Card key={task.id} className={`p-3 sm:p-4 md:p-6 border-2 task-card-glow ${task.completed ? 'border-[#4A8C4A] bg-[#4A8C4A]/10 task-complete' : 'border-[#2A2A2A] bg-[#1A1A1A]/50'}`}>
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="text-2xl sm:text-3xl">
-                        {task.type === 'decode' ? '🔐' : task.type === 'puzzle' ? '🧩' : '❓'}
-                      </div>
-                      <div className="font-press-start text-xs sm:text-sm pixel-text-3d-green">{task.reward}</div>
-                    </div>
-                    <h4 className="font-press-start text-sm sm:text-base md:text-lg pixel-text-3d-white mb-2 sm:mb-3">{task.title}</h4>
-                    <p className="font-press-start text-xs sm:text-sm text-[#CCCCCC] mb-3 sm:mb-4">{task.description}</p>
-                    {task.type === 'decode' && (
-                      <div className="font-press-start text-xs sm:text-sm pixel-text-3d-white bg-[#000000] p-2 sm:p-3 border border-[#4A8C4A] mb-3 sm:mb-4">
-                        01001000 01100101 01101100 01110000
-                      </div>
-                    )}
-                    {!task.completed ? (
-                      <Button
-                        onClick={() => handleTaskComplete(task.id)}
-                        variant="pixel"
-                        size="sm"
-                        className="w-full text-xs sm:text-sm"
-                      >
-                        ✅ COMPLETE TASK
-                      </Button>
-                    ) : (
-                      <div className="font-press-start text-xs sm:text-sm pixel-text-3d-green text-center">✅ TASK COMPLETED</div>
-                    )}
-                  </Card>
-                ))}
-              </div>
+              {gameId && currentPlayerAddress && submitTaskAnswer ? (
+                <TaskComponent 
+                  gameId={gameId}
+                  currentPlayerAddress={currentPlayerAddress}
+                  game={game}
+                  submitTaskAnswer={submitTaskAnswer}
+                />
+              ) : (
+                <div className="text-center text-gray-500 font-press-start text-sm">
+                  Task system not available
+                </div>
+              )}
             </div>
           )}
         </div>

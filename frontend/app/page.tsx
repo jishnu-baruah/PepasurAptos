@@ -54,6 +54,22 @@ export default function Home() {
 
   // Track if player has seen their role
   const [hasSeenRole, setHasSeenRole] = useState(false)
+  
+  // Track disconnected warning with delay
+  const [showDisconnectedWarning, setShowDisconnectedWarning] = useState(false)
+
+  // Handle disconnected warning with 3-second delay
+  useEffect(() => {
+    if (!isConnected && gameState !== "loader") {
+      const timer = setTimeout(() => {
+        setShowDisconnectedWarning(true)
+      }, 3000) // Show warning after 3 seconds of disconnection
+
+      return () => clearTimeout(timer)
+    } else {
+      setShowDisconnectedWarning(false) // Hide warning when connected
+    }
+  }, [isConnected, gameState])
 
   // Sync game state with backend
   useEffect(() => {
@@ -256,7 +272,7 @@ export default function Home() {
       )}
 
       {/* Connection Status */}
-      {!isConnected && gameState !== "loader" && (
+      {showDisconnectedWarning && (
         <div className="fixed top-4 left-4 z-50 bg-yellow-900/90 text-yellow-100 p-3 rounded border border-yellow-500">
           <div className="font-press-start text-sm">DISCONNECTED</div>
           <div className="text-xs">Reconnecting...</div>
@@ -334,6 +350,7 @@ export default function Home() {
           game={game}
           gameId={game?.gameId}
           currentPlayerAddress={currentPlayer?.address}
+          submitTaskAnswer={submitTaskAnswer}
         />
       )}
       {gameState === "voting" && currentPlayer && (
