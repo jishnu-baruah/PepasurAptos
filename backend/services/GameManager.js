@@ -374,6 +374,12 @@ class GameManager {
 
     console.log(`Resolving resolution phase for game ${gameId}`);
 
+    // Clear any existing timer
+    if (game.timerInterval) {
+      clearInterval(game.timerInterval);
+      game.timerInterval = null;
+    }
+
     // Move to task phase
     game.phase = 'task';
     game.task = this.generateTask();

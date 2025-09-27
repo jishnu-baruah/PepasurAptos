@@ -26,11 +26,15 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
 
   // Check if backend has moved to task phase (fallback mechanism)
   useEffect(() => {
-    if (game?.phase === 'task') {
+    if (game?.phase === 'task' && !hasTransitioned) {
       console.log('Backend moved to task phase, forcing transition to discussion')
+      setHasTransitioned(true)
       onContinue()
     }
-  }, [game?.phase, onContinue])
+  }, [game?.phase, onContinue, hasTransitioned])
+
+  // Prevent multiple transitions
+  const [hasTransitioned, setHasTransitioned] = useState(false)
 
   useEffect(() => {
     // Show results after a brief delay
@@ -42,11 +46,12 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
     if (showResults && countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
       return () => clearTimeout(timer)
-    } else if (showResults && countdown === 0) {
+    } else if (showResults && countdown === 0 && !hasTransitioned) {
       console.log('Resolution countdown completed, calling onContinue')
+      setHasTransitioned(true)
       onContinue()
     }
-  }, [showResults, countdown, onContinue])
+  }, [showResults, countdown, onContinue, hasTransitioned])
 
   // Debug logging
   useEffect(() => {
@@ -54,9 +59,10 @@ export default function NightResolutionScreen({ resolution, onContinue, game }: 
       showResults,
       countdown,
       gamePhase: game?.phase,
-      timeLeft: game?.timeLeft
+      timeLeft: game?.timeLeft,
+      hasTransitioned
     })
-  }, [showResults, countdown, game?.phase, game?.timeLeft])
+  }, [showResults, countdown, game?.phase, game?.timeLeft, hasTransitioned])
 
   const getResolutionMessage = () => {
     const { killedPlayer, savedPlayer, investigatedPlayer, investigationResult, mafiaTarget, doctorTarget, detectiveTarget } = resolution
