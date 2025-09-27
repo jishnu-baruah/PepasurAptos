@@ -97,28 +97,24 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
     }
   }, [socket, gameId])
 
+  // Real-time timer sync with backend
   useEffect(() => {
-    // Use backend timer if available, otherwise use local timer
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
       
-      if (game.timeLeft === 0 && !hasTransitioned) {
+      // Start local countdown to match backend
+      if (game.timeLeft > 0) {
+        const timer = setTimeout(() => {
+          setTimeLeft(prev => Math.max(0, prev - 1))
+        }, 1000)
+        return () => clearTimeout(timer)
+      } else if (game.timeLeft === 0 && !hasTransitioned) {
         console.log('Backend timer expired, transitioning to voting')
         setHasTransitioned(true)
         onComplete()
       }
-    } else {
-      // Fallback to local timer
-      if (timeLeft > 0) {
-        const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
-        return () => clearTimeout(timer)
-      } else if (timeLeft === 0 && !hasTransitioned) {
-        console.log('Local timer expired, transitioning to voting')
-        setHasTransitioned(true)
-        onComplete()
-      }
     }
-  }, [timeLeft, onComplete, game?.timeLeft, hasTransitioned])
+  }, [game?.timeLeft, onComplete, hasTransitioned])
 
   const handleSendMessage = () => {
     if (message.trim() && gameId && currentPlayerAddress && sendChatMessage) {

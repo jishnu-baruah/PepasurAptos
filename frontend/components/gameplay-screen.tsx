@@ -71,10 +71,18 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
     }
   }, [game?.gameId, game?.phase, game?.timerReady, currentPlayer?.address])
 
-  // Get real-time timer from backend
+  // Real-time timer sync with backend
   useEffect(() => {
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
+      
+      // Start local countdown to match backend
+      if (game.timeLeft > 0) {
+        const timer = setTimeout(() => {
+          setTimeLeft(prev => Math.max(0, prev - 1))
+        }, 1000)
+        return () => clearTimeout(timer)
+      }
       
       // Show time up popup when timer reaches zero
       if (game.timeLeft === 0) {

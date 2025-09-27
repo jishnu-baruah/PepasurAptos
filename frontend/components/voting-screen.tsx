@@ -22,10 +22,18 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
   const [eliminatedPlayer, setEliminatedPlayer] = useState<Player | null>(null)
   const [timeLeft, setTimeLeft] = useState(0)
 
-  // Get real-time timer from backend
+  // Real-time timer sync with backend
   useEffect(() => {
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
+      
+      // Start local countdown to match backend
+      if (game.timeLeft > 0) {
+        const timer = setTimeout(() => {
+          setTimeLeft(prev => Math.max(0, prev - 1))
+        }, 1000)
+        return () => clearTimeout(timer)
+      }
     }
   }, [game?.timeLeft])
 
