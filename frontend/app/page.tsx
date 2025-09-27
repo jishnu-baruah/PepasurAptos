@@ -11,12 +11,12 @@ import RoomCodeInput from "@/components/room-code-input"
 import RoomCodeDisplay from "@/components/room-code-display"
 import ChatComponent from "@/components/chat-component"
 import TaskComponent from "@/components/task-component"
-import NightResultsScreen from "@/components/night-results-screen"
+import NightResolutionScreen from "@/components/night-resolution-screen"
 import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
 import { useGame, Player } from "@/hooks/useGame"
 
-export type GameState = "loader" | "wallet" | "room-code-input" | "lobby" | "role-assignment" | "gameplay" | "night-results" | "discussion" | "voting"
+export type GameState = "loader" | "wallet" | "room-code-input" | "lobby" | "role-assignment" | "gameplay" | "night-resolution" | "discussion" | "voting"
 export type Role = "ASUR" | "DEVA" | "RISHI" | "MANAV"
 
 export default function Home() {
@@ -54,12 +54,6 @@ export default function Home() {
 
   // Track if player has seen their role
   const [hasSeenRole, setHasSeenRole] = useState(false)
-  
-  // Track night phase results
-  const [nightResults, setNightResults] = useState<{
-    killedPlayer: Player | null
-    savedPlayer: Player | null
-  }>({ killedPlayer: null, savedPlayer: null })
 
   // Sync game state with backend
   useEffect(() => {
@@ -88,18 +82,9 @@ export default function Home() {
       } else if (game.phase === 'night' && gameState !== 'gameplay' && gameState !== 'role-assignment') {
         console.log("Switching to gameplay phase (night)")
         setGameState('gameplay')
-      } else if (game.phase === 'task' && gameState === 'gameplay') {
-        console.log("Night phase ended, showing results")
-        // Process night phase results
-        const eliminatedPlayers = game.eliminated || []
-        const lastEliminated = eliminatedPlayers[eliminatedPlayers.length - 1]
-        const killedPlayer = lastEliminated ? players.find(p => p.address === lastEliminated) : null
-        
-        setNightResults({
-          killedPlayer: killedPlayer || null,
-          savedPlayer: null // TODO: Track saved player from backend
-        })
-        setGameState('night-results')
+      } else if (game.phase === 'resolution' && gameState !== 'night-resolution') {
+        console.log("Switching to night resolution phase")
+        setGameState('night-resolution')
       } else if (game.phase === 'task' && gameState !== 'discussion') {
         console.log("Switching to discussion phase")
         setGameState('discussion')
@@ -217,6 +202,11 @@ export default function Home() {
     }
   }
 
+  const handleNightResolutionComplete = () => {
+    console.log("Night resolution acknowledged, moving to discussion")
+    setGameState("discussion")
+  }
+
   const handleDiscussionComplete = () => {
     setGameState("voting")
   }
@@ -329,11 +319,10 @@ export default function Home() {
           onComplete={handleGameplayComplete} 
         />
       )}
-      {gameState === "night-results" && (
-        <NightResultsScreen 
-          killedPlayer={nightResults.killedPlayer}
-          savedPlayer={nightResults.savedPlayer}
-          onContinue={handleNightResultsComplete}
+      {gameState === "night-resolution" && game?.nightResolution && (
+        <NightResolutionScreen 
+          resolution={game.nightResolution}
+          onContinue={handleNightResolutionComplete}
         />
       )}
       {gameState === "discussion" && (

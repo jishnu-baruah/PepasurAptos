@@ -218,6 +218,8 @@ class GameManager {
     // Resolve current phase
     if (game.phase === 'night') {
       this.resolveNightPhase(gameId);
+    } else if (game.phase === 'resolution') {
+      this.resolveResolutionPhase(gameId);
     } else if (game.phase === 'task') {
       this.resolveTaskPhase(gameId);
     } else if (game.phase === 'voting') {
@@ -321,14 +323,33 @@ class GameManager {
     // Process night actions
     const mafiaKill = this.processMafiaAction(game);
     const doctorSave = this.processDoctorAction(game);
+    const detectiveInvestigation = this.processDetectiveAction(game);
+    
+    // Create detailed resolution data
+    const resolution = {
+      mafiaTarget: mafiaKill,
+      doctorTarget: doctorSave,
+      detectiveTarget: detectiveInvestigation.target,
+      investigationResult: detectiveInvestigation.result,
+      killedPlayer: null,
+      savedPlayer: null,
+      investigationPlayer: detectiveInvestigation.target
+    };
     
     // Apply results
     if (mafiaKill && mafiaKill !== doctorSave) {
       game.eliminated.push(mafiaKill);
+      resolution.killedPlayer = mafiaKill;
       console.log(`Player ${mafiaKill} was eliminated`);
+    } else if (mafiaKill && mafiaKill === doctorSave) {
+      resolution.savedPlayer = doctorSave;
+      console.log(`Player ${mafiaKill} was saved by doctor`);
     } else {
       console.log(`No one was eliminated this night`);
     }
+
+    // Store resolution data
+    game.nightResolution = resolution;
 
     // Check win conditions
     if (this.checkWinConditions(game)) {
@@ -336,16 +357,33 @@ class GameManager {
       return;
     }
 
+    // Move to resolution phase (5 seconds)
+    game.phase = 'resolution';
+    game.timeLeft = 5; // 5 seconds for resolution screen
+
+    // Start timer for resolution phase
+    this.startTimer(gameId);
+
+    console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
+  }
+
+  // Resolve resolution phase
+  resolveResolutionPhase(gameId) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    console.log(`Resolving resolution phase for game ${gameId}`);
+
     // Move to task phase
     game.phase = 'task';
     game.task = this.generateTask();
     game.pendingActions = {};
-    game.timeLeft = 30; // 30 seconds for task
+    game.timeLeft = 30; // 30 seconds for task/discussion
 
     // Start timer for task phase
     this.startTimer(gameId);
 
-    console.log(`Night phase resolved for game ${gameId}, moved to task phase`);
+    console.log(`Resolution phase resolved for game ${gameId}, moved to task phase`);
   }
 
   // Resolve task phase
@@ -396,6 +434,20 @@ class GameManager {
     this.startTimer(gameId);
 
     console.log(`Voting phase resolved for game ${gameId}, moved to night phase (day ${game.day})`);
+  }
+
+  // Process detective action
+  processDetectiveAction(game) {
+    const detective = game.players.find(p => game.roles[p] === 'Detective' && !game.eliminated.includes(p));
+    if (!detective || !game.pendingActions[detective]) return { target: null, result: null };
+    
+    const target = game.pendingActions[detective].action.target;
+    const isMafia = game.roles[target] === 'Mafia';
+    
+    return {
+      target: target,
+      result: isMafia ? 'Mafia' : 'Not Mafia'
+    };
   }
 
   // Process mafia action
