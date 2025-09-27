@@ -124,7 +124,7 @@ class GameManager {
     // Start first night phase
     game.phase = 'night';
     game.startedAt = Date.now();
-    game.timeLeft = parseInt(process.env.GAME_TIMEOUT_SECONDS) || 15;
+    game.timeLeft = parseInt(process.env.GAME_TIMEOUT_SECONDS) || 30;
 
     // Start timer countdown
     this.startTimer(gameId);
@@ -189,12 +189,12 @@ class GameManager {
     }
 
     game.timerReady = true;
-    console.log(`Starting timer for game ${gameId} - all players ready or grace period expired`);
+    console.log(`Starting timer for game ${gameId} - all players ready or grace period expired. Phase: ${game.phase}, TimeLeft: ${game.timeLeft}`);
 
     game.timerInterval = setInterval(() => {
       if (game.timeLeft > 0) {
         game.timeLeft--;
-        console.log(`Game ${gameId} timer: ${game.timeLeft}s`);
+        console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
       } else {
         // Timer expired, resolve current phase
         this.handleTimerExpired(gameId);
@@ -265,8 +265,21 @@ class GameManager {
   // Submit night action
   submitNightAction(gameId, data) {
     const game = this.games.get(gameId);
-    if (!game || game.phase !== 'night') {
-      throw new Error('Invalid game phase');
+    
+    console.log(`Night action attempt for game ${gameId}:`, {
+      gameExists: !!game,
+      currentPhase: game?.phase,
+      expectedPhase: 'night',
+      timeLeft: game?.timeLeft,
+      timerReady: game?.timerReady
+    });
+    
+    if (!game) {
+      throw new Error('Game not found');
+    }
+    
+    if (game.phase !== 'night') {
+      throw new Error(`Invalid game phase: expected 'night', got '${game.phase}'`);
     }
 
     const { playerAddress, action, commit } = data;
@@ -375,7 +388,7 @@ class GameManager {
 
     // Move to next night phase
     game.phase = 'night';
-    game.timeLeft = 15; // 15 seconds for night
+    game.timeLeft = 30; // 30 seconds for night
     game.pendingActions = {};
     game.day++;
 
