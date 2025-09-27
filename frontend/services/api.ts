@@ -7,7 +7,7 @@ export interface Game {
   creator: string
   players: string[]
   roles: Record<string, string>
-  phase: 'lobby' | 'night' | 'task' | 'voting' | 'ended'
+  phase: 'lobby' | 'night' | 'resolution' | 'task' | 'voting' | 'ended'
   day: number
   timeLeft: number
   startedAt: number | null

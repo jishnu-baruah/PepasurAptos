@@ -16,7 +16,7 @@ import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
 import { useGame, Player } from "@/hooks/useGame"
 
-export type GameState = "loader" | "wallet" | "room-code-input" | "lobby" | "role-assignment" | "gameplay" | "night-resolution" | "discussion" | "voting"
+export type GameState = "loader" | "wallet" | "room-code-input" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting"
 export type Role = "ASUR" | "DEVA" | "RISHI" | "MANAV"
 
 export default function Home() {
@@ -79,28 +79,28 @@ export default function Home() {
         // Player has a role but hasn't seen it yet - show role assignment
         console.log("Player has role but hasn't seen it - showing role assignment")
         setGameState('role-assignment')
-      } else if (game.phase === 'night' && gameState !== 'gameplay' && gameState !== 'role-assignment') {
-        console.log("Switching to gameplay phase (night)")
-        setGameState('gameplay')
-      } else if (game.phase === 'resolution' && gameState !== 'night-resolution') {
-        console.log("Switching to night resolution phase")
-        setGameState('night-resolution')
-      } else if (game.phase === 'resolution' && gameState === 'gameplay') {
-        console.log("Forcing transition from gameplay to resolution phase")
-        setGameState('night-resolution')
-      } else if (game.phase === 'task' && (gameState !== 'discussion' && gameState !== 'night-resolution')) {
-        console.log("Switching to discussion phase from task phase")
-        setGameState('discussion')
-      } else if (game.phase === 'task' && gameState === 'night-resolution') {
-        console.log("Resolution phase completed, moving to discussion")
-        setGameState('discussion')
+      } else if (game.phase === 'night' && gameState !== 'night' && gameState !== 'role-assignment') {
+        console.log("Switching to night phase")
+        setGameState('night')
+      } else if (game.phase === 'resolution' && gameState !== 'resolution') {
+        console.log("Switching to resolution phase")
+        setGameState('resolution')
+      } else if (game.phase === 'resolution' && gameState === 'night') {
+        console.log("Forcing transition from night to resolution phase")
+        setGameState('resolution')
+      } else if (game.phase === 'task' && (gameState !== 'task' && gameState !== 'resolution')) {
+        console.log("Switching to task phase from task phase")
+        setGameState('task')
+      } else if (game.phase === 'task' && gameState === 'resolution') {
+        console.log("Resolution phase completed, moving to task")
+        setGameState('task')
       } else if (game.phase === 'voting' && gameState !== 'voting') {
         console.log("Switching to voting phase")
         setGameState('voting')
       }
       
-      // If timer is 0 and we're in gameplay, try to refresh game state
-      if (game.timeLeft === 0 && gameState === 'gameplay') {
+      // If timer is 0 and we're in night phase, try to refresh game state
+      if (game.timeLeft === 0 && gameState === 'night') {
         console.log("Timer expired, refreshing game state...")
         refreshGame()
       }
@@ -187,33 +187,28 @@ export default function Home() {
   }
 
   const handleRoleAcknowledged = () => {
-    console.log("Role acknowledged, moving to gameplay")
+    console.log("Role acknowledged, moving to night phase")
     setHasSeenRole(true)
-    setGameState("gameplay")
+    setGameState("night")
   }
 
-  const handleNightResultsComplete = () => {
-    console.log("Night results acknowledged, moving to discussion")
-    setGameState("discussion")
+  const handleResolutionComplete = () => {
+    console.log("Resolution acknowledged, moving to task")
+    setGameState("task")
   }
 
-  const handleGameplayComplete = async (killedPlayer?: Player) => {
+  const handleNightComplete = async (killedPlayer?: Player) => {
     // Backend handles the night phase resolution
     // We just need to move to the next phase
     if (game?.phase === 'night') {
       // Wait for backend to resolve night phase
       setTimeout(() => {
-        setGameState("discussion")
+        setGameState("task")
       }, 2000)
     }
   }
 
-  const handleNightResolutionComplete = () => {
-    console.log("Night resolution acknowledged, moving to discussion")
-    setGameState("discussion")
-  }
-
-  const handleDiscussionComplete = () => {
+  const handleTaskComplete = () => {
     setGameState("voting")
   }
 
@@ -314,7 +309,7 @@ export default function Home() {
           onAcknowledge={handleRoleAcknowledged} 
         />
       )}
-      {gameState === "gameplay" && currentPlayer && (
+      {gameState === "night" && currentPlayer && (
         <GameplayScreen 
           currentPlayer={currentPlayer} 
           players={getPublicPlayerData(players, currentPlayer.id)} 
@@ -322,19 +317,19 @@ export default function Home() {
           submitNightAction={submitNightAction}
           isConnected={isConnected}
           refreshGame={refreshGame}
-          onComplete={handleGameplayComplete} 
+          onComplete={handleNightComplete} 
         />
       )}
-      {gameState === "night-resolution" && game?.nightResolution && (
+      {gameState === "resolution" && game?.nightResolution && (
         <NightResolutionScreen 
           resolution={game.nightResolution}
-          onContinue={handleNightResolutionComplete}
+          onContinue={handleResolutionComplete}
           game={game}
         />
       )}
-      {gameState === "discussion" && (
+      {gameState === "task" && (
         <DiscussionPhaseScreen 
-          onComplete={handleDiscussionComplete}
+          onComplete={handleTaskComplete}
           game={game}
           gameId={game?.gameId}
           currentPlayerAddress={currentPlayer?.address}
@@ -351,8 +346,8 @@ export default function Home() {
         />
       )}
 
-      {/* Chat Component - Show in lobby and gameplay phases */}
-      {currentPlayer?.address && game?.gameId && (gameState === "lobby" || gameState === "gameplay" || gameState === "discussion" || gameState === "voting") && (
+      {/* Chat Component - Show in lobby and night phases */}
+      {currentPlayer?.address && game?.gameId && (gameState === "lobby" || gameState === "night" || gameState === "task" || gameState === "voting") && (
         <ChatComponent 
           gameId={game.gameId} 
           currentPlayerAddress={currentPlayer.address}
