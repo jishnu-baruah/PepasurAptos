@@ -146,6 +146,12 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         }
         
         console.log(`🎯 Submitting action: ${backendRole} targeting ${playerId}`)
+        console.log(`📊 Game state before action:`, {
+          gamePhase: game?.phase,
+          timeLeft: game?.timeLeft,
+          timerReady: game?.timerReady,
+          gameId: game?.gameId
+        })
         
         // Submit action to backend
         await submitNightAction({
@@ -154,6 +160,11 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         })
         
         console.log(`✅ Action submitted successfully: ${backendRole} targeting ${playerId}`)
+        console.log(`📊 Game state after action:`, {
+          gamePhase: game?.phase,
+          timeLeft: game?.timeLeft,
+          timerReady: game?.timerReady
+        })
       } catch (error) {
         console.error('❌ Failed to submit action:', error)
         setActionTaken(false)

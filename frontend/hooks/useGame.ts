@@ -301,6 +301,7 @@ export function useGame(gameId?: string): GameState & GameActions {
       }
       
       console.log('🚀 Submitting night action:', actionData)
+      console.log('📡 Sending via Socket.IO...')
       
       // Send via Socket.IO for real-time updates
       submitAction({
@@ -308,10 +309,12 @@ export function useGame(gameId?: string): GameState & GameActions {
         ...actionData
       })
       
+      console.log('📡 Socket.IO action sent, now sending via REST API...')
+      
       // Also send via REST API as backup
       await apiService.submitNightAction(game.gameId, actionData)
       
-      console.log('✅ Night action submitted successfully')
+      console.log('✅ Night action submitted successfully via both Socket.IO and REST API')
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit action'
       console.error('❌ Failed to submit night action:', errorMessage)
