@@ -120,6 +120,9 @@ class GameManager {
       throw new Error('Game not found');
     }
 
+    console.log(`🚀 STARTING GAME ${gameId} - DEBUG VERSION DEPLOYED`);
+    console.log(`Game has ${game.players.length} players:`, game.players);
+
     // Assign roles randomly
     this.assignRoles(game);
     
@@ -130,6 +133,8 @@ class GameManager {
     game.phase = 'night';
     game.startedAt = Date.now();
     game.timeLeft = parseInt(process.env.GAME_TIMEOUT_SECONDS) || 30;
+
+    console.log(`🎯 Game ${gameId} starting night phase with ${game.timeLeft}s timer`);
 
     // Start timer countdown
     this.startTimer(gameId);
@@ -313,6 +318,7 @@ class GameManager {
   submitNightAction(gameId, data) {
     const game = this.games.get(gameId);
     
+    console.log(`🌙 NIGHT ACTION SUBMISSION - DEBUG VERSION`);
     console.log(`Night action attempt for game ${gameId}:`, {
       gameExists: !!game,
       currentPhase: game?.phase,
