@@ -62,6 +62,18 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
     }
   }, [game?.timeLeft])
 
+  // Sync timer with backend every second
+  useEffect(() => {
+    if (game?.timeLeft !== undefined && game.timeLeft > 0) {
+      const interval = setInterval(() => {
+        // Refresh game state to get updated timer
+        refreshGame()
+      }, 1000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [game?.timeLeft, refreshGame])
+
   // Handle game phase changes
   useEffect(() => {
     if (game?.phase === 'task') {

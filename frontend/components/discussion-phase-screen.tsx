@@ -7,6 +7,7 @@ import { PixelInput } from "@/components/ui/pixel-input"
 
 interface DiscussionPhaseScreenProps {
   onComplete: () => void
+  game?: any // Add game prop to get timer from backend
 }
 
 interface Task {
@@ -18,7 +19,7 @@ interface Task {
   reward: string
 }
 
-export default function DiscussionPhaseScreen({ onComplete }: DiscussionPhaseScreenProps) {
+export default function DiscussionPhaseScreen({ onComplete, game }: DiscussionPhaseScreenProps) {
   const [timeLeft, setTimeLeft] = useState(60) // 60 seconds for discussion
   const [message, setMessage] = useState("")
   const [activeTab, setActiveTab] = useState<'chat' | 'tasks'>('chat')
@@ -66,13 +67,23 @@ export default function DiscussionPhaseScreen({ onComplete }: DiscussionPhaseScr
   ])
 
   useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
-      return () => clearTimeout(timer)
+    // Use backend timer if available, otherwise use local timer
+    if (game?.timeLeft !== undefined) {
+      setTimeLeft(game.timeLeft)
+      
+      if (game.timeLeft === 0) {
+        onComplete()
+      }
     } else {
-      onComplete()
+      // Fallback to local timer
+      if (timeLeft > 0) {
+        const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
+        return () => clearTimeout(timer)
+      } else {
+        onComplete()
+      }
     }
-  }, [timeLeft, onComplete])
+  }, [timeLeft, onComplete, game?.timeLeft])
 
   const handleSendMessage = () => {
     if (message.trim()) {
