@@ -230,7 +230,7 @@ export function useGame(gameId?: string): GameState & GameActions {
         // Set current player as creator
         setCurrentPlayer({
           id: creatorAddress,
-          name: generateUsername(playerAddress),
+          name: generateUsername(creatorAddress),
           avatar: '👑',
           isAlive: true,
           isCurrentPlayer: true,
