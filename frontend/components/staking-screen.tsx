@@ -43,6 +43,9 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   const [isLoading, setIsLoading] = useState(true)
 
   const stakeAmount = 0.1 // 0.1 FLOW per player
+
+  // Debug logging
+  console.log('🎮 StakingScreen props:', { gameId, playerAddress })
   
   // Wagmi hooks for contract interaction
   const { address } = useAccount()

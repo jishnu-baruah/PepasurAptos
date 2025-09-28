@@ -130,7 +130,10 @@ export default function Home() {
         refreshGame()
       }
     } else {
-      console.log("⏳ Waiting for game and player data...")
+      console.log("❌ MISSING GAME OR CURRENT PLAYER")
+      console.log("❌ Game:", game)
+      console.log("❌ Current Player:", currentPlayer)
+      console.log("❌ Game State:", gameState)
     }
   }, [game?.phase, gameState, currentPlayer?.id, hasSeenRole, refreshGame])
 
@@ -243,7 +246,7 @@ export default function Home() {
       console.log("Game created:", { gameId, roomCode })
       setCurrentRoomCode(roomCode)
       setHasSeenRole(false) // Reset role visibility when creating
-      setGameState("staking") // Redirect to staking screen instead of lobby
+      setGameState("lobby")
     } catch (error) {
       console.error("Failed to create game:", error)
       // Show error to user
@@ -360,7 +363,7 @@ export default function Home() {
           onCancel={handleCancelJoin}
         />
       )}
-      {gameState === "staking" && currentPlayer && game && (
+      {gameState === "staking" && currentPlayer && game && currentPlayer.address && (
         <StakingScreen
           gameId={game.gameId}
           playerAddress={currentPlayer.address}
