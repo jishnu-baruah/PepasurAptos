@@ -321,7 +321,7 @@ class GameManager {
     console.log(`Starting timer for game ${gameId} - Phase: ${game.phase}, TimeLeft: ${game.timeLeft}`);
 
     try {
-    game.timerInterval = setInterval(() => {
+    game.timerInterval = setInterval(async () => {
         console.log(`Timer tick for game ${gameId}: timeLeft=${game.timeLeft}, phase=${game.phase}`);
       if (game.timeLeft > 0) {
         game.timeLeft--;
