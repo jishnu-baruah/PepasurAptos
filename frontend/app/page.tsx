@@ -71,10 +71,19 @@ export default function Home() {
     }
   }, [isConnected, gameState])
 
-  // Sync game state with backend
+  // Sync game state with backend - PRIORITY: Phase changes
   useEffect(() => {
+    console.log("🔄 PHASE SYNC CHECK:", {
+      hasGame: !!game,
+      hasCurrentPlayer: !!currentPlayer,
+      backendPhase: game?.phase,
+      frontendState: gameState,
+      timeLeft: game?.timeLeft,
+      gameId: game?.gameId
+    })
+    
     if (game && currentPlayer) {
-      console.log("Game state sync:", {
+      console.log("📊 DETAILED GAME STATE:", {
         backendPhase: game.phase,
         frontendState: gameState,
         players: game.players.length,
@@ -86,36 +95,56 @@ export default function Home() {
         shouldShowRoleAssignment: game.phase === 'night' && currentPlayer.role && !hasSeenRole
       })
       
-      // Sync frontend state with backend phase
+      // CRITICAL: Phase sync logic - this is the main issue
       if (game.phase === 'lobby' && gameState !== 'lobby') {
-        console.log("Switching to lobby phase")
+        console.log("✅ SWITCHING TO LOBBY PHASE")
         setGameState('lobby')
-        setHasSeenRole(false) // Reset role visibility when in lobby
+        setHasSeenRole(false)
       } else if (game.phase === 'night' && currentPlayer.role && !hasSeenRole) {
-        // Player has a role but hasn't seen it yet - show role assignment
-        console.log("Player has role but hasn't seen it - showing role assignment")
+        console.log("✅ SHOWING ROLE ASSIGNMENT")
         setGameState('role-assignment')
       } else if (game.phase === 'night' && gameState !== 'night' && gameState !== 'role-assignment') {
-        console.log("Switching to night phase")
+        console.log("✅ SWITCHING TO NIGHT PHASE")
         setGameState('night')
       } else if (game.phase === 'resolution' && gameState !== 'resolution') {
-        console.log("Switching to resolution phase")
+        console.log("✅ SWITCHING TO RESOLUTION PHASE")
         setGameState('resolution')
       } else if (game.phase === 'task' && gameState !== 'task') {
-        console.log("Switching to task phase")
+        console.log("✅ SWITCHING TO TASK PHASE")
         setGameState('task')
       } else if (game.phase === 'voting' && gameState !== 'voting') {
-        console.log("Switching to voting phase")
+        console.log("✅ SWITCHING TO VOTING PHASE")
         setGameState('voting')
+      } else {
+        console.log("⏸️ NO PHASE CHANGE NEEDED")
       }
       
-      // If timer is 0 and we're in night phase, try to refresh game state
+      // Emergency refresh if timer is 0 and we're stuck
       if (game.timeLeft === 0 && gameState === 'night') {
-        console.log("Timer expired, refreshing game state...")
+        console.log("🚨 EMERGENCY REFRESH - Timer expired")
         refreshGame()
       }
+    } else {
+      console.log("❌ MISSING GAME OR CURRENT PLAYER")
     }
-  }, [game, gameState, currentPlayer, hasSeenRole, refreshGame])
+  }, [game?.phase, gameState, currentPlayer?.id, hasSeenRole, refreshGame])
+
+  // BACKUP: Polling mechanism for game state updates
+  useEffect(() => {
+    if (!game?.gameId || !currentPlayer?.address) return
+    
+    console.log("🔄 Starting backup polling for game state updates")
+    
+    const pollInterval = setInterval(() => {
+      console.log("🔄 Backup polling: refreshing game state")
+      refreshGame()
+    }, 5000) // Poll every 5 seconds
+    
+    return () => {
+      console.log("🔄 Stopping backup polling")
+      clearInterval(pollInterval)
+    }
+  }, [game?.gameId, currentPlayer?.address, refreshGame])
 
   // Fallback: If we're in night phase but currentPlayer has no role, try to refresh
   useEffect(() => {

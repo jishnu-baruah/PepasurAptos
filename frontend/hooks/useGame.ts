@@ -85,8 +85,10 @@ export function useGame(gameId?: string): GameState & GameActions {
     if (!socket) return
 
     const handleGameState = (data: { gameId: string; game: Game }) => {
-      console.log('🎮 Received game state:', data)
+      console.log('🎮 SOCKET EVENT: Received game state:', data)
       console.log('🎮 Current player before update:', currentPlayer)
+      console.log('🎮 Game phase in received data:', data.game?.phase)
+      console.log('🎮 TimeLeft in received data:', data.game?.timeLeft)
       setGame(data.game)
       
       if (data.game) {
