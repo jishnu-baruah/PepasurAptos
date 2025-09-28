@@ -73,11 +73,11 @@ export function useGame(gameId?: string): GameState & GameActions {
       if (frontendRole === 'DEVA') {
         avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/dev.png?updatedAt=1758923141278'
       } else if (frontendRole === 'ASUR') {
-        avatar = '👹'
+        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/asur.png?updatedAt=1758922659571'
       } else if (frontendRole === 'RISHI') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674'
+        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/sage.png?updatedAt=1758922659655'
       } else if (frontendRole === 'MANAV') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674'
+        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560'
       }
       
       return {
