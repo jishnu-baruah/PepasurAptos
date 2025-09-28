@@ -99,6 +99,8 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
 
   // Real-time timer sync with backend
   useEffect(() => {
+    console.log(`📊 DiscussionPhase timer sync: game.timeLeft=${game?.timeLeft}, local timeLeft=${timeLeft}`)
+    
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
       
@@ -108,13 +110,9 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
           setTimeLeft(prev => Math.max(0, prev - 1))
         }, 1000)
         return () => clearTimeout(timer)
-      } else if (game.timeLeft === 0 && !hasTransitioned) {
-        console.log('Backend timer expired, transitioning to voting')
-        setHasTransitioned(true)
-        onComplete()
       }
     }
-  }, [game?.timeLeft, onComplete, hasTransitioned])
+  }, [game?.timeLeft])
 
   const handleSendMessage = () => {
     if (message.trim() && gameId && currentPlayerAddress && sendChatMessage) {

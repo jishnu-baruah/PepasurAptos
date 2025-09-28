@@ -43,13 +43,21 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
 
   // Real-time timer sync with backend
   useEffect(() => {
+    console.log(`🌙 NightResolution timer sync: game.timeLeft=${game?.timeLeft}, local timeLeft=${timeLeft}`)
+    console.log(`🌙 Game object:`, game)
+    
     if (game?.timeLeft !== undefined) {
+      console.log(`🌙 Setting timeLeft to ${game.timeLeft}`)
       setTimeLeft(game.timeLeft)
       
       // Start local countdown to match backend
       if (game.timeLeft > 0) {
         const timer = setTimeout(() => {
-          setTimeLeft(prev => Math.max(0, prev - 1))
+          setTimeLeft(prev => {
+            const newTime = Math.max(0, prev - 1)
+            console.log(`🌙 Timer tick: ${prev} -> ${newTime}`)
+            return newTime
+          })
         }, 1000)
         return () => clearTimeout(timer)
       }
