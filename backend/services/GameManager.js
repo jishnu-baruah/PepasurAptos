@@ -552,7 +552,9 @@ class GameManager {
     const game = this.games.get(gameId);
     if (!game) return;
 
-    console.log(`Resolving voting phase for game ${gameId}`);
+    console.log(`🗳️ Resolving voting phase for game ${gameId}`);
+    console.log(`🗳️ Current votes:`, game.votes);
+    console.log(`🗳️ Active players:`, game.players.filter(p => !game.eliminated.includes(p)));
 
     // Count votes
     const voteCounts = {};
@@ -561,6 +563,8 @@ class GameManager {
         voteCounts[target] = (voteCounts[target] || 0) + 1;
       }
     }
+
+    console.log(`🗳️ Vote counts:`, voteCounts);
 
     // Find player with most votes
     let maxVotes = 0;
@@ -572,14 +576,21 @@ class GameManager {
       }
     }
 
+    console.log(`🗳️ Player with most votes: ${eliminated} (${maxVotes} votes)`);
+
     // Eliminate player
     if (eliminated) {
       game.eliminated.push(eliminated);
-      console.log(`Player ${eliminated} was eliminated by vote`);
+      console.log(`🗳️ Player ${eliminated} was eliminated by vote`);
+    } else {
+      console.log(`🗳️ No player eliminated (tie or no votes)`);
     }
+
+    console.log(`🗳️ Current eliminated players:`, game.eliminated);
 
     // Check win conditions
     if (this.checkWinConditions(game)) {
+      console.log(`🗳️ Game ended - win conditions met`);
       this.endGame(gameId);
       return;
     }
@@ -595,7 +606,7 @@ class GameManager {
     console.log(`Starting next night phase timer for game ${gameId}`);
     this.startTimer(gameId, true);
 
-    console.log(`Voting phase resolved for game ${gameId}, moved to night phase (day ${game.day})`);
+    console.log(`🗳️ Voting phase resolved for game ${gameId}, moved to night phase (day ${game.day})`);
     
     // Emit game state update to frontend
     if (this.socketManager) {
@@ -743,14 +754,12 @@ class GameManager {
 
     const { playerAddress, vote } = data;
     game.votes[playerAddress] = vote;
-
-    // Check if all players voted
-    const activePlayers = game.players.filter(p => !game.eliminated.includes(p));
-    const votedCount = Object.keys(game.votes).length;
     
-    if (votedCount >= activePlayers.length) {
-      this.resolveVotingPhase(gameId);
-    }
+    console.log(`🗳️ Vote submitted: ${playerAddress} voted for ${vote}`);
+    console.log(`🗳️ Current votes:`, game.votes);
+
+    // Don't auto-resolve when all players vote - let the timer handle it
+    // This allows for strategic voting and time pressure
   }
 
   // Check win conditions

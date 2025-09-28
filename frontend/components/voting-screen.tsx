@@ -67,7 +67,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
   }
 
   const handleSubmitVote = async () => {
-    if (!selectedVote || submitted || !game?.phase === 'voting') return
+    if (!selectedVote || submitted || game?.phase !== 'voting') return
 
     try {
       await submitVote(selectedVote)
