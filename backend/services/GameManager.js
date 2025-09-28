@@ -145,7 +145,7 @@ class GameManager {
   }
 
   // Start timer countdown
-  startTimer(gameId) {
+  startTimer(gameId, immediate = false) {
     const game = this.games.get(gameId);
     if (!game) return;
 
@@ -160,7 +160,14 @@ class GameManager {
     game.readyPlayers = new Set(); // Track which players are ready
     game.readyTimer = null; // Timer for auto-start after grace period
     
-    console.log(`Timer prepared for game ${gameId}, waiting for all players to be ready`);
+    if (immediate) {
+      // Start timer immediately (for phase transitions)
+      console.log(`Starting timer immediately for game ${gameId}, phase: ${game.phase}`);
+      this.startActualTimer(gameId);
+    } else {
+      // Wait for players to be ready (for game start)
+      console.log(`Timer prepared for game ${gameId}, waiting for all players to be ready`);
+    }
   }
 
   // Start timer when frontend is ready
@@ -442,9 +449,9 @@ class GameManager {
 
     console.log(`Resolution phase setup complete for game ${gameId}: timerReady=${game.timerReady}, timeLeft=${game.timeLeft}, phase=${game.phase}`);
 
-    // Start timer immediately for resolution phase (no need to wait for players)
+    // Start timer for resolution phase (same pattern as game start)
     console.log(`About to start resolution timer for game ${gameId}`);
-    this.startActualTimer(gameId);
+    this.startTimer(gameId, true);
     console.log(`Resolution timer start attempted for game ${gameId}`);
 
     console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
@@ -490,9 +497,9 @@ class GameManager {
     game.pendingActions = {};
     game.timeLeft = 30; // 30 seconds for task/discussion
 
-    // Start timer immediately for task phase (no need to wait for players)
-    console.log(`Starting task phase timer immediately for game ${gameId}`);
-    this.startActualTimer(gameId);
+    // Start timer for task phase (same pattern as game start)
+    console.log(`Starting task phase timer for game ${gameId}`);
+    this.startTimer(gameId, true);
 
     console.log(`Resolution phase resolved for game ${gameId}, moved to task phase`);
     
@@ -524,9 +531,9 @@ class GameManager {
     game.timeLeft = 10; // 10 seconds for voting
     game.votes = {};
 
-    // Start timer immediately for voting phase (no need to wait for players)
-    console.log(`Starting voting phase timer immediately for game ${gameId}`);
-    this.startActualTimer(gameId);
+    // Start timer for voting phase (same pattern as game start)
+    console.log(`Starting voting phase timer for game ${gameId}`);
+    this.startTimer(gameId, true);
 
     console.log(`Task phase resolved for game ${gameId}, moved to voting phase`);
     
@@ -584,9 +591,9 @@ class GameManager {
     game.votes = {};
     game.day++;
 
-    // Start timer immediately for next night phase (no need to wait for players)
-    console.log(`Starting next night phase timer immediately for game ${gameId}`);
-    this.startActualTimer(gameId);
+    // Start timer for next night phase (same pattern as game start)
+    console.log(`Starting next night phase timer for game ${gameId}`);
+    this.startTimer(gameId, true);
 
     console.log(`Voting phase resolved for game ${gameId}, moved to night phase (day ${game.day})`);
     
