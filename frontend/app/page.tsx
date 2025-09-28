@@ -130,7 +130,7 @@ export default function Home() {
         refreshGame()
       }
     } else {
-      console.log("❌ MISSING GAME OR CURRENT PLAYER")
+      console.log("⏳ Waiting for game and player data...")
     }
   }, [game?.phase, gameState, currentPlayer?.id, hasSeenRole, refreshGame])
 
@@ -243,7 +243,7 @@ export default function Home() {
       console.log("Game created:", { gameId, roomCode })
       setCurrentRoomCode(roomCode)
       setHasSeenRole(false) // Reset role visibility when creating
-      setGameState("lobby")
+      setGameState("staking") // Redirect to staking screen instead of lobby
     } catch (error) {
       console.error("Failed to create game:", error)
       // Show error to user
