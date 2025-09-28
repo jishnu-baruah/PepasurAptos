@@ -75,9 +75,9 @@ export function useGame(gameId?: string): GameState & GameActions {
       } else if (frontendRole === 'ASUR') {
         avatar = '👹'
       } else if (frontendRole === 'RISHI') {
-        avatar = '🔍'
+        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674'
       } else if (frontendRole === 'MANAV') {
-        avatar = '👨‍🌾'
+        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674'
       }
       
       return {
