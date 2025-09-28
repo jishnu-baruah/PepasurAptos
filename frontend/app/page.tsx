@@ -343,7 +343,7 @@ export default function Home() {
             <div className="fixed top-4 left-4 z-50">
               <button
                 onClick={handleClaimFlow}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 border-2 border-green-500/50"
               >
                 💎 Claim 0.5 FLOW
               </button>
@@ -376,7 +376,7 @@ export default function Home() {
             <div className="fixed top-4 left-4 z-50">
               <button
                 onClick={handleClaimFlow}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 border-2 border-green-500/50"
               >
                 💎 Claim 0.5 FLOW
               </button>
@@ -447,7 +447,7 @@ export default function Home() {
             <div className="fixed top-4 left-4 z-50">
               <button
                 onClick={handleClaimFlow}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 border-2 border-green-500/50"
               >
                 💎 Claim 0.5 FLOW
               </button>

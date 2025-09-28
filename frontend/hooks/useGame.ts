@@ -68,10 +68,22 @@ export function useGame(gameId?: string): GameState & GameActions {
       
       console.log(`Player ${index + 1} (${address}): ${backendRole} -> ${frontendRole}`)
       
+      // Assign role-specific avatars
+      let avatar = '👤' // Default avatar
+      if (frontendRole === 'DEVA') {
+        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/dev.png?updatedAt=1758923141278'
+      } else if (frontendRole === 'ASUR') {
+        avatar = '👹'
+      } else if (frontendRole === 'RISHI') {
+        avatar = '🔍'
+      } else if (frontendRole === 'MANAV') {
+        avatar = '👨‍🌾'
+      }
+      
       return {
         id: address,
         name: `Player ${index + 1}`,
-        avatar: '👤',
+        avatar: avatar,
         role: frontendRole,
         isAlive: !game.eliminated.includes(address),
         isCurrentPlayer: address === currentPlayerAddress,
