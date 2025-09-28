@@ -207,32 +207,6 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
                   ))
                 )}
               </div>
-
-              {/* Quick Task Panel */}
-              <div className="w-full lg:w-80 xl:w-96 p-3 sm:p-4 md:p-6 border-t-2 lg:border-t-0 lg:border-l-2 border-[#4A8C4A] bg-[#0F0F0F]/80 flex-shrink-0">
-                <h3 className="text-base sm:text-lg md:text-xl font-press-start pixel-text-3d-green mb-3 sm:mb-4">🎯 QUICK TASKS</h3>
-                <div className="space-y-2 sm:space-y-3">
-                  {tasks.slice(0, 3).map((task) => (
-                    <div key={task.id} className={`p-2 sm:p-3 border-2 task-card-glow ${task.completed ? 'border-[#4A8C4A] bg-[#4A8C4A]/20 task-complete' : 'border-[#2A2A2A] bg-[#1A1A1A]/50'}`}>
-                      <div className="font-press-start text-xs sm:text-sm pixel-text-3d-white mb-1">{task.title}</div>
-                      <div className="font-press-start text-xs text-[#4A8C4A] mb-2">{task.reward}</div>
-                      {!task.completed && (
-                        <Button
-                          onClick={() => handleTaskComplete(task.id)}
-                          variant="pixel"
-                          size="sm"
-                          className="w-full text-xs"
-                        >
-                          ✅ COMPLETE
-                        </Button>
-                      )}
-                      {task.completed && (
-                        <div className="font-press-start text-xs pixel-text-3d-green">✅ COMPLETED</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
             </>
           ) : (
             /* Tasks Tab - Real Task Component */

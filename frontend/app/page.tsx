@@ -294,12 +294,12 @@ export default function Home() {
         </div>
       )}
 
-      {/* Loading Overlay */}
+      {/* Loading Overlay - Muted */}
       {isLoading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
-          <div className="bg-[#111111]/90 p-6 rounded border border-[#2a2a2a] text-center">
-            <div className="font-press-start text-white mb-2">LOADING...</div>
-            <div className="text-sm text-gray-400">Connecting to game server</div>
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-40">
+          <div className="bg-[#111111]/60 p-4 rounded border border-[#2a2a2a]/50 text-center opacity-50">
+            <div className="font-press-start text-white/70 mb-1 text-sm">LOADING...</div>
+            <div className="text-xs text-gray-500">Connecting to game server</div>
           </div>
         </div>
       )}
