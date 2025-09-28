@@ -329,7 +329,7 @@ class GameManager {
       } else {
         // Timer expired, resolve current phase
           console.log(`Timer expired for game ${gameId}, resolving phase: ${game.phase}`);
-        this.handleTimerExpired(gameId);
+        await this.handleTimerExpired(gameId);
       }
     }, 1000);
 
@@ -341,7 +341,7 @@ class GameManager {
   }
 
   // Handle timer expiration
-  handleTimerExpired(gameId) {
+  async handleTimerExpired(gameId) {
     const game = this.games.get(gameId);
     if (!game) {
       console.log(`ERROR: Game not found in handleTimerExpired for gameId ${gameId}`);
@@ -365,7 +365,7 @@ class GameManager {
     // Resolve current phase
     if (game.phase === 'night') {
       console.log(`Calling resolveNightPhase for game ${gameId}`);
-      this.resolveNightPhase(gameId);
+      await this.resolveNightPhase(gameId);
     } else if (game.phase === 'resolution') {
       console.log(`Calling resolveResolutionPhase for game ${gameId}`);
       this.resolveResolutionPhase(gameId);
@@ -480,7 +480,7 @@ class GameManager {
   }
 
   // Resolve night phase
-  resolveNightPhase(gameId) {
+  async resolveNightPhase(gameId) {
     const game = this.games.get(gameId);
     if (!game) {
       console.log(`ERROR: Game not found in resolveNightPhase for gameId ${gameId}`);
@@ -523,7 +523,7 @@ class GameManager {
 
     // Check win conditions
     if (this.checkWinConditions(game)) {
-      this.endGame(gameId);
+      await this.endGame(gameId);
       return;
     }
 
