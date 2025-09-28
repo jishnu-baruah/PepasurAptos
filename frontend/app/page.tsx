@@ -246,7 +246,10 @@ export default function Home() {
       console.log("Game created:", { gameId, roomCode })
       setCurrentRoomCode(roomCode)
       setHasSeenRole(false) // Reset role visibility when creating
-      setGameState("lobby")
+      
+      // Go directly to staking screen after creating game
+      setGameState("staking")
+      console.log("Game created, redirecting to staking screen")
     } catch (error) {
       console.error("Failed to create game:", error)
       // Show error to user
