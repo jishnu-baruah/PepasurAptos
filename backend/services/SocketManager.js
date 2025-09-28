@@ -174,6 +174,27 @@ class SocketManager {
       socket.emit(event, data);
     }
   }
+
+  // Emit game state update to all players in a game
+  emitGameStateUpdate(gameId) {
+    const game = this.gameManager.getGame(gameId);
+    if (!game) return;
+    
+    console.log(`📡 Emitting game state update for game ${gameId}, phase: ${game.phase}`);
+    
+    // Emit to all players in the game
+    this.io.to(`game-${gameId}`).emit('game_state', {
+      gameId: gameId,
+      game: game
+    });
+    
+    // Also emit a general game update
+    this.io.to(`game-${gameId}`).emit('game_update', {
+      gameId: gameId,
+      phase: game.phase,
+      timeLeft: game.timeLeft
+    });
+  }
 }
 
 module.exports = SocketManager;

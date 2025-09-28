@@ -46,6 +46,9 @@ const gameManager = new GameManager();
 const socketManager = new SocketManager(io, gameManager);
 const flowService = new FlowService();
 
+// Set the socketManager reference in gameManager
+gameManager.socketManager = socketManager;
+
 // Routes
 app.use('/api/game', gameRoutes(gameManager, flowService));
 app.use('/api/detective', detectiveRoutes(gameManager));

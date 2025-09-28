@@ -2,10 +2,11 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 
 class GameManager {
-  constructor() {
+  constructor(socketManager = null) {
     this.games = new Map(); // gameId -> game state
     this.detectiveReveals = new Map(); // gameId -> reveals[]
     this.roomCodes = new Map(); // roomCode -> gameId
+    this.socketManager = socketManager; // Reference to SocketManager
   }
 
   // Generate a human-readable room code
@@ -447,6 +448,11 @@ class GameManager {
     console.log(`Resolution timer start attempted for game ${gameId}`);
 
     console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
+    
+    // Emit game state update to frontend
+    if (this.socketManager) {
+      this.socketManager.emitGameStateUpdate(gameId);
+    }
   }
 
   // Resolve resolution phase
@@ -485,6 +491,11 @@ class GameManager {
     this.startActualTimer(gameId);
 
     console.log(`Resolution phase resolved for game ${gameId}, moved to task phase`);
+    
+    // Emit game state update to frontend
+    if (this.socketManager) {
+      this.socketManager.emitGameStateUpdate(gameId);
+    }
   }
 
   // Resolve task phase
@@ -510,6 +521,11 @@ class GameManager {
     this.startActualTimer(gameId);
 
     console.log(`Task phase resolved for game ${gameId}, moved to voting phase`);
+    
+    // Emit game state update to frontend
+    if (this.socketManager) {
+      this.socketManager.emitGameStateUpdate(gameId);
+    }
   }
 
   // Resolve voting phase
@@ -561,6 +577,11 @@ class GameManager {
     this.startActualTimer(gameId);
 
     console.log(`Voting phase resolved for game ${gameId}, moved to night phase (day ${game.day})`);
+    
+    // Emit game state update to frontend
+    if (this.socketManager) {
+      this.socketManager.emitGameStateUpdate(gameId);
+    }
   }
 
   // Process detective action
