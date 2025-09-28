@@ -191,10 +191,29 @@ class SocketManager {
       
       console.log(`📡 Emitting game state update for game ${gameId}, phase: ${game.phase}`);
       
+      // Create a clean, serializable game object (avoid circular references)
+      const cleanGame = {
+        gameId: game.gameId,
+        roomCode: game.roomCode,
+        creator: game.creator,
+        players: game.players,
+        roles: game.roles,
+        phase: game.phase,
+        timeLeft: game.timeLeft,
+        day: game.day,
+        eliminated: game.eliminated,
+        nightResolution: game.nightResolution,
+        task: game.task,
+        votes: game.votes,
+        pendingActions: game.pendingActions,
+        startedAt: game.startedAt,
+        roleCommit: game.roleCommit
+      };
+      
       // Emit to all players in the game
       this.io.to(`game-${gameId}`).emit('game_state', {
         gameId: gameId,
-        game: game
+        game: cleanGame
       });
       
       // Also emit a general game update
