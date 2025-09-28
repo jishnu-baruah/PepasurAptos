@@ -12,7 +12,7 @@ module.exports = (gameManager, flowService) => {
         return res.status(400).json({ error: 'Creator address is required' });
       }
 
-      const { gameId, roomCode } = gameManager.createGame(creatorAddress, stakeAmount, minPlayers);
+      const { gameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers);
       
       res.json({
         success: true,
