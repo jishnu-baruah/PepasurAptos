@@ -74,7 +74,7 @@ export default function Home() {
   // Sync game state with backend
   useEffect(() => {
     if (game && currentPlayer) {
-      console.log("Game state sync:", {
+      console.log("🎮 Game state sync:", {
         backendPhase: game.phase,
         frontendState: gameState,
         players: game.players.length,
