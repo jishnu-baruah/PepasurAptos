@@ -222,13 +222,17 @@ export function useGame(gameId?: string): GameState & GameActions {
     setError(null)
     
     try {
+      console.log('🔍 createGame - Starting API call:', { creatorAddress, stakeAmount, minPlayers })
       const response = await apiService.createGame({
         creatorAddress,
         stakeAmount,
         minPlayers
       })
+      console.log('🔍 createGame - API response:', response)
       
       if (response.success) {
+        console.log('🔍 createGame - Setting gameId:', response.gameId)
+        console.log('🔍 createGame - Setting roomCode:', response.roomCode)
         // Set the game ID for tracking
         setCurrentGameId(response.gameId)
         
@@ -244,6 +248,7 @@ export function useGame(gameId?: string): GameState & GameActions {
         
         return { gameId: response.gameId, roomCode: response.roomCode }
       } else {
+        console.log('🔍 createGame - API call failed:', response)
         throw new Error('Failed to create game')
       }
     } catch (err) {
