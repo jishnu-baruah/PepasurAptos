@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+const { ethers } = require('ethers');
 const StakingService = require('./StakingService');
 
 class GameManager {
@@ -30,7 +31,7 @@ class GameManager {
   }
 
   // Create a new game with staking requirement
-  createGame(creatorAddress, stakeAmount, minPlayers) {
+  async createGame(creatorAddress, stakeAmount, minPlayers) {
     const gameId = uuidv4();
     const roomCode = this.generateRoomCode();
     
@@ -63,6 +64,26 @@ class GameManager {
     
     console.log(`🎮 Game created: ${gameId} (Room: ${roomCode}) by ${creatorAddress}`);
     console.log(`💰 Staking required: ${game.stakingRequired ? 'YES' : 'NO'}`);
+    
+    // Create game on-chain if staking is required
+    if (game.stakingRequired) {
+      try {
+        console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(game.stakeAmount)} FLOW`);
+        
+        // Use FlowService to create game on-chain
+        const flowService = require('./FlowService');
+        const flowServiceInstance = new flowService();
+        const onChainGameId = await flowServiceInstance.createGame(game.stakeAmount, game.minPlayers);
+        
+        console.log(`✅ Game created on-chain with ID: ${onChainGameId}`);
+        game.onChainGameId = onChainGameId;
+        
+      } catch (error) {
+        console.error('❌ Error creating game on-chain:', error);
+        // Don't fail the entire game creation, just log the error
+      }
+    }
+    
     return { gameId, roomCode, game };
   }
 

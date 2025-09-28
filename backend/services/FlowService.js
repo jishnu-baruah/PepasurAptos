@@ -61,21 +61,19 @@ class FlowService {
     }
   }
 
-  // Create game on-chain (CONTRACTLESS MODE - DISABLED)
+  // Create game on-chain (REAL CONTRACT MODE)
   async createGame(stakeAmount, minPlayers) {
     try {
-      // CONTRACTLESS MODE: Return mock game ID
-      console.log('🔧 CONTRACTLESS MODE: Mock game creation');
-      const mockGameId = Math.floor(Math.random() * 1000000).toString();
-      return mockGameId;
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract || !this.wallet) {
         throw new Error('Contract or wallet not initialized');
       }
 
+      console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(stakeAmount)} FLOW, minPlayers: ${minPlayers}`);
+      
       const tx = await this.contract.createGame(stakeAmount, minPlayers);
       const receipt = await tx.wait();
+      
+      console.log(`✅ Game creation transaction confirmed: ${tx.hash}`);
       
       // Extract game ID from events
       const gameCreatedEvent = receipt.logs.find(log => {
@@ -89,71 +87,61 @@ class FlowService {
 
       if (gameCreatedEvent) {
         const parsed = this.contract.interface.parseLog(gameCreatedEvent);
-        return parsed.args.gameId.toString();
+        const gameId = parsed.args.gameId.toString();
+        console.log(`🎮 Game created on-chain with ID: ${gameId}`);
+        return gameId;
       }
 
       throw new Error('Game creation event not found');
-      */
     } catch (error) {
       console.error('❌ Error creating game on-chain:', error);
       throw error;
     }
   }
 
-  // Join game on-chain (CONTRACTLESS MODE - DISABLED)
+  // Join game on-chain (REAL CONTRACT MODE)
   async joinGame(gameId, stakeAmount) {
     try {
-      // CONTRACTLESS MODE: Return mock transaction hash
-      console.log('🔧 CONTRACTLESS MODE: Mock join game');
-      return '0x' + Math.random().toString(16).substr(2, 64);
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract || !this.wallet) {
         throw new Error('Contract or wallet not initialized');
       }
 
+      console.log(`💰 Joining game ${gameId} with stake: ${ethers.formatEther(stakeAmount)} FLOW`);
+      
       const tx = await this.contract.joinGame(gameId, { value: stakeAmount });
       await tx.wait();
       
+      console.log(`✅ Join game transaction confirmed: ${tx.hash}`);
       return tx.hash;
-      */
     } catch (error) {
       console.error('❌ Error joining game on-chain:', error);
       throw error;
     }
   }
 
-  // Store role commit on-chain (CONTRACTLESS MODE - DISABLED)
+  // Store role commit on-chain (REAL CONTRACT MODE)
   async storeRoleCommit(gameId, commit) {
     try {
-      // CONTRACTLESS MODE: Return mock transaction hash
-      console.log('🔧 CONTRACTLESS MODE: Mock role commit');
-      return '0x' + Math.random().toString(16).substr(2, 64);
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract || !this.wallet) {
         throw new Error('Contract or wallet not initialized');
       }
 
+      console.log(`🔐 Storing role commit for game ${gameId}: ${commit}`);
+      
       const tx = await this.contract.storeRoleCommit(gameId, commit);
       await tx.wait();
       
+      console.log(`✅ Role commit transaction confirmed: ${tx.hash}`);
       return tx.hash;
-      */
     } catch (error) {
       console.error('❌ Error storing role commit on-chain:', error);
       throw error;
     }
   }
 
-  // Submit settlement on-chain (CONTRACTLESS MODE - DISABLED)
+  // Submit settlement on-chain (REAL CONTRACT MODE)
   async submitSettlement(gameId, winners, payoutAmounts) {
     try {
-      // CONTRACTLESS MODE: Return mock transaction hash
-      console.log('🔧 CONTRACTLESS MODE: Mock settlement submission');
-      return '0x' + Math.random().toString(16).substr(2, 64);
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract || !this.wallet) {
         throw new Error('Contract or wallet not initialized');
       }
@@ -170,8 +158,12 @@ class FlowService {
         .update(JSON.stringify(settlementData))
         .digest('hex');
 
+      console.log(`📋 Submitting settlement for game ${gameId}:`, settlementData);
+      console.log(`🔐 Settlement hash: ${settlementHash}`);
+
       // Sign settlement
       const signature = await this.wallet.signMessage(settlementHash);
+      console.log(`✍️ Settlement signature: ${signature}`);
 
       const tx = await this.contract.submitSettlement(
         gameId,
@@ -182,36 +174,25 @@ class FlowService {
       );
       
       await tx.wait();
+      console.log(`✅ Settlement transaction confirmed: ${tx.hash}`);
       return tx.hash;
-      */
     } catch (error) {
       console.error('❌ Error submitting settlement on-chain:', error);
       throw error;
     }
   }
 
-  // Get game info from chain (CONTRACTLESS MODE - DISABLED)
+  // Get game info from chain (REAL CONTRACT MODE)
   async getGameInfo(gameId) {
     try {
-      // CONTRACTLESS MODE: Return mock game info
-      console.log('🔧 CONTRACTLESS MODE: Mock game info');
-      return {
-        creator: '0x1234567890123456789012345678901234567890',
-        stakeAmount: '1000000000000000000',
-        minPlayers: 4,
-        roleCommit: '0x' + Math.random().toString(16).substr(2, 64),
-        status: 1,
-        settled: false,
-        totalPool: '4000000000000000000'
-      };
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract) {
         throw new Error('Contract not initialized');
       }
 
+      console.log(`📊 Getting game info from chain for game ${gameId}`);
+      
       const gameInfo = await this.contract.getGameInfo(gameId);
-      return {
+      const result = {
         creator: gameInfo.creator,
         stakeAmount: gameInfo.stakeAmount.toString(),
         minPlayers: gameInfo.minPlayers,
@@ -220,102 +201,82 @@ class FlowService {
         settled: gameInfo.settled,
         totalPool: gameInfo.totalPool.toString()
       };
-      */
+      
+      console.log(`📊 Game info retrieved:`, result);
+      return result;
     } catch (error) {
       console.error('❌ Error getting game info from chain:', error);
       throw error;
     }
   }
 
-  // Get game players from chain (CONTRACTLESS MODE - DISABLED)
+  // Get game players from chain (REAL CONTRACT MODE)
   async getGamePlayers(gameId) {
     try {
-      // CONTRACTLESS MODE: Return mock players
-      console.log('🔧 CONTRACTLESS MODE: Mock game players');
-      return [
-        '0x1234567890123456789012345678901234567890',
-        '0x2345678901234567890123456789012345678901',
-        '0x3456789012345678901234567890123456789012',
-        '0x4567890123456789012345678901234567890123'
-      ];
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract) {
         throw new Error('Contract not initialized');
       }
 
+      console.log(`👥 Getting game players from chain for game ${gameId}`);
+      
       const players = await this.contract.getGamePlayers(gameId);
+      console.log(`👥 Players retrieved:`, players);
       return players;
-      */
     } catch (error) {
       console.error('❌ Error getting game players from chain:', error);
       throw error;
     }
   }
 
-  // Withdraw funds (CONTRACTLESS MODE - DISABLED)
+  // Withdraw funds (REAL CONTRACT MODE)
   async withdraw() {
     try {
-      // CONTRACTLESS MODE: Return mock transaction hash
-      console.log('🔧 CONTRACTLESS MODE: Mock withdrawal');
-      return '0x' + Math.random().toString(16).substr(2, 64);
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract || !this.wallet) {
         throw new Error('Contract or wallet not initialized');
       }
 
+      console.log(`💰 Withdrawing funds for wallet: ${this.wallet.address}`);
+      
       const tx = await this.contract.withdraw();
       await tx.wait();
       
+      console.log(`✅ Withdrawal transaction confirmed: ${tx.hash}`);
       return tx.hash;
-      */
     } catch (error) {
       console.error('❌ Error withdrawing funds:', error);
       throw error;
     }
   }
 
-  // Emergency cancel game (CONTRACTLESS MODE - DISABLED)
+  // Emergency cancel game (REAL CONTRACT MODE)
   async emergencyCancel(gameId) {
     try {
-      // CONTRACTLESS MODE: Return mock transaction hash
-      console.log('🔧 CONTRACTLESS MODE: Mock emergency cancel');
-      return '0x' + Math.random().toString(16).substr(2, 64);
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract || !this.wallet) {
         throw new Error('Contract or wallet not initialized');
       }
 
+      console.log(`🚨 Emergency cancelling game ${gameId}`);
+      
       const tx = await this.contract.emergencyCancel(gameId);
       await tx.wait();
       
+      console.log(`✅ Emergency cancel transaction confirmed: ${tx.hash}`);
       return tx.hash;
-      */
     } catch (error) {
       console.error('❌ Error emergency canceling game:', error);
       throw error;
     }
   }
 
-  // Get contract info (CONTRACTLESS MODE - DISABLED)
+  // Get contract info (REAL CONTRACT MODE)
   async getContractInfo() {
     try {
-      // CONTRACTLESS MODE: Return mock contract info
-      console.log('🔧 CONTRACTLESS MODE: Mock contract info');
-      return {
-        owner: '0x1234567890123456789012345678901234567890',
-        serverSigner: '0x2345678901234567890123456789012345678901',
-        feeRecipient: '0x3456789012345678901234567890123456789012',
-        houseCutBps: '500'
-      };
-      
-      /* CONTRACT MODE - UNCOMMENT WHEN READY
       if (!this.contract) {
         throw new Error('Contract not initialized');
       }
 
+      console.log(`📋 Getting contract info from chain`);
+      
       const [owner, serverSigner, feeRecipient, houseCutBps] = await Promise.all([
         this.contract.owner(),
         this.contract.serverSigner(),
@@ -323,13 +284,15 @@ class FlowService {
         this.contract.houseCutBps()
       ]);
 
-      return {
+      const result = {
         owner,
         serverSigner,
         feeRecipient,
         houseCutBps: houseCutBps.toString()
       };
-      */
+      
+      console.log(`📋 Contract info retrieved:`, result);
+      return result;
     } catch (error) {
       console.error('❌ Error getting contract info:', error);
       throw error;

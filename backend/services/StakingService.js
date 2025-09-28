@@ -8,6 +8,9 @@ class StakingService {
     this.totalPool = ethers.parseEther('0.4'); // 4 players × 0.1 FLOW = 0.4 FLOW total pool
     this.stakedGames = new Map(); // Track staked games
     this.playerStakes = new Map(); // Track individual player stakes
+    this.provider = null;
+    this.wallet = null;
+    this.contract = null;
     this.initialize();
   }
 
@@ -22,11 +25,46 @@ class StakingService {
         console.log('🔑 Staking wallet initialized:', this.wallet.address);
       }
 
+      // Load contract if address is provided
+      if (process.env.PEPASUR_CONTRACT_ADDRESS) {
+        await this.loadContract();
+      }
+
       console.log('💰 Staking service initialized successfully');
       console.log(`💰 Stake amount: ${ethers.formatEther(this.stakeAmount)} FLOW per player`);
       console.log(`💰 Total pool: ${ethers.formatEther(this.totalPool)} FLOW for 4 players`);
     } catch (error) {
       console.error('❌ Error initializing staking service:', error);
+    }
+  }
+
+  async loadContract() {
+    try {
+      // Contract ABI for PepAsur
+      const contractABI = [
+        "function createGame(uint256 stakeAmountWei, uint8 minPlayers) external returns (uint64)",
+        "function joinGame(uint64 gameId) external payable",
+        "function storeRoleCommit(uint64 gameId, bytes32 commit) external",
+        "function submitSettlement(uint64 gameId, bytes32 settlementHash, address[] calldata winners, uint256[] calldata payoutAmounts, bytes calldata signature) external",
+        "function withdraw() external",
+        "function emergencyCancel(uint64 gameId) external",
+        "function getGameInfo(uint64 gameId) external view returns (address creator, uint256 stakeAmount, uint8 minPlayers, bytes32 roleCommit, uint8 status, bool settled, uint256 totalPool)",
+        "function getGamePlayers(uint64 gameId) external view returns (address[] memory)",
+        "function owner() external view returns (address)",
+        "function serverSigner() external view returns (address)",
+        "function feeRecipient() external view returns (address)",
+        "function houseCutBps() external view returns (uint16)"
+      ];
+
+      this.contract = new ethers.Contract(
+        process.env.PEPASUR_CONTRACT_ADDRESS,
+        contractABI,
+        this.wallet || this.provider
+      );
+
+      console.log('📄 PepAsur contract loaded for staking:', process.env.PEPASUR_CONTRACT_ADDRESS);
+    } catch (error) {
+      console.error('❌ Error loading contract:', error);
     }
   }
 
@@ -53,7 +91,7 @@ class StakingService {
     }
   }
 
-  // Stake FLOW for a game (CONTRACTLESS MODE - SIMULATED)
+  // Stake FLOW for a game (REAL CONTRACT MODE)
   async stakeForGame(gameId, playerAddress, roomCode) {
     try {
       console.log(`💰 Player ${playerAddress} staking ${ethers.formatEther(this.stakeAmount)} FLOW for game ${gameId}`);
@@ -61,6 +99,11 @@ class StakingService {
       // Validate room code
       if (!this.validateRoomCode(roomCode)) {
         throw new Error('Invalid room code');
+      }
+
+      // Check if contract is available
+      if (!this.contract) {
+        throw new Error('Contract not initialized');
       }
 
       // Check if game exists and has space
@@ -91,10 +134,15 @@ class StakingService {
         throw new Error('Game has already started');
       }
 
-      // Simulate staking transaction (CONTRACTLESS MODE)
-      const stakeTxHash = '0x' + crypto.randomBytes(32).toString('hex');
+      // Use real contract to join game
+      console.log(`🎮 Joining game ${gameId} on-chain with stake: ${ethers.formatEther(this.stakeAmount)} FLOW`);
       
-      // Add player to game
+      const tx = await this.contract.joinGame(gameId, { value: this.stakeAmount });
+      await tx.wait();
+      
+      console.log(`✅ Stake transaction confirmed: ${tx.hash}`);
+
+      // Add player to local tracking
       game.players.push(playerAddress);
       game.totalStaked += this.stakeAmount;
       
@@ -103,7 +151,7 @@ class StakingService {
         gameId: gameId,
         playerAddress: playerAddress,
         amount: this.stakeAmount,
-        txHash: stakeTxHash,
+        txHash: tx.hash,
         timestamp: Date.now(),
         status: 'staked'
       });
@@ -119,7 +167,7 @@ class StakingService {
 
       return {
         success: true,
-        txHash: stakeTxHash,
+        txHash: tx.hash,
         amount: this.stakeAmount.toString(),
         gameStatus: game.status,
         playersCount: game.players.length,
@@ -244,32 +292,62 @@ class StakingService {
     }
   }
 
-  // Distribute rewards (CONTRACTLESS MODE - SIMULATED)
+  // Distribute rewards (REAL CONTRACT MODE)
   async distributeRewards(gameId, rewards) {
     try {
       console.log(`💰 Distributing rewards for game ${gameId}`);
       
-      const distributionResults = [];
-
-      for (const reward of rewards.rewards) {
-        // Simulate reward distribution transaction
-        const distributionTxHash = '0x' + crypto.randomBytes(32).toString('hex');
-        
-        distributionResults.push({
-          playerAddress: reward.playerAddress,
-          role: reward.role,
-          stakeAmount: reward.stakeAmount,
-          rewardAmount: reward.rewardAmount,
-          rewardInFlow: reward.rewardInFlow,
-          totalReceived: reward.totalReceived,
-          totalReceivedInFlow: reward.totalReceivedInFlow,
-          txHash: distributionTxHash,
-          timestamp: Date.now(),
-          status: 'distributed'
-        });
-
-        console.log(`💰 ${reward.role.toUpperCase()}: ${reward.playerAddress} receives ${reward.rewardInFlow} FLOW reward`);
+      if (!this.contract || !this.wallet) {
+        throw new Error('Contract or wallet not initialized');
       }
+
+      // Prepare settlement data
+      const winners = rewards.rewards.filter(r => r.role === 'winner').map(r => r.playerAddress);
+      const payoutAmounts = rewards.rewards.map(r => BigInt(r.rewardAmount));
+
+      // Create settlement hash
+      const settlementData = {
+        gameId,
+        winners,
+        payoutAmounts: payoutAmounts.map(a => a.toString()),
+        timestamp: Date.now()
+      };
+      
+      const settlementHash = crypto.createHash('sha256')
+        .update(JSON.stringify(settlementData))
+        .digest('hex');
+
+      console.log(`📋 Settlement data:`, settlementData);
+      console.log(`🔐 Settlement hash: ${settlementHash}`);
+
+      // Sign settlement
+      const signature = await this.wallet.signMessage(settlementHash);
+      console.log(`✍️ Settlement signature: ${signature}`);
+
+      // Submit settlement to contract
+      const tx = await this.contract.submitSettlement(
+        gameId,
+        settlementHash,
+        winners,
+        payoutAmounts,
+        signature
+      );
+      
+      await tx.wait();
+      console.log(`✅ Settlement transaction confirmed: ${tx.hash}`);
+
+      const distributionResults = rewards.rewards.map(reward => ({
+        playerAddress: reward.playerAddress,
+        role: reward.role,
+        stakeAmount: reward.stakeAmount,
+        rewardAmount: reward.rewardAmount,
+        rewardInFlow: reward.rewardInFlow,
+        totalReceived: reward.totalReceived,
+        totalReceivedInFlow: reward.totalReceivedInFlow,
+        txHash: tx.hash,
+        timestamp: Date.now(),
+        status: 'distributed'
+      }));
 
       // Mark game as completed
       const game = this.stakedGames.get(gameId);
@@ -285,7 +363,8 @@ class StakingService {
         gameId: gameId,
         distributions: distributionResults,
         totalDistributed: rewards.prizePool,
-        totalDistributedInFlow: rewards.prizePoolInFlow
+        totalDistributedInFlow: rewards.prizePoolInFlow,
+        settlementTxHash: tx.hash
       };
     } catch (error) {
       console.error('❌ Error distributing rewards:', error);
