@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi'
+import { createGame } from '@/hooks/useGame'
 
 interface StakingScreenProps {
-  gameId: string
+  gameId?: string // Optional for room creation
   playerAddress: string
-  onStakeSuccess: () => void
+  onStakeSuccess: (gameId?: string, roomCode?: string) => void
   onCancel: () => void
+  mode: 'create' | 'join' // New prop to distinguish between creating and joining
 }
 
 interface StakingInfo {
@@ -34,7 +36,7 @@ interface BalanceInfo {
   sufficient: boolean
 }
 
-export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, onCancel }: StakingScreenProps) {
+export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, onCancel, mode }: StakingScreenProps) {
   const [roomCode, setRoomCode] = useState('')
   const [stakingInfo, setStakingInfo] = useState<StakingInfo | null>(null)
   const [isStaking, setIsStaking] = useState(false)
@@ -61,9 +63,17 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   useEffect(() => {
     if (isSuccess) {
       console.log('✅ Staking transaction confirmed!')
-      onStakeSuccess()
+      
+      if (mode === 'create') {
+        // For room creation, we need to get the gameId from the transaction
+        // and create the room in the backend
+        handleCreateRoomAfterStake()
+      } else {
+        // For joining, just call success callback
+        onStakeSuccess(gameId)
+      }
     }
-  }, [isSuccess, onStakeSuccess])
+  }, [isSuccess, onStakeSuccess, mode, gameId])
 
   useEffect(() => {
     if (writeError) {
@@ -80,8 +90,24 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
     sufficient: balance.value >= BigInt(Math.floor(stakeAmount * 1e18)) // Convert 0.1 FLOW to wei
   } : null
 
+  const handleCreateRoomAfterStake = async () => {
+    try {
+      // Create the room in the backend after successful staking
+      const { gameId: newGameId, roomCode: newRoomCode } = await createGame(playerAddress)
+      console.log('🎮 Room created after staking:', { gameId: newGameId, roomCode: newRoomCode })
+      
+      // Call success callback with the new game info
+      onStakeSuccess(newGameId, newRoomCode)
+    } catch (error) {
+      console.error('❌ Failed to create room after staking:', error)
+      setError('Staking successful but failed to create room. Please try again.')
+      setIsStaking(false)
+    }
+  }
+
   const handleStake = async () => {
-    if (!roomCode.trim()) {
+    // For joining mode, require room code
+    if (mode === 'join' && !roomCode.trim()) {
       setError('Please enter a room code')
       return
     }
@@ -100,27 +126,53 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
       setIsStaking(true)
       setError('')
 
-      console.log('🎮 Staking with wallet transaction...')
-      console.log('Contract:', process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS)
-      console.log('Game ID:', gameId)
-      console.log('Stake Amount:', stakeAmount)
+      if (mode === 'create') {
+        // For room creation: create game and stake in one transaction
+        console.log('🎮 Creating room with staking...')
+        console.log('Contract:', process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS)
+        console.log('Stake Amount:', stakeAmount)
 
-      // Call contract directly with wallet
-      writeContract({
-        address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
-        abi: [
-          {
-            "inputs": [{"name": "gameId", "type": "uint64"}],
-            "name": "joinGame",
-            "outputs": [],
-            "stateMutability": "payable",
-            "type": "function"
-          }
-        ],
-        functionName: 'joinGame',
-        args: [BigInt(gameId)],
-        value: BigInt(Math.floor(stakeAmount * 1e18)) // Convert to wei
-      })
+        writeContract({
+          address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
+          abi: [
+            {
+              "inputs": [
+                {"name": "stakeAmount", "type": "uint256"},
+                {"name": "minPlayers", "type": "uint8"}
+              ],
+              "name": "createGame",
+              "outputs": [{"name": "gameId", "type": "uint64"}],
+              "stateMutability": "payable",
+              "type": "function"
+            }
+          ],
+          functionName: 'createGame',
+          args: [BigInt(Math.floor(stakeAmount * 1e18)), 4], // 0.1 FLOW in wei, 4 min players
+          value: BigInt(Math.floor(stakeAmount * 1e18))
+        })
+      } else {
+        // For joining: stake to existing room using gameId
+        console.log('🎮 Joining room with staking...')
+        console.log('Contract:', process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS)
+        console.log('Game ID:', gameId)
+        console.log('Stake Amount:', stakeAmount)
+
+        writeContract({
+          address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
+          abi: [
+            {
+              "inputs": [{"name": "gameId", "type": "uint64"}],
+              "name": "joinGame",
+              "outputs": [],
+              "stateMutability": "payable",
+              "type": "function"
+            }
+          ],
+          functionName: 'joinGame',
+          args: [BigInt(gameId || 0)],
+          value: BigInt(Math.floor(stakeAmount * 1e18))
+        })
+      }
 
     } catch (error) {
       console.error('Error staking:', error)
@@ -196,21 +248,23 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
             </Card>
           )}
 
-          {/* Room Code Input */}
-          <div className="space-y-2">
-            <Label htmlFor="roomCode" className="text-sm font-press-start text-gray-300">
-              ROOM CODE
-            </Label>
-            <Input
-              id="roomCode"
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              placeholder="Enter 6-character room code"
-              maxLength={6}
-              className="font-press-start text-center text-lg tracking-widest"
-            />
-          </div>
+          {/* Room Code Input - Only show for join mode */}
+          {mode === 'join' && (
+            <div className="space-y-2">
+              <Label htmlFor="roomCode" className="text-sm font-press-start text-gray-300">
+                ROOM CODE
+              </Label>
+              <Input
+                id="roomCode"
+                type="text"
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                placeholder="Enter 6-character room code"
+                maxLength={6}
+                className="font-press-start text-center text-lg tracking-widest"
+              />
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -243,7 +297,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
           <div className="space-y-3">
             <Button
               onClick={handleStake}
-              disabled={isStaking || isPending || isConfirming || !balanceInfo?.sufficient || !roomCode.trim()}
+              disabled={isStaking || isPending || isConfirming || !balanceInfo?.sufficient || (mode === 'join' && !roomCode.trim())}
               variant="pixel"
               size="pixelLarge"
               className="w-full"
@@ -256,7 +310,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
                   </span>
                 </div>
               ) : (
-                `💰 STAKE ${stakeAmount} FLOW`
+                mode === 'create' ? `🎮 CREATE ROOM & STAKE ${stakeAmount} FLOW` : `💰 STAKE ${stakeAmount} FLOW`
               )}
             </Button>
 

@@ -239,21 +239,16 @@ export default function Home() {
     }
     
     try {
-      console.log("Creating lobby...")
+      console.log("Starting staking flow for room creation...")
       console.log("Using wallet address:", walletAddress)
       
-      const { gameId, roomCode } = await createGame(walletAddress)
-      console.log("Game created:", { gameId, roomCode })
-      setCurrentRoomCode(roomCode)
-      setHasSeenRole(false) // Reset role visibility when creating
-      
-      // Go directly to staking screen after creating game
+      // Go directly to staking screen first
       setGameState("staking")
-      console.log("Game created, redirecting to staking screen")
+      console.log("Redirecting to staking screen for room creation")
     } catch (error) {
-      console.error("Failed to create game:", error)
+      console.error("Failed to start staking flow:", error)
       // Show error to user
-      alert(`Failed to create game: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(`Failed to start staking flow: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -360,6 +355,18 @@ export default function Home() {
           )}
         </>
       )}
+      {gameState === "staking" && walletAddress && !game && (
+        <StakingScreen
+          playerAddress={walletAddress}
+          mode="create"
+          onStakeSuccess={(gameId, roomCode) => {
+            console.log('✅ Room created successfully:', { gameId, roomCode })
+            setCurrentRoomCode(roomCode || '')
+            setGameState("lobby")
+          }}
+          onCancel={() => setGameState("wallet")}
+        />
+      )}
       {gameState === "room-code-input" && (
         <RoomCodeInput
           onJoin={handleJoinByRoomCode}
@@ -370,7 +377,11 @@ export default function Home() {
         <StakingScreen
           gameId={game.gameId}
           playerAddress={currentPlayer.address}
-          onStakeSuccess={() => setGameState("lobby")}
+          mode="join"
+          onStakeSuccess={(gameId) => {
+            console.log('✅ Staking successful, joining game:', gameId)
+            setGameState("lobby")
+          }}
           onCancel={() => setGameState("room-code-input")}
         />
       )}
