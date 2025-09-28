@@ -260,13 +260,17 @@ export function useGame(gameId?: string): GameState & GameActions {
     setError(null)
     
     try {
+      console.log('🔍 joinGameByRoomCode - Starting API call:', { roomCode, playerAddress })
       const response = await apiService.joinGameByRoomCode({ roomCode, playerAddress })
+      console.log('🔍 joinGameByRoomCode - API response:', response)
       
       if (response.success) {
+        console.log('🔍 joinGameByRoomCode - Setting game:', response.game)
         setGame(response.game)
         
         // Set the game ID for tracking
         setCurrentGameId(response.game.gameId)
+        console.log('🔍 joinGameByRoomCode - Set currentGameId:', response.game.gameId)
         
         // Convert players first
         const convertedPlayers = convertPlayers(response.game, playerAddress)
@@ -285,6 +289,17 @@ export function useGame(gameId?: string): GameState & GameActions {
           isCurrentPlayer: true,
           address: playerAddress,
           role: currentPlayerFromConverted?.role
+        })
+        
+        console.log('🔍 joinGameByRoomCode - Final state:', {
+          game: response.game,
+          currentPlayer: {
+            id: playerAddress,
+            name: generateUsername(playerAddress),
+            address: playerAddress,
+            role: currentPlayerFromConverted?.role
+          },
+          players: convertedPlayers
         })
       } else {
         throw new Error('Failed to join game')
