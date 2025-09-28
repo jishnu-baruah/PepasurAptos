@@ -11,12 +11,12 @@ import RoomCodeInput from "@/components/room-code-input"
 import RoomCodeDisplay from "@/components/room-code-display"
 import ChatComponent from "@/components/chat-component"
 import TaskComponent from "@/components/task-component"
-import NightResolutionScreen from "@/components/night-resolution-screen"
+import GameResultsScreen from "@/components/game-results-screen"
 import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
 import { useGame, Player } from "@/hooks/useGame"
 
-export type GameState = "loader" | "wallet" | "room-code-input" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting"
+export type GameState = "loader" | "wallet" | "room-code-input" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting" | "ended"
 export type Role = "ASUR" | "DEVA" | "RISHI" | "MANAV"
 
 export default function Home() {
@@ -115,6 +115,9 @@ export default function Home() {
       } else if (game.phase === 'voting' && gameState !== 'voting') {
         console.log("✅ SWITCHING TO VOTING PHASE")
         setGameState('voting')
+      } else if (game.phase === 'ended' && gameState !== 'ended') {
+        console.log("✅ SWITCHING TO ENDED PHASE")
+        setGameState('ended')
       } else {
         console.log("⏸️ NO PHASE CHANGE NEEDED")
       }
@@ -372,6 +375,18 @@ export default function Home() {
           submitVote={submitVote}
           isConnected={isConnected}
           onComplete={handleVotingComplete} 
+        />
+      )}
+      
+      {/* Game Results Screen - Show when game is ended */}
+      {game?.phase === 'ended' && (
+        <GameResultsScreen 
+          game={game}
+          players={players}
+          onNewGame={() => {
+            setGameState('wallet')
+            setHasSeenRole(false)
+          }}
         />
       )}
 

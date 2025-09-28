@@ -595,27 +595,10 @@ class GameManager {
       return;
     }
 
-    // Move to next night phase
-    game.phase = 'night';
-    game.timeLeft = 30; // 30 seconds for night
-    game.pendingActions = {};
-    game.votes = {};
-    game.day++;
-
-    // Start timer for next night phase (same pattern as game start)
-    console.log(`Starting next night phase timer for game ${gameId}`);
-    this.startTimer(gameId, true);
-
-    console.log(`🗳️ Voting phase resolved for game ${gameId}, moved to night phase (day ${game.day})`);
-    
-    // Emit game state update to frontend
-    if (this.socketManager) {
-      try {
-        this.socketManager.emitGameStateUpdate(gameId);
-      } catch (error) {
-        console.error(`❌ Error emitting game state update after voting phase resolution:`, error);
-      }
-    }
+    // END GAME AFTER VOTING - Show results indefinitely
+    console.log(`🗳️ Ending game after voting phase for game ${gameId}`);
+    this.endGame(gameId);
+    return;
   }
 
   // Process detective action
