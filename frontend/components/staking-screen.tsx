@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 
 interface StakingScreenProps {
   gameId: string
@@ -42,10 +43,32 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   const [isLoading, setIsLoading] = useState(true)
 
   const stakeAmount = 0.1 // 0.1 FLOW per player
+  
+  // Wagmi hooks for contract interaction
+  const { address } = useAccount()
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  })
 
   useEffect(() => {
     checkBalance()
   }, [playerAddress])
+
+  useEffect(() => {
+    if (isSuccess) {
+      console.log('✅ Staking transaction confirmed!')
+      onStakeSuccess()
+    }
+  }, [isSuccess, onStakeSuccess])
+
+  useEffect(() => {
+    if (writeError) {
+      console.error('❌ Staking transaction failed:', writeError)
+      setError(`Transaction failed: ${writeError.message}`)
+      setIsStaking(false)
+    }
+  }, [writeError])
 
   const checkBalance = async () => {
     try {
@@ -77,34 +100,40 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
       return
     }
 
+    if (!address) {
+      setError('Wallet not connected')
+      return
+    }
+
     try {
       setIsStaking(true)
       setError('')
 
-      const response = await fetch('/api/staking/stake', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          gameId,
-          playerAddress,
-          roomCode: roomCode.trim().toUpperCase()
-        })
+      console.log('🎮 Staking with wallet transaction...')
+      console.log('Contract:', process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS)
+      console.log('Game ID:', gameId)
+      console.log('Stake Amount:', stakeAmount)
+
+      // Call contract directly with wallet
+      writeContract({
+        address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
+        abi: [
+          {
+            "inputs": [{"name": "gameId", "type": "uint64"}],
+            "name": "joinGame",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function"
+          }
+        ],
+        functionName: 'joinGame',
+        args: [BigInt(gameId)],
+        value: BigInt(Math.floor(stakeAmount * 1e18)) // Convert to wei
       })
 
-      const data = await response.json()
-
-      if (data.success) {
-        console.log('Stake successful:', data.data)
-        onStakeSuccess()
-      } else {
-        setError(data.error || 'Failed to stake')
-      }
     } catch (error) {
       console.error('Error staking:', error)
       setError('Failed to stake. Please try again.')
-    } finally {
       setIsStaking(false)
     }
   }
@@ -223,15 +252,17 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
           <div className="space-y-3">
             <Button
               onClick={handleStake}
-              disabled={isStaking || !balanceInfo?.sufficient || !roomCode.trim()}
+              disabled={isStaking || isPending || isConfirming || !balanceInfo?.sufficient || !roomCode.trim()}
               variant="pixel"
               size="pixelLarge"
               className="w-full"
             >
-              {isStaking ? (
+              {isStaking || isPending || isConfirming ? (
                 <div className="flex items-center justify-center gap-2">
                   <GifLoader size="sm" />
-                  <span>STAKING...</span>
+                  <span>
+                    {isPending ? 'SIGNING...' : isConfirming ? 'CONFIRMING...' : 'STAKING...'}
+                  </span>
                 </div>
               ) : (
                 `💰 STAKE ${stakeAmount} FLOW`
