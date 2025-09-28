@@ -54,6 +54,8 @@ export default function RoleAssignmentScreen({ role, avatar, onAcknowledge }: Ro
 
   // Debug logging
   console.log('🎭 RoleAssignmentScreen - role:', role, 'avatar:', avatar)
+  console.log('🎭 Avatar starts with http:', avatar?.startsWith('http'))
+  console.log('🎭 Avatar type:', typeof avatar)
 
   useEffect(() => {
     const timer = setTimeout(() => setShowRole(true), 1000)
@@ -76,27 +78,14 @@ export default function RoleAssignmentScreen({ role, avatar, onAcknowledge }: Ro
               <RetroAnimation type="bounce">
                 <div className="text-4xl sm:text-5xl md:text-6xl">
                   {avatar && avatar.startsWith('http') ? (
-                    <>
-                      {console.log('🎭 Rendering image with URL:', avatar)}
-                      <img 
-                        src={avatar} 
-                        alt={`${role} avatar`}
-                        className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-cover rounded-none mx-auto"
-                        style={{ imageRendering: 'pixelated' }}
-                        onError={(e) => {
-                          console.error('🎭 Image failed to load:', avatar)
-                          console.error('🎭 Error:', e)
-                        }}
-                        onLoad={() => {
-                          console.log('🎭 Image loaded successfully:', avatar)
-                        }}
-                      />
-                    </>
+                    <img 
+                      src={avatar} 
+                      alt={`${role} avatar`}
+                      className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-cover rounded-none mx-auto"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
                   ) : (
-                    <>
-                      {console.log('🎭 Using emoji fallback:', config.emoji)}
-                      {config.emoji}
-                    </>
+                    config.emoji
                   )}
                 </div>
               </RetroAnimation>
