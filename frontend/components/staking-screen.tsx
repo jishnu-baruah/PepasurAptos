@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi'
 
 interface StakingScreenProps {
   gameId: string
@@ -37,10 +37,9 @@ interface BalanceInfo {
 export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, onCancel }: StakingScreenProps) {
   const [roomCode, setRoomCode] = useState('')
   const [stakingInfo, setStakingInfo] = useState<StakingInfo | null>(null)
-  const [balanceInfo, setBalanceInfo] = useState<BalanceInfo | null>(null)
   const [isStaking, setIsStaking] = useState(false)
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
 
   const stakeAmount = 0.1 // 0.1 FLOW per player
 
@@ -53,10 +52,11 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
-
-  useEffect(() => {
-    checkBalance()
-  }, [playerAddress])
+  
+  // Get wallet balance directly from wallet
+  const { data: balance, isLoading: balanceLoading } = useBalance({
+    address: address as `0x${string}`,
+  })
 
   useEffect(() => {
     if (isSuccess) {
@@ -73,25 +73,12 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
     }
   }, [writeError])
 
-  const checkBalance = async () => {
-    try {
-      setIsLoading(true)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-      const response = await fetch(`${apiUrl}/api/staking/balance/${playerAddress}`)
-      const data = await response.json()
-      
-      if (data.success) {
-        setBalanceInfo(data.data)
-      } else {
-        setError(data.error || 'Failed to check balance')
-      }
-    } catch (error) {
-      console.error('Error checking balance:', error)
-      setError('Failed to check balance')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Calculate balance info from wallet balance
+  const balanceInfo = balance ? {
+    balance: balance.value.toString(),
+    balanceInFlow: parseFloat(balance.formatted).toFixed(4),
+    sufficient: balance.value >= BigInt(Math.floor(stakeAmount * 1e18)) // Convert 0.1 FLOW to wei
+  } : null
 
   const handleStake = async () => {
     if (!roomCode.trim()) {
@@ -162,7 +149,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
     }
   }
 
-  if (isLoading) {
+  if (balanceLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
         <Card className="w-full max-w-md p-8 bg-[#111111]/80 border border-[#2a2a2a] text-center">
