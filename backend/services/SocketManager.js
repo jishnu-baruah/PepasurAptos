@@ -177,23 +177,37 @@ class SocketManager {
 
   // Emit game state update to all players in a game
   emitGameStateUpdate(gameId) {
-    const game = this.gameManager.getGame(gameId);
-    if (!game) return;
-    
-    console.log(`📡 Emitting game state update for game ${gameId}, phase: ${game.phase}`);
-    
-    // Emit to all players in the game
-    this.io.to(`game-${gameId}`).emit('game_state', {
-      gameId: gameId,
-      game: game
-    });
-    
-    // Also emit a general game update
-    this.io.to(`game-${gameId}`).emit('game_update', {
-      gameId: gameId,
-      phase: game.phase,
-      timeLeft: game.timeLeft
-    });
+    try {
+      const game = this.gameManager.getGame(gameId);
+      if (!game) {
+        console.log(`⚠️ Game not found for emitGameStateUpdate: ${gameId}`);
+        return;
+      }
+      
+      if (!this.io) {
+        console.log(`⚠️ Socket.IO instance not available for emitGameStateUpdate: ${gameId}`);
+        return;
+      }
+      
+      console.log(`📡 Emitting game state update for game ${gameId}, phase: ${game.phase}`);
+      
+      // Emit to all players in the game
+      this.io.to(`game-${gameId}`).emit('game_state', {
+        gameId: gameId,
+        game: game
+      });
+      
+      // Also emit a general game update
+      this.io.to(`game-${gameId}`).emit('game_update', {
+        gameId: gameId,
+        phase: game.phase,
+        timeLeft: game.timeLeft
+      });
+      
+      console.log(`✅ Successfully emitted game state update for game ${gameId}`);
+    } catch (error) {
+      console.error(`❌ Error emitting game state update for game ${gameId}:`, error);
+    }
   }
 }
 

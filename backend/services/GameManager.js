@@ -451,7 +451,11 @@ class GameManager {
     
     // Emit game state update to frontend
     if (this.socketManager) {
-      this.socketManager.emitGameStateUpdate(gameId);
+      try {
+        this.socketManager.emitGameStateUpdate(gameId);
+      } catch (error) {
+        console.error(`❌ Error emitting game state update after night phase resolution:`, error);
+      }
     }
   }
 
@@ -494,7 +498,11 @@ class GameManager {
     
     // Emit game state update to frontend
     if (this.socketManager) {
-      this.socketManager.emitGameStateUpdate(gameId);
+      try {
+        this.socketManager.emitGameStateUpdate(gameId);
+      } catch (error) {
+        console.error(`❌ Error emitting game state update after resolution phase resolution:`, error);
+      }
     }
   }
 
@@ -524,7 +532,11 @@ class GameManager {
     
     // Emit game state update to frontend
     if (this.socketManager) {
-      this.socketManager.emitGameStateUpdate(gameId);
+      try {
+        this.socketManager.emitGameStateUpdate(gameId);
+      } catch (error) {
+        console.error(`❌ Error emitting game state update after task phase resolution:`, error);
+      }
     }
   }
 
@@ -580,7 +592,11 @@ class GameManager {
     
     // Emit game state update to frontend
     if (this.socketManager) {
-      this.socketManager.emitGameStateUpdate(gameId);
+      try {
+        this.socketManager.emitGameStateUpdate(gameId);
+      } catch (error) {
+        console.error(`❌ Error emitting game state update after voting phase resolution:`, error);
+      }
     }
   }
 
