@@ -99,8 +99,6 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
 
   // Real-time timer sync with backend
   useEffect(() => {
-    console.log(`📊 DiscussionPhase timer sync: game.timeLeft=${game?.timeLeft}, local timeLeft=${timeLeft}`)
-    
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
       

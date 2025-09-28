@@ -74,7 +74,7 @@ export default function Home() {
   // Sync game state with backend
   useEffect(() => {
     if (game && currentPlayer) {
-      console.log("🎮 Game state sync:", {
+      console.log("Game state sync:", {
         backendPhase: game.phase,
         frontendState: gameState,
         players: game.players.length,
@@ -87,30 +87,26 @@ export default function Home() {
       })
       
       // Sync frontend state with backend phase
-      console.log(`🔄 Phase sync check: backend=${game.phase}, frontend=${gameState}, timeLeft=${game.timeLeft}`)
-      
       if (game.phase === 'lobby' && gameState !== 'lobby') {
-        console.log("✅ Switching to lobby phase")
+        console.log("Switching to lobby phase")
         setGameState('lobby')
         setHasSeenRole(false) // Reset role visibility when in lobby
       } else if (game.phase === 'night' && currentPlayer.role && !hasSeenRole) {
         // Player has a role but hasn't seen it yet - show role assignment
-        console.log("✅ Player has role but hasn't seen it - showing role assignment")
+        console.log("Player has role but hasn't seen it - showing role assignment")
         setGameState('role-assignment')
       } else if (game.phase === 'night' && gameState !== 'night' && gameState !== 'role-assignment') {
-        console.log("✅ Switching to night phase")
+        console.log("Switching to night phase")
         setGameState('night')
       } else if (game.phase === 'resolution' && gameState !== 'resolution') {
-        console.log("✅ Switching to resolution phase")
+        console.log("Switching to resolution phase")
         setGameState('resolution')
       } else if (game.phase === 'task' && gameState !== 'task') {
-        console.log("✅ Switching to task phase")
+        console.log("Switching to task phase")
         setGameState('task')
       } else if (game.phase === 'voting' && gameState !== 'voting') {
-        console.log("✅ Switching to voting phase")
+        console.log("Switching to voting phase")
         setGameState('voting')
-      } else {
-        console.log(`⏸️ No phase change needed: backend=${game.phase}, frontend=${gameState}`)
       }
       
       // If timer is 0 and we're in night phase, try to refresh game state
