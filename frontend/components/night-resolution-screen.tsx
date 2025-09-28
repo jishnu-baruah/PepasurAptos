@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import RetroAnimation from "@/components/retro-animation"
@@ -25,7 +25,6 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
   const [showResults, setShowResults] = useState(false)
   const [hasTransitioned, setHasTransitioned] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Primary mechanism: Check if backend has moved to task phase
   useEffect(() => {
@@ -46,33 +45,15 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
   useEffect(() => {
     console.log(`🌙 NightResolution timer sync: game.timeLeft=${game?.timeLeft}, local timeLeft=${timeLeft}`)
     
-    // Clear existing timer
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-    
     if (game?.timeLeft !== undefined) {
-      console.log(`🌙 Setting timeLeft to ${game.timeLeft}`)
       setTimeLeft(game.timeLeft)
       
       // Start local countdown to match backend
       if (game.timeLeft > 0) {
-        timerRef.current = setTimeout(() => {
-          setTimeLeft(prev => {
-            const newTime = Math.max(0, prev - 1)
-            console.log(`🌙 Timer tick: ${prev} -> ${newTime}`)
-            return newTime
-          })
+        const timer = setTimeout(() => {
+          setTimeLeft(prev => Math.max(0, prev - 1))
         }, 1000)
-      }
-    }
-    
-    // Cleanup function
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
+        return () => clearTimeout(timer)
       }
     }
   }, [game?.timeLeft])
