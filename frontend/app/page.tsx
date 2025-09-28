@@ -385,11 +385,14 @@ export default function Home() {
         </>
       )}
       {gameState === "role-assignment" && currentPlayer?.role && (
-        <RoleAssignmentScreen 
-          role={currentPlayer.role as Role} 
-          avatar={currentPlayer.avatar || "👤"}
-          onAcknowledge={handleRoleAcknowledged} 
-        />
+        <>
+          {console.log('🎮 Main page - currentPlayer:', currentPlayer)}
+          <RoleAssignmentScreen 
+            role={currentPlayer.role as Role} 
+            avatar={currentPlayer.avatar || "👤"}
+            onAcknowledge={handleRoleAcknowledged} 
+          />
+        </>
       )}
       {gameState === "night" && currentPlayer && (
         <GameplayScreen 
