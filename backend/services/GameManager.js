@@ -41,7 +41,7 @@ class GameManager {
       creator: creatorAddress,
       players: [creatorAddress],
       roles: {}, // address -> role (only server knows)
-      phase: 'lobby',
+      phase: 'staking',
       day: 1,
       timeLeft: 0,
       startedAt: null,
