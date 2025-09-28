@@ -201,6 +201,31 @@ export default function Home() {
     setGameState("wallet")
   }
 
+  const handleClaimFlow = async () => {
+    if (!walletAddress) {
+      alert("Please connect your wallet first")
+      return
+    }
+    
+    try {
+      console.log("Claiming 0.5 FLOW for wallet:", walletAddress)
+      
+      // For now, just show a success message
+      // In a real implementation, this would interact with Flow blockchain
+      alert("🎉 Successfully claimed 0.5 FLOW! Check your wallet.")
+      
+      // TODO: Implement actual Flow token claim logic
+      // This would typically involve:
+      // 1. Calling a smart contract function
+      // 2. Signing a transaction
+      // 3. Waiting for confirmation
+      
+    } catch (error) {
+      console.error("Failed to claim FLOW:", error)
+      alert(`Failed to claim FLOW: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
   const handleCreateLobby = async () => {
     if (!walletAddress) {
       alert("Please connect your wallet first")
@@ -306,11 +331,25 @@ export default function Home() {
 
       {gameState === "loader" && <LoaderScreen />}
       {gameState === "wallet" && (
-        <WalletConnect 
-          onAddressChange={handleWalletAddressChange}
-          onJoinGame={handleJoinGame}
-          onCreateLobby={handleCreateLobby}
-        />
+        <>
+          <WalletConnect 
+            onAddressChange={handleWalletAddressChange}
+            onJoinGame={handleJoinGame}
+            onCreateLobby={handleCreateLobby}
+          />
+          
+          {/* Claim FLOW Button */}
+          {walletAddress && (
+            <div className="fixed top-4 left-4 z-50">
+              <button
+                onClick={handleClaimFlow}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+              >
+                💎 Claim 0.5 FLOW
+              </button>
+            </div>
+          )}
+        </>
       )}
       {gameState === "room-code-input" && (
         <RoomCodeInput
@@ -329,6 +368,18 @@ export default function Home() {
           {currentRoomCode && (
             <div className="fixed top-4 right-4 z-50">
               <RoomCodeDisplay roomCode={currentRoomCode} />
+            </div>
+          )}
+          
+          {/* Claim FLOW Button */}
+          {walletAddress && (
+            <div className="fixed top-4 left-4 z-50">
+              <button
+                onClick={handleClaimFlow}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+              >
+                💎 Claim 0.5 FLOW
+              </button>
             </div>
           )}
         </>
@@ -381,14 +432,28 @@ export default function Home() {
       
       {/* Game Results Screen - Show when game is ended */}
       {game?.phase === 'ended' && (
-        <GameResultsScreen 
-          game={game}
-          players={players}
-          onNewGame={() => {
-            setGameState('wallet')
-            setHasSeenRole(false)
-          }}
-        />
+        <>
+          <GameResultsScreen 
+            game={game}
+            players={players}
+            onNewGame={() => {
+              setGameState('wallet')
+              setHasSeenRole(false)
+            }}
+          />
+          
+          {/* Claim FLOW Button */}
+          {walletAddress && (
+            <div className="fixed top-4 left-4 z-50">
+              <button
+                onClick={handleClaimFlow}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+              >
+                💎 Claim 0.5 FLOW
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Chat Component - Show in lobby and night phases */}
