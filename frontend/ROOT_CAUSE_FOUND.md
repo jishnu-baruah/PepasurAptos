@@ -77,3 +77,4 @@ GameplayScreen debug: {
 The root cause has been **identified and fixed**! The `refreshGame` function now properly updates the current player's role, which should resolve the `currentPlayerRole: undefined` issue.
 
 The "WAITING..." problem should now be **completely resolved**! 🚀
+

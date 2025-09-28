@@ -122,3 +122,4 @@ app.use(cors({
 - [ ] **Error Handling**: Proper error messages shown
 
 The wallet connection should now work across all environments! 🎉
+

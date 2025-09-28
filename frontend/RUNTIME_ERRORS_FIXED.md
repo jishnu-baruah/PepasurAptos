@@ -74,3 +74,4 @@ Both runtime errors have been **completely resolved**! The game now properly:
 - ✅ Handles all game state changes smoothly
 
 The "showTimeUp is not defined" error and player count update issues are **fixed**! 🚀
+

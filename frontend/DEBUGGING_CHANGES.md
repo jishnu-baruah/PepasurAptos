@@ -86,3 +86,4 @@ console.log('🔄 refreshGame - currentPlayerFromConverted:', currentPlayerFromC
 4. **Socket Events**: Are game state updates being received?
 
 The debugging should now reveal exactly where the role assignment is failing! 🔍
+

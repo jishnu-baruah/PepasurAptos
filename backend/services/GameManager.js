@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+const StakingService = require('./StakingService');
 
 class GameManager {
   constructor(socketManager = null) {
@@ -7,6 +8,7 @@ class GameManager {
     this.detectiveReveals = new Map(); // gameId -> reveals[]
     this.roomCodes = new Map(); // roomCode -> gameId
     this.socketManager = socketManager; // Reference to SocketManager
+    this.stakingService = new StakingService(); // Initialize staking service
   }
 
   // Generate a human-readable room code
@@ -27,7 +29,7 @@ class GameManager {
     return roomCode;
   }
 
-  // Create a new game
+  // Create a new game with staking requirement
   createGame(creatorAddress, stakeAmount, minPlayers) {
     const gameId = uuidv4();
     const roomCode = this.generateRoomCode();
@@ -48,6 +50,8 @@ class GameManager {
       pendingActions: {}, // address -> { commit, revealed }
       task: null,
       votes: {}, // address -> votedFor
+      stakingRequired: true, // Require staking for this game
+      stakingStatus: 'waiting', // waiting, ready, completed
       eliminated: [],
       winners: [],
       roleCommit: null,
@@ -56,8 +60,72 @@ class GameManager {
 
     this.games.set(gameId, game);
     this.roomCodes.set(roomCode, gameId);
-    console.log(`Game ${gameId} (Room: ${roomCode}) created by ${creatorAddress}`);
-    return { gameId, roomCode };
+    
+    console.log(`🎮 Game created: ${gameId} (Room: ${roomCode}) by ${creatorAddress}`);
+    console.log(`💰 Staking required: ${game.stakingRequired ? 'YES' : 'NO'}`);
+    return { gameId, roomCode, game };
+  }
+
+  // Stake FLOW for a game
+  async stakeForGame(gameId, playerAddress, roomCode) {
+    try {
+      const game = this.games.get(gameId);
+      if (!game) {
+        throw new Error('Game not found');
+      }
+
+      if (game.roomCode !== roomCode) {
+        throw new Error('Invalid room code');
+      }
+
+      if (!game.stakingRequired) {
+        throw new Error('This game does not require staking');
+      }
+
+      // Use staking service to handle the stake
+      const stakeResult = await this.stakingService.stakeForGame(gameId, playerAddress, roomCode);
+      
+      // Update game staking status
+      game.stakingStatus = stakeResult.gameStatus;
+      
+      console.log(`💰 Player ${playerAddress} staked for game ${gameId}`);
+      
+      return stakeResult;
+    } catch (error) {
+      console.error('❌ Error staking for game:', error);
+      throw error;
+    }
+  }
+
+  // Check if game is ready to start (all players staked)
+  isGameReadyToStart(gameId) {
+    const game = this.games.get(gameId);
+    if (!game) {
+      return false;
+    }
+
+    if (!game.stakingRequired) {
+      return game.players.length >= game.minPlayers;
+    }
+
+    // For staking games, check if all players have staked
+    const stakingInfo = this.stakingService.getGameStakingInfo(gameId);
+    return stakingInfo && stakingInfo.isReady;
+  }
+
+  // Get game staking info
+  getGameStakingInfo(gameId) {
+    return this.stakingService.getGameStakingInfo(gameId);
+  }
+
+  // Get player's stake info
+  getPlayerStakeInfo(gameId, playerAddress) {
+    return this.stakingService.getPlayerStakeInfo(gameId, playerAddress);
+  }
+
+  // Check player balance
+  async checkPlayerBalance(playerAddress) {
+    return await this.stakingService.checkBalance(playerAddress);
   }
 
   // Join a game by gameId
@@ -121,8 +189,14 @@ class GameManager {
       throw new Error('Game not found');
     }
 
+    // Check if game is ready to start (staking requirements)
+    if (!this.isGameReadyToStart(gameId)) {
+      throw new Error('Game is not ready to start - staking requirements not met');
+    }
+
     console.log(`🚀 STARTING GAME ${gameId} - DEBUG VERSION DEPLOYED`);
     console.log(`Game has ${game.players.length} players:`, game.players);
+    console.log(`💰 Staking status: ${game.stakingStatus}`);
 
     // Assign roles randomly
     this.assignRoles(game);
@@ -591,14 +665,14 @@ class GameManager {
     // Check win conditions
     if (this.checkWinConditions(game)) {
       console.log(`🗳️ Game ended - win conditions met`);
-      this.endGame(gameId);
+      await this.endGame(gameId);
       return;
     }
 
-    // END GAME AFTER VOTING - Show results indefinitely
-    console.log(`🗳️ Ending game after voting phase for game ${gameId}`);
-    this.endGame(gameId);
-    return;
+        // END GAME AFTER VOTING - Show results indefinitely
+        console.log(`🗳️ Ending game after voting phase for game ${gameId}`);
+        await this.endGame(gameId);
+        return;
   }
 
   // Process detective action
@@ -765,7 +839,7 @@ class GameManager {
   }
 
   // End game
-  endGame(gameId) {
+  async endGame(gameId) {
     const game = this.games.get(gameId);
     if (!game) return;
 
@@ -774,6 +848,33 @@ class GameManager {
     game.timeLeft = 0;
 
     console.log(`Game ${gameId} ended. Winners:`, game.winners);
+
+    // Handle reward distribution if staking was required
+    if (game.stakingRequired) {
+      try {
+        console.log(`💰 Processing rewards for staked game ${gameId}`);
+        
+        // Determine winners and losers
+        const winners = game.winners || [];
+        const losers = game.players.filter(player => !winners.includes(player));
+        
+        // Calculate rewards
+        const rewards = this.stakingService.calculateRewards(gameId, winners, losers);
+        
+        // Distribute rewards
+        const distributionResult = await this.stakingService.distributeRewards(gameId, rewards);
+        
+        console.log(`💰 Rewards distributed for game ${gameId}:`, distributionResult);
+        
+        // Store reward info in game
+        game.rewards = distributionResult;
+        
+      } catch (error) {
+        console.error('❌ Error distributing rewards:', error);
+        // Don't throw error - game should still end even if rewards fail
+      }
+    }
+
     return game;
   }
 

@@ -15,9 +15,10 @@ import GameResultsScreen from "@/components/game-results-screen"
 import NightResolutionScreen from "@/components/night-resolution-screen"
 import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
+import StakingScreen from "@/components/staking-screen"
 import { useGame, Player } from "@/hooks/useGame"
 
-export type GameState = "loader" | "wallet" | "room-code-input" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting" | "ended"
+export type GameState = "loader" | "wallet" | "room-code-input" | "staking" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting" | "ended"
 export type Role = "ASUR" | "DEVA" | "RISHI" | "MANAV"
 
 export default function Home() {
@@ -188,8 +189,10 @@ export default function Home() {
       await joinGameByRoomCode(roomCode, walletAddress)
       setCurrentRoomCode(roomCode)
       setHasSeenRole(false) // Reset role visibility when joining
-      setGameState("lobby")
-      console.log("Successfully joined game")
+      
+      // Redirect to staking screen instead of lobby
+      setGameState("staking")
+      console.log("Successfully joined game, redirecting to staking")
     } catch (error) {
       console.error("Failed to join game:", error)
       // Show error to user
@@ -355,6 +358,14 @@ export default function Home() {
         <RoomCodeInput
           onJoin={handleJoinByRoomCode}
           onCancel={handleCancelJoin}
+        />
+      )}
+      {gameState === "staking" && currentPlayer && game && (
+        <StakingScreen
+          gameId={game.gameId}
+          playerAddress={currentPlayer.address}
+          onStakeSuccess={() => setGameState("lobby")}
+          onCancel={() => setGameState("room-code-input")}
         />
       )}
       {gameState === "lobby" && currentPlayer && (

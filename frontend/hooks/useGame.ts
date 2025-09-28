@@ -97,12 +97,16 @@ export function useGame(gameId?: string): GameState & GameActions {
       let avatar = '👤' // Default avatar
       if (frontendRole === 'DEVA') {
         avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/dev.png?updatedAt=1758923141278'
+        console.log(`🎭 DEVA avatar assigned: ${avatar}`)
       } else if (frontendRole === 'ASUR') {
         avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/asur.png?updatedAt=1758922659571'
+        console.log(`🎭 ASUR avatar assigned: ${avatar}`)
       } else if (frontendRole === 'RISHI') {
         avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/sage.png?updatedAt=1758922659655'
+        console.log(`🎭 RISHI avatar assigned: ${avatar}`)
       } else if (frontendRole === 'MANAV') {
         avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560'
+        console.log(`🎭 MANAV avatar assigned: ${avatar}`)
       }
       
       // Generate username for this player

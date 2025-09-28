@@ -87,3 +87,4 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-project-id-here
 - Ensure Flow Testnet is selected in wallet
 
 The wallet integration is now complete and ready for testing! 🎉
+
