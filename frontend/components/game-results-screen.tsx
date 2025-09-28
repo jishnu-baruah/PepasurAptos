@@ -89,7 +89,16 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
                 {winners.map((player, index) => (
                   <div key={index} className="flex items-center justify-between p-4 bg-green-800/30 rounded-lg border border-green-500/30">
                     <div className="flex items-center space-x-4">
-                      <span className="text-3xl">{player.avatar}</span>
+                      {player.avatar && player.avatar.startsWith('http') ? (
+                        <img 
+                          src={player.avatar} 
+                          alt={`${player.name} avatar`}
+                          className="w-12 h-12 object-cover rounded-none"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
+                      ) : (
+                        <span className="text-3xl">{player.avatar}</span>
+                      )}
                       <div className="text-left">
                         <div className="font-bold text-lg">{player.name}</div>
                         <div className="text-sm text-green-300">{player.role}</div>
@@ -110,7 +119,16 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
                 {losers.map((player, index) => (
                   <div key={index} className="flex items-center justify-between p-4 bg-red-800/30 rounded-lg border border-red-500/30">
                     <div className="flex items-center space-x-4">
-                      <span className="text-3xl">{player.avatar}</span>
+                      {player.avatar && player.avatar.startsWith('http') ? (
+                        <img 
+                          src={player.avatar} 
+                          alt={`${player.name} avatar`}
+                          className="w-12 h-12 object-cover rounded-none"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
+                      ) : (
+                        <span className="text-3xl">{player.avatar}</span>
+                      )}
                       <div className="text-left">
                         <div className="font-bold text-lg">{player.name}</div>
                         <div className="text-sm text-red-300">{player.role}</div>
