@@ -150,11 +150,12 @@ export function useGame(gameId?: string): GameState & GameActions {
           console.log(`[handleGameState] Updating current player role: ${currentPlayerFromConverted.role}`)
           setCurrentPlayer(prev => prev ? {
             ...prev,
-            role: currentPlayerFromConverted.role
+            role: currentPlayerFromConverted.role,
+            avatar: currentPlayerFromConverted.avatar
           } : {
             id: currentPlayerFromConverted.id,
             name: generateUsername(currentPlayerFromConverted.address),
-            avatar: '👤',
+            avatar: currentPlayerFromConverted.avatar,
             isAlive: true,
             isCurrentPlayer: true,
             address: currentPlayerFromConverted.address,
