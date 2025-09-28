@@ -44,6 +44,31 @@ export function useGame(gameId?: string): GameState & GameActions {
   const [error, setError] = useState<string | null>(null)
   const [currentGameId, setCurrentGameId] = useState<string | undefined>(gameId)
 
+  // Generate random username in format: name.pepasur.eth
+  const generateUsername = useCallback((address: string): string => {
+    // Use address as seed for consistent username generation
+    const seed = address.slice(2, 8) // Use first 6 chars of address as seed
+    const seedNum = parseInt(seed, 16)
+    
+    // List of cool names for the username
+    const names = [
+      'mouli', 'alex', 'crypto', 'block', 'chain', 'defi', 'nft', 'web3', 'dao', 'meta',
+      'alpha', 'beta', 'gamma', 'delta', 'omega', 'zeta', 'theta', 'lambda', 'sigma', 'phi',
+      'nova', 'stellar', 'cosmic', 'quantum', 'neon', 'cyber', 'digital', 'virtual', 'matrix', 'nexus',
+      'phoenix', 'dragon', 'tiger', 'wolf', 'eagle', 'falcon', 'hawk', 'raven', 'crow', 'owl',
+      'shadow', 'storm', 'thunder', 'lightning', 'fire', 'ice', 'wind', 'earth', 'water', 'spirit',
+      'mystic', 'arcane', 'magic', 'wizard', 'mage', 'sorcerer', 'warlock', 'druid', 'shaman', 'priest',
+      'knight', 'warrior', 'rogue', 'archer', 'hunter', 'ranger', 'paladin', 'monk', 'bard', 'cleric',
+      'ninja', 'samurai', 'viking', 'pirate', 'cowboy', 'sheriff', 'outlaw', 'gunslinger', 'marshal', 'deputy'
+    ]
+    
+    // Generate consistent username based on address
+    const nameIndex = seedNum % names.length
+    const selectedName = names[nameIndex]
+    
+    return `${selectedName}.pepasur.eth`
+  }, [])
+
   // Convert backend players to frontend format
   const convertPlayers = useCallback((game: Game, currentPlayerAddress?: string): Player[] => {
     console.log('🔍 convertPlayers called with game:', {
@@ -80,9 +105,12 @@ export function useGame(gameId?: string): GameState & GameActions {
         avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560'
       }
       
+      // Generate username for this player
+      const username = generateUsername(address)
+      
       return {
         id: address,
-        name: `Player ${index + 1}`,
+        name: username,
         avatar: avatar,
         role: frontendRole,
         isAlive: !game.eliminated.includes(address),
@@ -90,7 +118,7 @@ export function useGame(gameId?: string): GameState & GameActions {
         address
       }
     })
-  }, [])
+  }, [generateUsername])
 
   // Socket event handlers
   useEffect(() => {
@@ -125,7 +153,7 @@ export function useGame(gameId?: string): GameState & GameActions {
             role: currentPlayerFromConverted.role
           } : {
             id: currentPlayerFromConverted.id,
-            name: 'You',
+            name: generateUsername(currentPlayerFromConverted.address),
             avatar: '👤',
             isAlive: true,
             isCurrentPlayer: true,
@@ -202,7 +230,7 @@ export function useGame(gameId?: string): GameState & GameActions {
         // Set current player as creator
         setCurrentPlayer({
           id: creatorAddress,
-          name: 'You',
+          name: generateUsername(playerAddress),
           avatar: '👑',
           isAlive: true,
           isCurrentPlayer: true,
@@ -246,7 +274,7 @@ export function useGame(gameId?: string): GameState & GameActions {
         
         setCurrentPlayer({
           id: playerAddress,
-          name: 'You',
+          name: generateUsername(playerAddress),
           avatar: '👤',
           isAlive: true,
           isCurrentPlayer: true,
@@ -283,7 +311,7 @@ export function useGame(gameId?: string): GameState & GameActions {
         const currentPlayerFromConverted = convertedPlayers.find(p => p.address === playerAddress)
         setCurrentPlayer({
           id: playerAddress,
-          name: 'You',
+          name: generateUsername(playerAddress),
           avatar: '👤',
           isAlive: true,
           isCurrentPlayer: true,
