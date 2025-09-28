@@ -204,7 +204,7 @@ class GameManager {
   }
 
   // Start the game
-  startGame(gameId) {
+  async startGame(gameId) {
     const game = this.games.get(gameId);
     if (!game) {
       throw new Error('Game not found');
@@ -233,14 +233,14 @@ class GameManager {
     console.log(`🎯 Game ${gameId} starting night phase with ${game.timeLeft}s timer`);
 
     // Start timer countdown
-    this.startTimer(gameId);
+    await this.startTimer(gameId);
 
     console.log(`Game ${gameId} started with ${game.players.length} players`);
     return game;
   }
 
   // Start timer countdown
-  startTimer(gameId, immediate = false) {
+  async startTimer(gameId, immediate = false) {
     const game = this.games.get(gameId);
     if (!game) return;
 
@@ -258,15 +258,15 @@ class GameManager {
     if (immediate) {
       // Start timer immediately (for phase transitions)
       console.log(`Starting timer immediately for game ${gameId}, phase: ${game.phase}`);
-      this.startActualTimer(gameId);
+      await this.startActualTimer(gameId);
     } else {
       // Wait for players to be ready (for game start)
-      console.log(`Timer prepared for game ${gameId}, waiting for all players to be ready`);
+    console.log(`Timer prepared for game ${gameId}, waiting for all players to be ready`);
     }
   }
 
   // Start timer when frontend is ready
-  startTimerWhenReady(gameId, playerAddress) {
+  async startTimerWhenReady(gameId, playerAddress) {
     const game = this.games.get(gameId);
     if (!game) return;
 
@@ -279,19 +279,19 @@ class GameManager {
     
     if (game.readyPlayers.size >= activePlayers.length) {
       console.log(`All players ready, starting timer immediately`);
-      this.startActualTimer(gameId);
+      await this.startActualTimer(gameId);
     } else if (!game.readyTimer) {
       // Start grace period timer (5 seconds)
       console.log(`Starting 5-second grace period for remaining players`);
-      game.readyTimer = setTimeout(() => {
+      game.readyTimer = setTimeout(async () => {
         console.log(`Grace period expired, starting timer with ${game.readyPlayers.size}/${activePlayers.length} players ready`);
-        this.startActualTimer(gameId);
+        await this.startActualTimer(gameId);
       }, 5000);
     }
   }
 
   // Actually start the timer countdown
-  startActualTimer(gameId) {
+  async startActualTimer(gameId) {
     const game = this.games.get(gameId);
     if (!game) {
       console.log(`ERROR: Game not found for gameId ${gameId}`);
@@ -321,17 +321,17 @@ class GameManager {
     console.log(`Starting timer for game ${gameId} - Phase: ${game.phase}, TimeLeft: ${game.timeLeft}`);
 
     try {
-      game.timerInterval = setInterval(() => {
+    game.timerInterval = setInterval(() => {
         console.log(`Timer tick for game ${gameId}: timeLeft=${game.timeLeft}, phase=${game.phase}`);
-        if (game.timeLeft > 0) {
-          game.timeLeft--;
-          console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
-        } else {
-          // Timer expired, resolve current phase
+      if (game.timeLeft > 0) {
+        game.timeLeft--;
+        console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
+      } else {
+        // Timer expired, resolve current phase
           console.log(`Timer expired for game ${gameId}, resolving phase: ${game.phase}`);
-          this.handleTimerExpired(gameId);
-        }
-      }, 1000);
+        this.handleTimerExpired(gameId);
+      }
+    }, 1000);
 
       // Verify timer was started
       console.log(`Timer verification for game ${gameId}: timerInterval=${!!game.timerInterval}, timerReady=${game.timerReady}`);
@@ -374,7 +374,7 @@ class GameManager {
       this.resolveTaskPhase(gameId);
     } else if (game.phase === 'voting') {
       console.log(`Calling resolveVotingPhase for game ${gameId}`);
-      this.resolveVotingPhase(gameId);
+      await this.resolveVotingPhase(gameId);
     } else {
       console.log(`Unknown phase ${game.phase} for game ${gameId}`);
     }
@@ -546,7 +546,7 @@ class GameManager {
 
     // Start timer for resolution phase (same pattern as game start)
     console.log(`About to start resolution timer for game ${gameId}`);
-    this.startTimer(gameId, true);
+    await this.startTimer(gameId, true);
     console.log(`Resolution timer start attempted for game ${gameId}`);
 
     console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
@@ -643,7 +643,7 @@ class GameManager {
   }
 
   // Resolve voting phase
-  resolveVotingPhase(gameId) {
+  async resolveVotingPhase(gameId) {
     const game = this.games.get(gameId);
     if (!game) return;
 
@@ -832,7 +832,7 @@ class GameManager {
 
     const { playerAddress, vote } = data;
     game.votes[playerAddress] = vote;
-    
+
     console.log(`🗳️ Vote submitted: ${playerAddress} voted for ${vote}`);
     console.log(`🗳️ Current votes:`, game.votes);
 
