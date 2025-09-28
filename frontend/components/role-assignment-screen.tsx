@@ -52,6 +52,9 @@ export default function RoleAssignmentScreen({ role, avatar, onAcknowledge }: Ro
   const [showRole, setShowRole] = useState(false)
   const config = roleConfig[role]
 
+  // Debug logging
+  console.log('🎭 RoleAssignmentScreen - role:', role, 'avatar:', avatar)
+
   useEffect(() => {
     const timer = setTimeout(() => setShowRole(true), 1000)
     return () => clearTimeout(timer)
@@ -73,14 +76,27 @@ export default function RoleAssignmentScreen({ role, avatar, onAcknowledge }: Ro
               <RetroAnimation type="bounce">
                 <div className="text-4xl sm:text-5xl md:text-6xl">
                   {avatar && avatar.startsWith('http') ? (
-                    <img 
-                      src={avatar} 
-                      alt={`${role} avatar`}
-                      className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-cover rounded-none mx-auto"
-                      style={{ imageRendering: 'pixelated' }}
-                    />
+                    <>
+                      {console.log('🎭 Rendering image with URL:', avatar)}
+                      <img 
+                        src={avatar} 
+                        alt={`${role} avatar`}
+                        className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-cover rounded-none mx-auto"
+                        style={{ imageRendering: 'pixelated' }}
+                        onError={(e) => {
+                          console.error('🎭 Image failed to load:', avatar)
+                          console.error('🎭 Error:', e)
+                        }}
+                        onLoad={() => {
+                          console.log('🎭 Image loaded successfully:', avatar)
+                        }}
+                      />
+                    </>
                   ) : (
-                    config.emoji
+                    <>
+                      {console.log('🎭 Using emoji fallback:', config.emoji)}
+                      {config.emoji}
+                    </>
                   )}
                 </div>
               </RetroAnimation>
