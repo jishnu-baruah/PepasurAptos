@@ -87,6 +87,13 @@ class ApiService {
       return data
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error)
+      
+      // Handle network errors gracefully
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.error('Network error - backend server may be down')
+        throw new Error('Unable to connect to game server. Please check your connection and try again.')
+      }
+      
       throw error
     }
   }
