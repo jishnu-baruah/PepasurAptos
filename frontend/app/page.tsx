@@ -359,10 +359,17 @@ export default function Home() {
         <StakingScreen
           playerAddress={walletAddress}
           mode="create"
-          onStakeSuccess={(gameId, roomCode) => {
-            console.log('✅ Room created successfully:', { gameId, roomCode })
-            setCurrentRoomCode(roomCode || '')
-            setGameState("lobby")
+          onStakeSuccess={async () => {
+            console.log('✅ Contract staking successful, creating backend room...')
+            try {
+              const { gameId, roomCode } = await createGame(walletAddress)
+              console.log('✅ Room created successfully:', { gameId, roomCode })
+              setCurrentRoomCode(roomCode)
+              setGameState("lobby")
+            } catch (error) {
+              console.error('❌ Failed to create room after staking:', error)
+              alert('Staking successful but failed to create room. Please try again.')
+            }
           }}
           onCancel={() => setGameState("wallet")}
         />

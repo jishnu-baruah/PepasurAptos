@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi'
-import { createGame } from '@/hooks/useGame'
 
 interface StakingScreenProps {
   gameId?: string // Optional for room creation
@@ -61,19 +60,19 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   })
 
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && hash) {
       console.log('✅ Staking transaction confirmed!')
+      console.log('Transaction hash:', hash)
       
       if (mode === 'create') {
-        // For room creation, we need to get the gameId from the transaction
-        // and create the room in the backend
-        handleCreateRoomAfterStake()
+        // For room creation: just handle the staking success
+        handleStakeSuccess(hash)
       } else {
-        // For joining, just call success callback
+        // For joining: call success callback with gameId
         onStakeSuccess(gameId)
       }
     }
-  }, [isSuccess, onStakeSuccess, mode, gameId])
+  }, [isSuccess, hash, onStakeSuccess, mode, gameId])
 
   useEffect(() => {
     if (writeError) {
@@ -90,17 +89,22 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
     sufficient: balance.value >= BigInt(Math.floor(stakeAmount * 1e18)) // Convert 0.1 FLOW to wei
   } : null
 
-  const handleCreateRoomAfterStake = async () => {
+  const handleStakeSuccess = async (transactionHash: string) => {
     try {
-      // Create the room in the backend after successful staking
-      const { gameId: newGameId, roomCode: newRoomCode } = await createGame(playerAddress)
-      console.log('🎮 Room created after staking:', { gameId: newGameId, roomCode: newRoomCode })
+      console.log('✅ Contract staking successful!')
+      console.log('Transaction hash:', transactionHash)
       
-      // Call success callback with the new game info
-      onStakeSuccess(newGameId, newRoomCode)
+      if (mode === 'create') {
+        // For room creation: just call success callback
+        // The backend will handle room creation separately
+        onStakeSuccess()
+      } else {
+        // For joining: call success callback with gameId
+        onStakeSuccess(gameId)
+      }
     } catch (error) {
-      console.error('❌ Failed to create room after staking:', error)
-      setError('Staking successful but failed to create room. Please try again.')
+      console.error('❌ Error handling stake success:', error)
+      setError('Staking successful but failed to proceed. Please try again.')
       setIsStaking(false)
     }
   }
