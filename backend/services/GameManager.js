@@ -41,7 +41,7 @@ class GameManager {
       creator: creatorAddress,
       players: [creatorAddress],
       roles: {}, // address -> role (only server knows)
-      phase: 'staking',
+      phase: 'lobby',
       day: 1,
       timeLeft: 0,
       startedAt: null,
@@ -137,6 +137,25 @@ class GameManager {
   // Get game staking info
   getGameStakingInfo(gameId) {
     return this.stakingService.getGameStakingInfo(gameId);
+  }
+
+  // Check and update game phase based on staking status
+  async checkStakingStatus(gameId) {
+    const game = this.games.get(gameId);
+    if (!game || !game.stakingRequired) {
+      return;
+    }
+
+    const stakingInfo = this.stakingService.getGameStakingInfo(gameId);
+    if (!stakingInfo) {
+      return;
+    }
+
+    // If staking is complete and game is still in lobby, start the game
+    if (stakingInfo.isReady && game.phase === 'lobby') {
+      console.log(`🎯 Staking complete for game ${gameId}, starting game...`);
+      await this.startGame(gameId);
+    }
   }
 
   // Get player's stake info

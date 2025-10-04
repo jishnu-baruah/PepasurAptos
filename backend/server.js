@@ -7,6 +7,7 @@ require('dotenv').config();
 const gameRoutes = require('./routes/game');
 const detectiveRoutes = require('./routes/detective');
 const stakingRoutes = require('./routes/staking');
+const faucetRoutes = require('./routes/faucet');
 const GameManager = require('./services/GameManager');
 const SocketManager = require('./services/SocketManager');
 const FlowService = require('./services/FlowService');
@@ -54,6 +55,7 @@ gameManager.socketManager = socketManager;
 app.use('/api/game', gameRoutes(gameManager, flowService));
 app.use('/api/detective', detectiveRoutes(gameManager));
 app.use('/api/staking', stakingRoutes);
+app.use('/api/faucet', faucetRoutes);
 app.use('/api/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
