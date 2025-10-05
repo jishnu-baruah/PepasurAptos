@@ -11,18 +11,33 @@ class FaucetService {
 
   async initialize() {
     try {
+      console.log('🚰 Initializing Faucet service...');
+      console.log('Environment variables:');
+      console.log('- FLOW_ACCESS_NODE:', process.env.FLOW_ACCESS_NODE);
+      console.log('- FAUCET_CONTRACT_ADDRESS:', process.env.FAUCET_CONTRACT_ADDRESS);
+      console.log('- FLOW_TOKEN_ADDRESS:', process.env.FLOW_TOKEN_ADDRESS);
+      console.log('- SERVER_PRIVATE_KEY:', process.env.SERVER_PRIVATE_KEY ? 'SET' : 'NOT SET');
+      
       // Initialize Flow EVM provider
       this.provider = new ethers.JsonRpcProvider(process.env.FLOW_ACCESS_NODE);
+      console.log('✅ Provider initialized');
       
       // Initialize wallet if private key is provided
       if (process.env.SERVER_PRIVATE_KEY) {
         this.wallet = new ethers.Wallet(process.env.SERVER_PRIVATE_KEY, this.provider);
         console.log('🔑 Faucet service wallet initialized:', this.wallet.address);
+      } else {
+        console.log('⚠️ SERVER_PRIVATE_KEY not set - wallet not initialized');
       }
 
-      // Load contracts if addresses are provided
-      if (process.env.FAUCET_CONTRACT_ADDRESS && process.env.FLOW_TOKEN_ADDRESS) {
+      // Load contracts if faucet address is provided
+      if (process.env.FAUCET_CONTRACT_ADDRESS) {
+        console.log('📄 Loading contracts...');
         await this.loadContracts();
+        console.log('✅ Contracts loaded successfully');
+      } else {
+        console.log('⚠️ Faucet contract address not set - contracts not loaded');
+        console.log('- FAUCET_CONTRACT_ADDRESS:', process.env.FAUCET_CONTRACT_ADDRESS);
       }
 
       console.log('🚰 Faucet service initialized successfully');
@@ -33,7 +48,12 @@ class FaucetService {
 
   async loadContracts() {
     try {
-      // Native FLOW Faucet contract ABI (updated for native FLOW tokens)
+      console.log('📄 Loading faucet contract...');
+      console.log('- Faucet address:', process.env.FAUCET_CONTRACT_ADDRESS);
+      console.log('- Wallet available:', !!this.wallet);
+      console.log('- Provider available:', !!this.provider);
+      
+      // Native FLOW Faucet contract ABI (for native FLOW tokens only)
       const faucetABI = [
         "function claimTokens() external",
         "function fundFaucet() external payable",
@@ -44,32 +64,20 @@ class FaucetService {
         "function owner() external view returns (address)"
       ];
 
-      // FlowToken contract ABI
-      const flowTokenABI = [
-        "function transfer(address to, uint256 amount) external returns (bool)",
-        "function transferFrom(address from, address to, uint256 amount) external returns (bool)",
-        "function balanceOf(address account) external view returns (uint256)",
-        "function totalSupply() external view returns (uint256)",
-        "function approve(address spender, uint256 amount) external returns (bool)",
-        "function allowance(address owner, address spender) external view returns (uint256)"
-      ];
+      const signerOrProvider = this.wallet || this.provider;
+      console.log('- Using signer/provider:', signerOrProvider ? 'Available' : 'Not available');
 
       this.faucetContract = new ethers.Contract(
         process.env.FAUCET_CONTRACT_ADDRESS,
         faucetABI,
-        this.wallet || this.provider
+        signerOrProvider
       );
 
-      this.flowTokenContract = new ethers.Contract(
-        process.env.FLOW_TOKEN_ADDRESS,
-        flowTokenABI,
-        this.wallet || this.provider
-      );
-
-      console.log('📄 Faucet contract loaded:', process.env.FAUCET_CONTRACT_ADDRESS);
-      console.log('📄 FlowToken contract loaded:', process.env.FLOW_TOKEN_ADDRESS);
+      console.log('✅ Faucet contract loaded:', process.env.FAUCET_CONTRACT_ADDRESS);
+      console.log('✅ Contract instance created successfully');
     } catch (error) {
       console.error('❌ Error loading contracts:', error);
+      throw error;
     }
   }
 
@@ -313,6 +321,20 @@ class FaucetService {
       console.error('Error getting server wallet info:', error);
       throw error;
     }
+  }
+
+  /**
+   * Check if the service is properly initialized
+   * @returns {Object} Service status
+   */
+  getServiceStatus() {
+    return {
+      provider: !!this.provider,
+      wallet: !!this.wallet,
+      faucetContract: !!this.faucetContract,
+      faucetAddress: process.env.FAUCET_CONTRACT_ADDRESS,
+      serverPrivateKey: !!process.env.SERVER_PRIVATE_KEY
+    };
   }
 }
 

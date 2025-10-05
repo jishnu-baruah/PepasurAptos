@@ -118,4 +118,23 @@ router.get('/server-info', async (req, res) => {
   }
 });
 
+// Get service status for debugging
+router.get('/status', async (req, res) => {
+  try {
+    const status = faucetService.getServiceStatus();
+
+    res.json({
+      success: true,
+      data: status
+    });
+
+  } catch (error) {
+    console.error('❌ API Error getting service status:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get service status'
+    });
+  }
+});
+
 module.exports = router;
