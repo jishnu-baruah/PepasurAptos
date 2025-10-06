@@ -106,9 +106,16 @@ class FlowService {
         throw new Error('Contract or wallet not initialized');
       }
 
-      console.log(`💰 Joining game ${gameId} with stake: ${ethers.formatEther(stakeAmount)} U2U`);
+      // Convert stake amount to wei properly
+      const stakeAmountWei = typeof stakeAmount === 'string' ? ethers.parseEther(stakeAmount) : ethers.parseEther(stakeAmount.toString());
       
-      const tx = await this.contract.joinGame(gameId, { value: stakeAmount });
+      console.log(`💰 Joining game ${gameId} with stake: ${ethers.formatEther(stakeAmountWei)} U2U`);
+      
+      const tx = await this.contract.joinGame(gameId, { 
+        value: stakeAmountWei,
+        gasLimit: 200000,
+        gasPrice: ethers.parseUnits('20', 'gwei')
+      });
       await tx.wait();
       
       console.log(`✅ Join game transaction confirmed: ${tx.hash}`);
@@ -321,14 +328,14 @@ class FlowService {
   // Create a game (backend method)
   async createGame(stakeAmount, minPlayers) {
     try {
-      console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(stakeAmount)} U2U, minPlayers: ${minPlayers}`);
+      // Convert stake amount to wei properly
+      const stakeAmountWei = typeof stakeAmount === 'string' ? ethers.parseEther(stakeAmount) : ethers.parseEther(stakeAmount.toString());
+      
+      console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(stakeAmountWei)} U2U, minPlayers: ${minPlayers}`);
       
       if (!this.contract) {
         throw new Error('Contract not loaded');
       }
-
-      // Convert stake amount to wei if it's not already
-      const stakeAmountWei = typeof stakeAmount === 'string' ? ethers.parseEther(stakeAmount) : BigInt(Math.floor(stakeAmount * 1e18));
       
       // Create the game (nonpayable function)
       const tx = await this.contract.createGame(stakeAmountWei, minPlayers, {
