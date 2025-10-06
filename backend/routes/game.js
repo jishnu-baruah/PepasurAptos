@@ -47,7 +47,7 @@ module.exports = (gameManager, flowService) => {
       console.log(`🎮 Extracted gameId: ${gameId}`);
 
       // Step 3: Join the game with the creator's stake
-      const joinTxHash = await flowService.joinGame(gameId, creatorAddress, stakeAmount);
+      const joinTxHash = await flowService.joinGame(gameId, stakeAmount);
       console.log(`✅ Creator joined game, transaction: ${joinTxHash}`);
 
       // Step 4: Create room in game manager
