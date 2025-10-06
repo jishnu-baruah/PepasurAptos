@@ -318,6 +318,37 @@ class FlowService {
     return ethers.parseEther(u2uAmount.toString());
   }
 
+  // Create a game (backend method)
+  async createGame(stakeAmount, minPlayers) {
+    try {
+      console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(stakeAmount)} U2U, minPlayers: ${minPlayers}`);
+      
+      if (!this.contract) {
+        throw new Error('Contract not loaded');
+      }
+
+      // Convert stake amount to wei if it's not already
+      const stakeAmountWei = typeof stakeAmount === 'string' ? ethers.parseEther(stakeAmount) : BigInt(Math.floor(stakeAmount * 1e18));
+      
+      // Create the game (nonpayable function)
+      const tx = await this.contract.createGame(stakeAmountWei, minPlayers, {
+        gasLimit: 200000,
+        gasPrice: ethers.parseUnits('20', 'gwei')
+      });
+      
+      console.log(`📝 Game creation transaction submitted: ${tx.hash}`);
+      
+      // Wait for transaction to be mined
+      const receipt = await tx.wait();
+      console.log(`✅ Game created successfully! Transaction: ${tx.hash}`);
+      
+      return tx.hash;
+    } catch (error) {
+      console.error('❌ Error creating game:', error);
+      throw error;
+    }
+  }
+
   // Extract gameId from a createGame transaction
   async extractGameIdFromTransaction(txHash) {
     try {

@@ -29,25 +29,35 @@ module.exports = (gameManager, flowService) => {
   // Create game and join it (for room creators)
   router.post('/create-and-join', async (req, res) => {
     try {
-      const { creatorAddress, createTxHash, stakeAmount } = req.body;
+      const { creatorAddress, stakeAmount, minPlayers } = req.body;
       
-      if (!creatorAddress || !createTxHash) {
-        return res.status(400).json({ error: 'Creator address and transaction hash are required' });
+      if (!creatorAddress || !stakeAmount) {
+        return res.status(400).json({ error: 'Creator address and stake amount are required' });
       }
 
-      // Extract gameId from the create transaction
+      console.log(`🎮 Creating game and joining for creator: ${creatorAddress}`);
+      console.log(`💰 Stake amount: ${stakeAmount} U2U`);
+
+      // Step 1: Create the game (no payment required)
+      const createTxHash = await flowService.createGame(stakeAmount, minPlayers || 4);
+      console.log(`✅ Game created, transaction: ${createTxHash}`);
+
+      // Step 2: Extract gameId from the create transaction
       const gameId = await flowService.extractGameIdFromTransaction(createTxHash);
-      
-      if (!gameId) {
-        return res.status(400).json({ error: 'Could not extract gameId from transaction' });
-      }
+      console.log(`🎮 Extracted gameId: ${gameId}`);
 
-      // Join the game with the creator's stake
+      // Step 3: Join the game with the creator's stake
       const joinTxHash = await flowService.joinGame(gameId, creatorAddress, stakeAmount);
+      console.log(`✅ Creator joined game, transaction: ${joinTxHash}`);
+
+      // Step 4: Create room in game manager
+      const { roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers || 4);
       
       res.json({
         success: true,
         gameId,
+        roomCode,
+        createTxHash,
         joinTxHash,
         message: 'Game created and creator joined successfully'
       });
