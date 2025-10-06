@@ -138,6 +138,27 @@ module.exports = (gameManager, flowService) => {
     }
   });
 
+  // Record player stake (called after successful on-chain staking)
+  router.post('/record-stake', async (req, res) => {
+    try {
+      const { gameId, playerAddress, transactionHash } = req.body;
+      
+      if (!gameId || !playerAddress || !transactionHash) {
+        return res.status(400).json({ error: 'Game ID, player address, and transaction hash are required' });
+      }
+
+      gameManager.recordPlayerStake(gameId, playerAddress, transactionHash);
+      
+      res.json({
+        success: true,
+        message: 'Stake recorded successfully'
+      });
+    } catch (error) {
+      console.error('Error recording stake:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Get game by room code
   router.get('/room/:roomCode', (req, res) => {
     try {

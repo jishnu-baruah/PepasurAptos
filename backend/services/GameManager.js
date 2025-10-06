@@ -53,6 +53,7 @@ class GameManager {
       votes: {}, // address -> votedFor
       stakingRequired: true, // Require staking for this game
       stakingStatus: 'waiting', // waiting, ready, completed
+      playerStakes: new Map(), // Track which players have staked
       eliminated: [],
       winners: [],
       roleCommit: null,
@@ -137,13 +138,55 @@ class GameManager {
     }
 
     // For staking games, check if all players have staked
-    const stakingInfo = this.stakingService.getGameStakingInfo(gameId);
-    return stakingInfo && stakingInfo.isReady;
+    // Since we're tracking staking directly in GameManager, check if all players have staked
+    const allPlayersStaked = game.players.every(playerAddress => {
+      const stakeKey = `${gameId}-${playerAddress}`;
+      return game.playerStakes && game.playerStakes.has(stakeKey);
+    });
+    
+    return game.players.length >= game.minPlayers && allPlayersStaked;
+  }
+
+  // Record that a player has staked
+  recordPlayerStake(gameId, playerAddress, transactionHash) {
+    const game = this.games.get(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    const stakeKey = `${gameId}-${playerAddress}`;
+    game.playerStakes.set(stakeKey, {
+      playerAddress,
+      transactionHash,
+      stakedAt: Date.now(),
+      amount: game.stakeAmount
+    });
+
+    console.log(`💰 Recorded stake for player ${playerAddress} in game ${gameId}`);
+    
+    // Check if game is ready to start
+    this.checkStakingStatus(gameId);
   }
 
   // Get game staking info
   getGameStakingInfo(gameId) {
-    return this.stakingService.getGameStakingInfo(gameId);
+    const game = this.games.get(gameId);
+    if (!game) {
+      return null;
+    }
+
+    return {
+      gameId: gameId,
+      roomCode: game.roomCode,
+      players: game.players,
+      playersCount: game.players.length,
+      minPlayers: game.minPlayers,
+      totalStaked: (game.playerStakes.size * game.stakeAmount).toString(),
+      totalStakedInU2U: ethers.formatEther(game.playerStakes.size * game.stakeAmount),
+      status: game.stakingStatus,
+      createdAt: game.createdAt,
+      isReady: game.players.length >= game.minPlayers && game.playerStakes.size === game.players.length
+    };
   }
 
   // Check and update game phase based on staking status
@@ -153,7 +196,7 @@ class GameManager {
       return;
     }
 
-    const stakingInfo = this.stakingService.getGameStakingInfo(gameId);
+    const stakingInfo = this.getGameStakingInfo(gameId);
     if (!stakingInfo) {
       return;
     }
