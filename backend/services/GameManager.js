@@ -73,7 +73,10 @@ class GameManager {
         // Use U2UService to create game on-chain
         const flowService = require('./FlowService');
         const flowServiceInstance = new flowService();
-        const onChainGameId = await flowServiceInstance.createGame(game.stakeAmount, game.minPlayers);
+        const createTxHash = await flowServiceInstance.createGame(game.stakeAmount, game.minPlayers);
+        
+        // Extract the actual gameId from the transaction
+        const onChainGameId = await flowServiceInstance.extractGameIdFromTransaction(createTxHash);
         
         console.log(`✅ Game created on-chain with ID: ${onChainGameId}`);
         game.onChainGameId = onChainGameId;
