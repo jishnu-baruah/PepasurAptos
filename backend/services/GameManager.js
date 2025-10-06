@@ -1012,8 +1012,14 @@ class GameManager {
         // Calculate rewards
         const rewards = this.stakingService.calculateRewards(gameId, winners, losers);
         
-        // Distribute rewards
-        const distributionResult = await this.stakingService.distributeRewards(gameId, rewards);
+        // Distribute rewards using contract gameId
+        const contractGameId = game.onChainGameId;
+        if (!contractGameId) {
+          console.error('❌ No contract gameId available for reward distribution');
+          return game;
+        }
+        
+        const distributionResult = await this.stakingService.distributeRewards(contractGameId, rewards);
         
         console.log(`💰 Rewards distributed for game ${gameId}:`, distributionResult);
         

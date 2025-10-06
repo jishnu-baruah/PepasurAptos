@@ -342,6 +342,8 @@ class StakingService {
       await tx.wait();
       console.log(`✅ Settlement transaction confirmed: ${tx.hash}`);
 
+      console.log(`💰 Settlement submitted successfully! Players can now withdraw their rewards.`);
+
       const distributionResults = rewards.rewards.map(reward => ({
         playerAddress: reward.playerAddress,
         role: reward.role,
