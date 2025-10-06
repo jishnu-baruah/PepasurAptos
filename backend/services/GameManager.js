@@ -181,8 +181,8 @@ class GameManager {
       players: game.players,
       playersCount: game.players.length,
       minPlayers: game.minPlayers,
-      totalStaked: (game.playerStakes.size * game.stakeAmount).toString(),
-      totalStakedInU2U: ethers.formatEther(game.playerStakes.size * game.stakeAmount),
+      totalStaked: (BigInt(game.playerStakes.size) * BigInt(game.stakeAmount)).toString(),
+      totalStakedInU2U: ethers.formatEther(BigInt(game.playerStakes.size) * BigInt(game.stakeAmount)),
       status: game.stakingStatus,
       createdAt: game.createdAt,
       isReady: game.players.length >= game.minPlayers && game.playerStakes.size === game.players.length
