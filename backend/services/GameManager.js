@@ -938,6 +938,11 @@ class GameManager {
     // Remove ready timer to prevent circular reference in JSON serialization
     delete publicGame.readyTimer;
 
+    // Include contract gameId for blockchain operations
+    if (game.onChainGameId) {
+      publicGame.contractGameId = game.onChainGameId;
+    }
+
     return publicGame;
   }
 
