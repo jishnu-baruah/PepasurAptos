@@ -47,7 +47,7 @@ module.exports = (gameManager, flowService) => {
       console.log(`🎮 Extracted gameId: ${gameId}`);
 
       // Step 3: Create room in game manager (user will stake from frontend)
-      const { gameId: managerGameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers || 4);
+      const { gameId: managerGameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers || 4, gameId);
       
       res.json({
         success: true,

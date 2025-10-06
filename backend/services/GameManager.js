@@ -31,7 +31,7 @@ class GameManager {
   }
 
   // Create a new game with staking requirement
-  async createGame(creatorAddress, stakeAmount, minPlayers) {
+  async createGame(creatorAddress, stakeAmount, minPlayers, contractGameId = null) {
     const gameId = uuidv4();
     const roomCode = this.generateRoomCode();
     
@@ -59,14 +59,12 @@ class GameManager {
       status: 'active'
     };
 
-    this.games.set(gameId, game);
-    this.roomCodes.set(roomCode, gameId);
-    
-    console.log(`🎮 Game created: ${gameId} (Room: ${roomCode}) by ${creatorAddress}`);
-    console.log(`💰 Staking required: ${game.stakingRequired ? 'YES' : 'NO'}`);
-    
-    // Create game on-chain if staking is required
-    if (game.stakingRequired) {
+    // If contractGameId is provided, use it; otherwise create a new on-chain game
+    if (contractGameId) {
+      game.onChainGameId = contractGameId;
+      console.log(`🎮 Using provided contract gameId: ${contractGameId}`);
+    } else if (game.stakingRequired) {
+      // Create game on-chain only if no contractGameId was provided
       try {
         console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(game.stakeAmount)} U2U`);
         
@@ -86,6 +84,12 @@ class GameManager {
         // Don't fail the entire game creation, just log the error
       }
     }
+
+    this.games.set(gameId, game);
+    this.roomCodes.set(roomCode, gameId);
+    
+    console.log(`🎮 Game created: ${gameId} (Room: ${roomCode}) by ${creatorAddress}`);
+    console.log(`💰 Staking required: ${game.stakingRequired ? 'YES' : 'NO'}`);
     
     return { gameId, roomCode, game };
   }
