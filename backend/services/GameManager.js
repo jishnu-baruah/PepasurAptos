@@ -211,10 +211,13 @@ class GameManager {
       return;
     }
 
-    // If staking is complete and game is still in lobby, start the game
+    // If staking is complete and game is still in lobby, start the game with a delay
     if (stakingInfo.isReady && game.phase === 'lobby') {
-      console.log(`🎯 Staking complete for game ${gameId}, starting game...`);
-      await this.startGame(gameId);
+      console.log(`🎯 Staking complete for game ${gameId}, starting game in 3 seconds...`);
+      // Add a 3-second delay to ensure all players have time to see role assignment
+      setTimeout(async () => {
+        await this.startGame(gameId);
+      }, 3000);
     }
   }
 
@@ -1025,6 +1028,12 @@ class GameManager {
       };
     } else {
       gameState.roles = {};
+    }
+    
+    // For eliminated ASUR players, show all roles (so they can see who was ASUR)
+    if (game.eliminated && game.eliminated.includes(playerAddress) && game.roles[playerAddress] === 'ASUR') {
+      gameState.roles = { ...game.roles };
+      console.log(`🔍 Showing all roles to eliminated ASUR player: ${playerAddress}`);
     }
     
     // Remove other sensitive information
