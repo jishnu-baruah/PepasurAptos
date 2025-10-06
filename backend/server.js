@@ -107,7 +107,7 @@ const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces
 server.listen(PORT, HOST, () => {
   console.log(`🚀 ASUR Backend server running on ${HOST}:${PORT}`);
   console.log(`📡 Socket.IO server ready for connections`);
-  console.log(`🔗 Flow integration: ${process.env.FLOW_ACCESS_NODE}`);
+  console.log(`🔗 U2U integration: ${process.env.U2U_ACCESS_NODE}`);
   console.log(`🌐 CORS enabled for origins:`, corsOptions.origin);
 });
 

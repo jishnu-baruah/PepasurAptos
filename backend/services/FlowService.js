@@ -11,8 +11,8 @@ class FlowService {
 
   async initialize() {
     try {
-      // Initialize Flow EVM provider
-      this.provider = new ethers.JsonRpcProvider(process.env.FLOW_ACCESS_NODE);
+      // Initialize U2U EVM provider
+      this.provider = new ethers.JsonRpcProvider(process.env.U2U_ACCESS_NODE);
       
       // Initialize wallet if private key is provided
       if (process.env.SERVER_PRIVATE_KEY) {
@@ -25,9 +25,9 @@ class FlowService {
         await this.loadContract();
       }
 
-      console.log('🌊 Flow service initialized successfully');
+      console.log('🌊 U2U service initialized successfully');
     } catch (error) {
-      console.error('❌ Error initializing Flow service:', error);
+      console.error('❌ Error initializing U2U service:', error);
     }
   }
 
@@ -55,7 +55,7 @@ class FlowService {
         this.wallet || this.provider
       );
 
-      console.log('📄 PepAsur contract loaded:', process.env.PEPASUR_CONTRACT_ADDRESS);
+      console.log('📄 PepAsur contract loaded for U2U:', process.env.PEPASUR_CONTRACT_ADDRESS);
     } catch (error) {
       console.error('❌ Error loading contract:', error);
     }
@@ -68,7 +68,7 @@ class FlowService {
         throw new Error('Contract or wallet not initialized');
       }
 
-      console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(stakeAmount)} FLOW, minPlayers: ${minPlayers}`);
+      console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(stakeAmount)} U2U, minPlayers: ${minPlayers}`);
       
       const tx = await this.contract.createGame(stakeAmount, minPlayers);
       const receipt = await tx.wait();
@@ -106,7 +106,7 @@ class FlowService {
         throw new Error('Contract or wallet not initialized');
       }
 
-      console.log(`💰 Joining game ${gameId} with stake: ${ethers.formatEther(stakeAmount)} FLOW`);
+      console.log(`💰 Joining game ${gameId} with stake: ${ethers.formatEther(stakeAmount)} U2U`);
       
       const tx = await this.contract.joinGame(gameId, { value: stakeAmount });
       await tx.wait();

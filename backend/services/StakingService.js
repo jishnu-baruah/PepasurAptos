@@ -16,8 +16,8 @@ class StakingService {
 
   async initialize() {
     try {
-      // Initialize Flow EVM provider for staking
-      this.provider = new ethers.JsonRpcProvider(process.env.FLOW_ACCESS_NODE);
+      // Initialize U2U EVM provider for staking
+      this.provider = new ethers.JsonRpcProvider(process.env.U2U_ACCESS_NODE);
       
       // Initialize wallet if private key is provided
       if (process.env.SERVER_PRIVATE_KEY) {
@@ -31,8 +31,8 @@ class StakingService {
       }
 
       console.log('💰 Staking service initialized successfully');
-      console.log(`💰 Stake amount: ${ethers.formatEther(this.stakeAmount)} FLOW per player`);
-      console.log(`💰 Total pool: ${ethers.formatEther(this.totalPool)} FLOW for 4 players`);
+      console.log(`💰 Stake amount: ${ethers.formatEther(this.stakeAmount)} U2U per player`);
+      console.log(`💰 Total pool: ${ethers.formatEther(this.totalPool)} U2U for 4 players`);
     } catch (error) {
       console.error('❌ Error initializing staking service:', error);
     }
@@ -62,7 +62,7 @@ class StakingService {
         this.wallet || this.provider
       );
 
-      console.log('📄 PepAsur contract loaded for staking:', process.env.PEPASUR_CONTRACT_ADDRESS);
+      console.log('📄 PepAsur contract loaded for staking on U2U:', process.env.PEPASUR_CONTRACT_ADDRESS);
     } catch (error) {
       console.error('❌ Error loading contract:', error);
     }
@@ -74,7 +74,7 @@ class StakingService {
       if (!this.provider) {
         console.log('⚠️ Provider not initialized, using mock balance for testing');
         return {
-          balance: "1000000000000000000", // 1 FLOW in wei
+          balance: "1000000000000000000", // 1 U2U in wei
           balanceInFlow: "1.0",
           sufficient: true,
           mock: true
@@ -84,7 +84,7 @@ class StakingService {
       const balance = await this.provider.getBalance(playerAddress);
       const balanceInFlow = ethers.formatEther(balance);
       
-      console.log(`💰 Player ${playerAddress} balance: ${balanceInFlow} FLOW`);
+      console.log(`💰 Player ${playerAddress} balance: ${balanceInFlow} U2U`);
       
       return {
         balance: balance.toString(),
@@ -100,7 +100,7 @@ class StakingService {
   // Stake FLOW for a game (REAL CONTRACT MODE)
   async stakeForGame(gameId, playerAddress, roomCode) {
     try {
-      console.log(`💰 Player ${playerAddress} staking ${ethers.formatEther(this.stakeAmount)} FLOW for game ${gameId}`);
+      console.log(`💰 Player ${playerAddress} staking ${ethers.formatEther(this.stakeAmount)} U2U for game ${gameId}`);
       
       // Validate room code
       if (!this.validateRoomCode(roomCode)) {
@@ -141,7 +141,7 @@ class StakingService {
       }
 
       // Use real contract to join game
-      console.log(`🎮 Joining game ${gameId} on-chain with stake: ${ethers.formatEther(this.stakeAmount)} FLOW`);
+      console.log(`🎮 Joining game ${gameId} on-chain with stake: ${ethers.formatEther(this.stakeAmount)} U2U`);
       
       const tx = await this.contract.joinGame(gameId, { value: this.stakeAmount });
       await tx.wait();
@@ -163,7 +163,7 @@ class StakingService {
       });
 
       console.log(`💰 Stake successful! Game ${gameId} now has ${game.players.length}/${this.minPlayers} players`);
-      console.log(`💰 Total staked: ${ethers.formatEther(game.totalStaked)} FLOW`);
+      console.log(`💰 Total staked: ${ethers.formatEther(game.totalStaked)} U2U`);
 
       // Check if game is ready to start
       if (game.players.length === this.minPlayers) {
@@ -240,9 +240,9 @@ class StakingService {
       const prizePool = totalPool - houseCut;
 
       console.log(`💰 Calculating rewards for game ${gameId}:`);
-      console.log(`💰 Total pool: ${ethers.formatEther(totalPool)} FLOW`);
-      console.log(`💰 House cut (${houseCutBps/100}%): ${ethers.formatEther(houseCut)} FLOW`);
-      console.log(`💰 Prize pool: ${ethers.formatEther(prizePool)} FLOW`);
+      console.log(`💰 Total pool: ${ethers.formatEther(totalPool)} U2U`);
+      console.log(`💰 House cut (${houseCutBps/100}%): ${ethers.formatEther(houseCut)} U2U`);
+      console.log(`💰 Prize pool: ${ethers.formatEther(prizePool)} U2U`);
 
       const rewards = [];
 

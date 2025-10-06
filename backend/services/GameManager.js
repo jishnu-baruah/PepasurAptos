@@ -68,7 +68,7 @@ class GameManager {
     // Create game on-chain if staking is required
     if (game.stakingRequired) {
       try {
-        console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(game.stakeAmount)} FLOW`);
+        console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(game.stakeAmount)} U2U`);
         
         // Use FlowService to create game on-chain
         const flowService = require('./FlowService');

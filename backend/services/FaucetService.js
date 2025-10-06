@@ -13,13 +13,13 @@ class FaucetService {
     try {
       console.log('🚰 Initializing Faucet service...');
       console.log('Environment variables:');
-      console.log('- FLOW_ACCESS_NODE:', process.env.FLOW_ACCESS_NODE);
+      console.log('- U2U_ACCESS_NODE:', process.env.U2U_ACCESS_NODE);
       console.log('- FAUCET_CONTRACT_ADDRESS:', process.env.FAUCET_CONTRACT_ADDRESS);
       console.log('- FLOW_TOKEN_ADDRESS:', process.env.FLOW_TOKEN_ADDRESS);
       console.log('- SERVER_PRIVATE_KEY:', process.env.SERVER_PRIVATE_KEY ? 'SET' : 'NOT SET');
       
-      // Initialize Flow EVM provider
-      this.provider = new ethers.JsonRpcProvider(process.env.FLOW_ACCESS_NODE);
+      // Initialize U2U EVM provider
+      this.provider = new ethers.JsonRpcProvider(process.env.U2U_ACCESS_NODE);
       console.log('✅ Provider initialized');
       
       // Initialize wallet if private key is provided
