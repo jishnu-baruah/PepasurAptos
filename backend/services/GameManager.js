@@ -213,11 +213,11 @@ class GameManager {
 
     // If staking is complete and game is still in lobby, start the game with a delay
     if (stakingInfo.isReady && game.phase === 'lobby') {
-      console.log(`🎯 Staking complete for game ${gameId}, starting game in 3 seconds...`);
-      // Add a 3-second delay to ensure all players have time to see role assignment
+      console.log(`🎯 Staking complete for game ${gameId}, starting game in 10 seconds...`);
+      // Add a 10-second delay to ensure all players have time to see role assignment
       setTimeout(async () => {
         await this.startGame(gameId);
-      }, 3000);
+      }, 10000);
     }
   }
 
@@ -252,10 +252,9 @@ class GameManager {
 
     game.players.push(playerAddress);
 
-    // Auto-start if minimum players reached
-    if (game.players.length >= game.minPlayers && game.phase === 'lobby') {
-      this.startGame(gameId);
-    }
+    // Don't auto-start here - let checkStakingStatus handle it
+    // This prevents race conditions with the delayed start
+    console.log(`Player ${playerAddress} joined. Total players: ${game.players.length}`);
 
     return game;
   }
