@@ -46,11 +46,7 @@ module.exports = (gameManager, flowService) => {
       const gameId = await flowService.extractGameIdFromTransaction(createTxHash);
       console.log(`🎮 Extracted gameId: ${gameId}`);
 
-      // Step 3: Join the game with the creator's stake
-      const joinTxHash = await flowService.joinGame(gameId, stakeAmount);
-      console.log(`✅ Creator joined game, transaction: ${joinTxHash}`);
-
-      // Step 4: Create room in game manager
+      // Step 3: Create room in game manager (user will stake from frontend)
       const { roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers || 4);
       
       res.json({
@@ -58,8 +54,7 @@ module.exports = (gameManager, flowService) => {
         gameId,
         roomCode,
         createTxHash,
-        joinTxHash,
-        message: 'Game created and creator joined successfully'
+        message: 'Game created successfully. Creator can now stake to join.'
       });
     } catch (error) {
       console.error('Error creating and joining game:', error);
