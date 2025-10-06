@@ -203,21 +203,38 @@ class GameManager {
   async checkStakingStatus(gameId) {
     const game = this.games.get(gameId);
     if (!game || !game.stakingRequired) {
+      console.log(`❌ checkStakingStatus: Game ${gameId} not found or staking not required`);
       return;
     }
 
     const stakingInfo = this.getGameStakingInfo(gameId);
     if (!stakingInfo) {
+      console.log(`❌ checkStakingStatus: No staking info for game ${gameId}`);
       return;
     }
 
+    console.log(`🔍 checkStakingStatus for game ${gameId}:`, {
+      players: game.players.length,
+      minPlayers: game.minPlayers,
+      stakedPlayers: game.playerStakes.size,
+      isReady: stakingInfo.isReady,
+      phase: game.phase
+    });
+
     // If staking is complete and game is still in lobby, start the game with a delay
     if (stakingInfo.isReady && game.phase === 'lobby') {
-      console.log(`🎯 Staking complete for game ${gameId}, starting game in 10 seconds...`);
-      // Add a 10-second delay to ensure all players have time to see role assignment
+      console.log(`🎯 Staking complete for game ${gameId}, starting game in 3 seconds...`);
+      // Add a 3-second delay to ensure all players have time to see role assignment
       setTimeout(async () => {
         await this.startGame(gameId);
-      }, 10000);
+      }, 3000);
+    } else {
+      console.log(`⏳ Game ${gameId} not ready to start yet:`, {
+        isReady: stakingInfo.isReady,
+        phase: game.phase,
+        players: game.players.length,
+        staked: game.playerStakes.size
+      });
     }
   }
 
@@ -256,6 +273,18 @@ class GameManager {
 
     // Don't auto-start here - let checkStakingStatus handle it with proper delay
     console.log(`Player ${playerAddress} joined game ${gameId}. Total players: ${game.players.length}`);
+    
+    // Check if game is ready to start after adding player
+    this.checkStakingStatus(gameId);
+    
+    // Emit game state update when player joins
+    if (this.socketManager) {
+      try {
+        this.socketManager.emitGameStateUpdate(gameId);
+      } catch (error) {
+        console.error(`❌ Error emitting game state update when player joins:`, error);
+      }
+    }
 
     return game;
   }
@@ -318,6 +347,16 @@ class GameManager {
     await this.startTimer(gameId);
 
     console.log(`Game ${gameId} started with ${game.players.length} players`);
+    
+    // Emit game state update when game starts
+    if (this.socketManager) {
+      try {
+        this.socketManager.emitGameStateUpdate(gameId);
+      } catch (error) {
+        console.error(`❌ Error emitting game state update when game starts:`, error);
+      }
+    }
+    
     return game;
   }
 
@@ -408,6 +447,15 @@ class GameManager {
       if (game.timeLeft > 0) {
         game.timeLeft--;
         console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
+        
+        // Emit game state update every second during countdown
+        if (this.socketManager) {
+          try {
+            this.socketManager.emitGameStateUpdate(gameId);
+          } catch (error) {
+            console.error(`❌ Error emitting game state update during timer countdown:`, error);
+          }
+        }
       } else {
         // Timer expired, resolve current phase
           console.log(`Timer expired for game ${gameId}, resolving phase: ${game.phase}`);
