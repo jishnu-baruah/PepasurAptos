@@ -111,9 +111,14 @@ module.exports = (gameManager, flowService) => {
         return res.status(404).json({ error: 'Room code not found' });
       }
 
+      const publicGameState = gameManager.getPublicGameState(game.gameId);
+      
       res.json({
         success: true,
-        game: gameManager.getPublicGameState(game.gameId)
+        game: {
+          ...publicGameState,
+          onChainGameId: game.onChainGameId // Include the on-chain game ID for contract calls
+        }
       });
     } catch (error) {
       console.error('Error getting game by room code:', error);

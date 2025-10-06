@@ -103,13 +103,17 @@ class GameManager {
         throw new Error('This game does not require staking');
       }
 
-      // Use staking service to handle the stake
-      const stakeResult = await this.stakingService.stakeForGame(gameId, playerAddress, roomCode);
+      if (!game.onChainGameId) {
+        throw new Error('Game not created on-chain yet');
+      }
+
+      // Use staking service to handle the stake with the on-chain game ID
+      const stakeResult = await this.stakingService.stakeForGame(game.onChainGameId, playerAddress, roomCode);
       
       // Update game staking status
       game.stakingStatus = stakeResult.gameStatus;
       
-      console.log(`💰 Player ${playerAddress} staked for game ${gameId}`);
+      console.log(`💰 Player ${playerAddress} staked for game ${gameId} (on-chain ID: ${game.onChainGameId})`);
       
       return stakeResult;
     } catch (error) {
