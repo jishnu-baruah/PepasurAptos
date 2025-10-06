@@ -35,6 +35,16 @@ class GameManager {
     const gameId = uuidv4();
     const roomCode = this.generateRoomCode();
     
+    // Convert stakeAmount to wei if it's a decimal
+    let stakeAmountWei;
+    if (typeof stakeAmount === 'number' && stakeAmount < 1) {
+      // If it's a decimal like 0.1, convert to wei
+      stakeAmountWei = ethers.parseEther(stakeAmount.toString());
+    } else {
+      // If it's already in wei or undefined, use as is
+      stakeAmountWei = stakeAmount || parseInt(process.env.DEFAULT_STAKE_AMOUNT) || 10000000000000000;
+    }
+    
     const game = {
       gameId,
       roomCode,
@@ -45,7 +55,7 @@ class GameManager {
       day: 1,
       timeLeft: 0,
       startedAt: null,
-      stakeAmount: stakeAmount || parseInt(process.env.DEFAULT_STAKE_AMOUNT) || 10000000000000000,
+      stakeAmount: stakeAmountWei,
       minPlayers: minPlayers || parseInt(process.env.DEFAULT_MIN_PLAYERS) || 4,
       maxPlayers: parseInt(process.env.DEFAULT_MAX_PLAYERS) || 10,
       pendingActions: {}, // address -> { commit, revealed }
