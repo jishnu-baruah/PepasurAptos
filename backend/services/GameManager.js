@@ -998,6 +998,11 @@ class GameManager {
     // Remove ready timer to prevent circular reference in JSON serialization
     delete publicGame.readyTimer;
 
+    // Convert BigInt values to strings for JSON serialization
+    if (publicGame.stakeAmount && typeof publicGame.stakeAmount === 'bigint') {
+      publicGame.stakeAmount = publicGame.stakeAmount.toString();
+    }
+
     // Include contract gameId for blockchain operations
     if (game.onChainGameId) {
       publicGame.contractGameId = game.onChainGameId;
@@ -1029,6 +1034,11 @@ class GameManager {
     delete gameState.timerInterval;
     // Remove ready timer to prevent circular reference in JSON serialization
     delete gameState.readyTimer;
+
+    // Convert BigInt values to strings for JSON serialization
+    if (gameState.stakeAmount && typeof gameState.stakeAmount === 'bigint') {
+      gameState.stakeAmount = gameState.stakeAmount.toString();
+    }
 
     return gameState;
   }
