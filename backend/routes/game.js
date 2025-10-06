@@ -127,9 +127,6 @@ module.exports = (gameManager, flowService) => {
 
       const game = gameManager.joinGameByRoomCode(roomCode, playerAddress);
       
-      // Check if game is ready to start after player joins
-      gameManager.checkStakingStatus(game.gameId);
-      
       res.json({
         success: true,
         game: gameManager.getPublicGameState(game.gameId),

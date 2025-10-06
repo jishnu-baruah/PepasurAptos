@@ -242,8 +242,10 @@ class GameManager {
       throw new Error('Game already started');
     }
 
+    // If player is already in game, just return the game (no error)
     if (game.players.includes(playerAddress)) {
-      throw new Error('Player already in game');
+      console.log(`Player ${playerAddress} is already in game ${gameId}, returning existing game`);
+      return game;
     }
 
     if (game.players.length >= game.maxPlayers) {
@@ -252,9 +254,8 @@ class GameManager {
 
     game.players.push(playerAddress);
 
-    // Don't auto-start here - let checkStakingStatus handle it
-    // This prevents race conditions with the delayed start
-    console.log(`Player ${playerAddress} joined. Total players: ${game.players.length}`);
+    // Don't auto-start here - let checkStakingStatus handle it with proper delay
+    console.log(`Player ${playerAddress} joined game ${gameId}. Total players: ${game.players.length}`);
 
     return game;
   }
