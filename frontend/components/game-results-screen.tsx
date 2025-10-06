@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import RetroAnimation from "@/components/retro-animation"
+import WithdrawRewards from "@/components/withdraw-rewards"
 import { Player } from "@/hooks/useGame"
 
 interface GameResultsScreenProps {
@@ -23,13 +24,14 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
 
   if (!game || !showResults) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
         <RetroAnimation />
       </div>
     )
   }
 
   // Determine winners and losers
+  const eliminatedPlayers = players.filter(p => game.eliminated?.includes(p.address))
   const activePlayers = players.filter(p => !game.eliminated?.includes(p.address))
   const mafiaPlayers = activePlayers.filter(p => p.role === 'ASUR')
   const villagerPlayers = activePlayers.filter(p => p.role !== 'ASUR')
@@ -61,7 +63,7 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
   const result = getResultMessage()
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 bg-gradient-to-br ${result.bgColor}`}>
+    <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
       <Card className="w-full max-w-4xl p-8 bg-black/80 border-4 border-white/20 text-white backdrop-blur-sm">
         <div className="space-y-8 text-center">
           {/* Title Section */}
@@ -116,7 +118,7 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
                 💀 ELIMINATED
               </h3>
               <div className="space-y-3">
-                {losers.map((player, index) => (
+                {eliminatedPlayers.length > 0 ? eliminatedPlayers.map((player, index) => (
                   <div key={index} className="flex items-center justify-between p-4 bg-red-800/30 rounded-lg border border-red-500/30">
                     <div className="flex items-center space-x-4">
                       {player.avatar && player.avatar.startsWith('http') ? (
@@ -136,10 +138,46 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
                     </div>
                     <div className="text-red-400 text-2xl font-bold">✗</div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center text-gray-400 py-4">
+                    No players were eliminated
+                  </div>
+                )}
               </div>
             </Card>
           </div>
+
+          {/* All Roles Revealed */}
+          <Card className="p-6 bg-purple-900/50 border-purple-500/50 backdrop-blur-sm">
+            <h3 className="text-2xl font-bold text-purple-400 mb-6 flex items-center justify-center gap-2">
+              🎭 ALL ROLES REVEALED
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {players.map((player, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-purple-800/30 rounded-lg border border-purple-500/30">
+                  <div className="flex items-center space-x-4">
+                    {player.avatar && player.avatar.startsWith('http') ? (
+                      <img 
+                        src={player.avatar} 
+                        alt={`${player.name} avatar`}
+                        className="w-12 h-12 object-cover rounded-none"
+                        style={{ imageRendering: 'pixelated' }}
+                      />
+                    ) : (
+                      <span className="text-3xl">{player.avatar}</span>
+                    )}
+                    <div className="text-left">
+                      <div className="font-bold text-lg text-white">{player.name}</div>
+                      <div className="text-sm text-purple-300">{player.role}</div>
+                    </div>
+                  </div>
+                  <div className={`text-2xl font-bold ${player.isAlive ? 'text-green-400' : 'text-red-400'}`}>
+                    {player.isAlive ? '✓' : '✗'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
 
           {/* Game Summary */}
           <Card className="p-6 bg-gray-900/50 border-gray-500/50 backdrop-blur-sm">
@@ -161,6 +199,75 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
               </div>
             </div>
           </Card>
+
+          {/* Rewards Section */}
+          {game.rewards && (
+            <Card className="p-6 bg-yellow-900/50 border-yellow-500/50 backdrop-blur-sm">
+              <h3 className="text-2xl font-bold text-yellow-400 mb-6 flex items-center justify-center gap-2">
+                💰 REWARDS DISTRIBUTED
+              </h3>
+              <div className="space-y-4">
+                <div className="text-center text-yellow-300 mb-4">
+                  <p className="text-lg">Settlement Transaction:</p>
+                  <p className="font-mono text-sm break-all bg-black/50 p-2 rounded">
+                    {game.rewards.settlementTxHash}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {game.rewards.distributions?.map((reward: any, index: number) => {
+                    const player = players.find(p => p.address === reward.playerAddress);
+                    const isWinner = winners.some(w => w.address === reward.playerAddress);
+                    
+                    return (
+                      <div key={index} className={`p-4 rounded-lg border ${
+                        isWinner 
+                          ? 'bg-green-800/30 border-green-500/30' 
+                          : 'bg-red-800/30 border-red-500/30'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-2xl">{player?.avatar || '👤'}</span>
+                            <div>
+                              <div className="font-bold text-lg">{player?.name || 'Unknown'}</div>
+                              <div className={`text-sm ${isWinner ? 'text-green-300' : 'text-red-300'}`}>
+                                {reward.role} - {isWinner ? 'Winner' : 'Loser'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-yellow-400">
+                              {reward.totalReceivedInU2U} U2U
+                            </div>
+                            <div className="text-sm text-gray-400">
+                              +{reward.rewardInU2U} U2U reward
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div className="text-center text-yellow-300 mt-4">
+                  <p className="text-sm">
+                    Rewards have been queued in the contract. Players can withdraw them anytime.
+                  </p>
+                </div>
+                
+                {/* Withdraw Component for Current Player */}
+                {game.rewards.distributions?.map((reward: any) => (
+                  <WithdrawRewards
+                    key={reward.playerAddress}
+                    gameId={game.gameId}
+                    playerAddress={reward.playerAddress}
+                    rewardAmount={reward.rewardAmount}
+                    rewardInU2U={reward.rewardInU2U}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-6 justify-center pt-4">

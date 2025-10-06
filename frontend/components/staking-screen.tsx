@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useBalance, useSwitchChain, usePublicClient } from 'wagmi'
 
 interface StakingScreenProps {
   gameId?: string // Optional for room creation
@@ -24,14 +24,14 @@ interface StakingInfo {
   playersCount: number
   minPlayers: number
   totalStaked: string
-  totalStakedInFlow: string
+  totalStakedInU2U: string
   status: string
   isReady: boolean
 }
 
 interface BalanceInfo {
   balance: string
-  balanceInFlow: string
+  balanceInU2U: string
   sufficient: boolean
 }
 
@@ -41,38 +41,85 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   const [isStaking, setIsStaking] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [createdRoomCode, setCreatedRoomCode] = useState<string | null>(null) // Store room code from backend
+  const [createdGameId, setCreatedGameId] = useState<string | null>(null) // Store gameId from backend
+  const [joinGameId, setJoinGameId] = useState<string | null>(null) // Store game manager's gameId for join flow
+  const [hasProcessedSuccess, setHasProcessedSuccess] = useState(false) // Prevent duplicate success processing
 
-  const stakeAmount = 0.1 // 0.1 FLOW per player
+  const stakeAmount = 0.1 // 0.1 U2U per player
 
-  // Debug logging
-  console.log('🎮 StakingScreen props:', { gameId, playerAddress })
-  
   // Wagmi hooks for contract interaction
-  const { address } = useAccount()
+  const { address, chainId } = useAccount()
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
+  const { switchChain } = useSwitchChain()
+  const publicClient = usePublicClient()
   
   // Get wallet balance directly from wallet
   const { data: balance, isLoading: balanceLoading } = useBalance({
     address: address as `0x${string}`,
   })
 
-  useEffect(() => {
-    if (isSuccess && hash) {
-      console.log('✅ Staking transaction confirmed!')
-      console.log('Transaction hash:', hash)
-      
-      if (mode === 'create') {
-        // For room creation: just handle the staking success
-        handleStakeSuccess(hash)
-      } else {
-        // For joining: call success callback with gameId
-        onStakeSuccess(gameId)
+  // Ensure wallet is on U2U testnet before staking
+  const ensureCorrectChain = async () => {
+    if (chainId !== 2484) {
+      console.log('🔄 Switching to U2U testnet...')
+      try {
+        await switchChain({ chainId: 2484 })
+        return true
+      } catch (error) {
+        console.error('❌ Failed to switch chain:', error)
+        setError('Please switch to U2U Nebulas Testnet in your wallet')
+        return false
       }
     }
-  }, [isSuccess, hash, onStakeSuccess, mode, gameId])
+    return true
+  }
+
+  useEffect(() => {
+    console.log('🔄 useEffect triggered:', { isSuccess, hash, mode, hasProcessedSuccess })
+    if ((isSuccess && hash) && !hasProcessedSuccess) {
+      console.log('✅ Transaction confirmed!')
+      console.log('Transaction hash:', hash)
+      setHasProcessedSuccess(true) // Prevent duplicate processing
+      
+      if (mode === 'join') {
+        // For joining: call success callback with stored gameId
+        handleStakeSuccess(hash)
+      } else if (mode === 'create') {
+        // For create mode: call success callback
+        handleStakeSuccess(hash)
+      }
+    } else if (hash && !isSuccess && !hasProcessedSuccess) {
+      // Transaction has hash but not confirmed yet - check manually after delay
+      console.log('⏳ Transaction pending, checking manually in 3 seconds...')
+      setTimeout(async () => {
+        try {
+          // Check if transaction is confirmed manually
+          if (publicClient) {
+            const receipt = await publicClient.getTransactionReceipt({ hash: hash as `0x${string}` })
+            if (receipt && receipt.status === 'success' && !hasProcessedSuccess) {
+              console.log('✅ Manual confirmation successful!')
+              setHasProcessedSuccess(true) // Prevent duplicate processing
+              if (mode === 'join') {
+                handleStakeSuccess(hash)
+              } else if (mode === 'create') {
+                handleStakeSuccess(hash)
+              }
+            } else {
+              console.log('⏳ Still pending or failed...')
+            }
+          } else {
+            console.log('❌ Public client not available for manual check')
+          }
+        } catch (error) {
+          console.error('❌ Manual confirmation check failed:', error)
+        }
+      }, 3000)
+    }
+  }, [isSuccess, hash, mode, hasProcessedSuccess])
 
   useEffect(() => {
     if (writeError) {
@@ -85,22 +132,48 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   // Calculate balance info from wallet balance
   const balanceInfo = balance ? {
     balance: balance.value.toString(),
-    balanceInFlow: parseFloat(balance.formatted).toFixed(4),
-    sufficient: balance.value >= BigInt(Math.floor(stakeAmount * 1e18)) // Convert 0.1 FLOW to wei
+    balanceInU2U: parseFloat(balance.formatted).toFixed(4),
+    sufficient: balance.value >= BigInt(Math.floor(stakeAmount * 1e18)) // Convert 0.1 U2U to wei
   } : null
 
   const handleStakeSuccess = async (transactionHash: string) => {
     try {
+      console.log('🎯 handleStakeSuccess called:', { transactionHash, mode })
       console.log('✅ Contract staking successful!')
       console.log('Transaction hash:', transactionHash)
       
+      // Record the stake in the backend
+      const gameIdToRecord = mode === 'create' ? createdGameId : joinGameId
+      if (gameIdToRecord) {
+        try {
+          const response = await fetch('/api/game/record-stake', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              gameId: gameIdToRecord,
+              playerAddress: playerAddress,
+              transactionHash: transactionHash
+            }),
+          })
+          const result = await response.json()
+          if (result.success) {
+            console.log('✅ Stake recorded in backend:', result)
+          } else {
+            console.error('❌ Failed to record stake:', result)
+          }
+        } catch (error) {
+          console.error('❌ Error recording stake:', error)
+        }
+      }
+      
       if (mode === 'create') {
-        // For room creation: just call success callback
-        // The backend will handle room creation separately
-        onStakeSuccess()
+        // For room creation: call success callback with gameId and room code
+        console.log('🎯 Create mode - calling onStakeSuccess with:', { createdGameId, createdRoomCode })
+        onStakeSuccess(createdGameId || undefined, createdRoomCode || undefined)
       } else {
-        // For joining: call success callback with gameId
-        onStakeSuccess(gameId)
+        // For joining: call success callback with game manager's gameId and room code
+        console.log('🎯 Join mode - calling onStakeSuccess with:', { joinGameId, roomCode })
+        onStakeSuccess(joinGameId || undefined, roomCode)
       }
     } catch (error) {
       console.error('❌ Error handling stake success:', error)
@@ -108,6 +181,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
       setIsStaking(false)
     }
   }
+
 
   const handleStake = async () => {
     // For joining mode, require room code
@@ -117,7 +191,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
     }
 
     if (!balanceInfo?.sufficient) {
-      setError('Insufficient balance. You need at least 0.1 FLOW to stake.')
+      setError('Insufficient balance. You need at least 0.1 U2U to stake.')
       return
     }
 
@@ -126,56 +200,133 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
       return
     }
 
+    // Ensure wallet is on the correct chain
+    const chainSwitched = await ensureCorrectChain()
+    if (!chainSwitched) {
+      setIsStaking(false)
+      return
+    }
+
     try {
       setIsStaking(true)
       setError('')
 
       if (mode === 'create') {
-        // For room creation: create game and stake in one transaction
+        // For room creation: use backend to create and join in one transaction
         console.log('🎮 Creating room with staking...')
         console.log('Contract:', process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS)
         console.log('Stake Amount:', stakeAmount)
 
-        writeContract({
-          address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
-          abi: [
-            {
-              "inputs": [
-                {"name": "stakeAmount", "type": "uint256"},
-                {"name": "minPlayers", "type": "uint8"}
+        // Call backend to handle create-and-join atomically
+        try {
+          const response = await fetch('/api/game/create-and-join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              creatorAddress: playerAddress,
+              stakeAmount: stakeAmount,
+              minPlayers: 4
+            }),
+          })
+          
+          const result = await response.json()
+          if (result.success) {
+            console.log('✅ Backend created room:', result)
+            // Store the room code and gameId for later use
+            setCreatedRoomCode(result.roomCode)
+            setCreatedGameId(result.gameId)
+            // Now stake from user's wallet to join the game
+            console.log('💰 User staking to join created game:', result.contractGameId)
+            writeContract({
+              address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
+              abi: [
+                {
+                  "inputs": [{"name": "gameId", "type": "uint64"}],
+                  "name": "joinGame",
+                  "outputs": [],
+                  "stateMutability": "payable",
+                  "type": "function"
+                }
               ],
-              "name": "createGame",
-              "outputs": [{"name": "gameId", "type": "uint64"}],
-              "stateMutability": "payable",
-              "type": "function"
-            }
-          ],
-          functionName: 'createGame',
-          args: [BigInt(Math.floor(stakeAmount * 1e18)), 4], // 0.1 FLOW in wei, 4 min players
-          value: BigInt(Math.floor(stakeAmount * 1e18))
-        })
+              functionName: 'joinGame',
+              args: [BigInt(result.contractGameId)], // Use contractGameId for blockchain call
+              value: BigInt(Math.floor(stakeAmount * 1e18)),
+              gas: BigInt(200000),
+              gasPrice: BigInt(20000000000)
+            })
+          } else {
+            console.error('❌ Backend create failed:', result.error)
+            setError(`Failed to create room: ${result.error}`)
+            setIsStaking(false)
+          }
+        } catch (error) {
+          console.error('❌ Error calling backend:', error)
+          setError(`Failed to create room: ${error instanceof Error ? error.message : 'Unknown error'}`)
+          setIsStaking(false)
+        }
       } else {
-        // For joining: stake to existing room using gameId
+        // For joining: first get gameId from room code, then stake
         console.log('🎮 Joining room with staking...')
         console.log('Contract:', process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS)
-        console.log('Game ID:', gameId)
+        console.log('Room Code:', roomCode)
         console.log('Stake Amount:', stakeAmount)
 
-        writeContract({
-          address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
-          abi: [
-            {
-              "inputs": [{"name": "gameId", "type": "uint64"}],
-              "name": "joinGame",
-              "outputs": [],
-              "stateMutability": "payable",
-              "type": "function"
-            }
-          ],
-          functionName: 'joinGame',
-          args: [BigInt(gameId || 0)],
-          value: BigInt(Math.floor(stakeAmount * 1e18))
-        })
+        if (!gameId) {
+          // First, get the gameId from the room code via backend
+          console.log('🔍 Getting gameId from room code...')
+          const response = await fetch(`/api/game/room/${roomCode}`)
+          const result = await response.json()
+          
+          if (!result.success) {
+            throw new Error('Room code not found')
+          }
+          
+          const gameData = result.game
+          console.log('✅ Found game:', gameData)
+          
+          // Store the game manager's gameId for later use
+          setJoinGameId(gameData.gameId)
+          
+          // Now stake to join the game
+          console.log('💰 Staking to join game:', gameData.contractGameId)
+          writeContract({
+            address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
+            abi: [
+              {
+                "inputs": [{"name": "gameId", "type": "uint64"}],
+                "name": "joinGame",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+              }
+            ],
+            functionName: 'joinGame',
+            args: [BigInt(gameData.contractGameId)], // Use contractGameId for blockchain call
+            value: BigInt(Math.floor(stakeAmount * 1e18)),
+            gas: BigInt(200000), // Set reasonable gas limit for join
+            gasPrice: BigInt(20000000000) // 20 gwei gas price
+          })
+        } else {
+          // We already have gameId, just stake
+          console.log('💰 Staking to join game:', gameId)
+          writeContract({
+            address: process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS as `0x${string}`,
+            abi: [
+              {
+                "inputs": [{"name": "gameId", "type": "uint64"}],
+                "name": "joinGame",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+              }
+            ],
+            functionName: 'joinGame',
+            args: [BigInt(gameId)],
+            value: BigInt(Math.floor(stakeAmount * 1e18)),
+            gas: BigInt(200000), // Set reasonable gas limit for join
+            gasPrice: BigInt(20000000000) // 20 gwei gas price
+          })
+        }
       }
 
     } catch (error) {
@@ -233,7 +384,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
               STAKE TO PLAY
             </div>
             <div className="text-sm text-gray-400">
-              Stake 0.1 FLOW to join the game
+              Stake 0.1 U2U to join the game
             </div>
           </div>
 
@@ -243,7 +394,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
               <div className="space-y-2">
                 <div className="text-sm font-press-start text-gray-300">YOUR BALANCE</div>
                 <div className="text-lg font-bold text-white">
-                  {parseFloat(balanceInfo.balanceInFlow).toFixed(4)} FLOW
+                  {parseFloat(balanceInfo.balanceInU2U).toFixed(4)} U2U
                 </div>
                 <div className={`text-sm font-press-start ${balanceInfo.sufficient ? 'text-green-400' : 'text-red-400'}`}>
                   {balanceInfo.sufficient ? '✅ SUFFICIENT' : '❌ INSUFFICIENT'}
@@ -251,6 +402,30 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
               </div>
             </Card>
           )}
+
+          {/* Chain Info */}
+          <Card className="p-4 bg-[#1a1a1a]/50 border border-[#333333]">
+            <div className="space-y-2">
+              <div className="text-sm font-press-start text-gray-300">NETWORK</div>
+              <div className="text-lg font-bold text-white">
+                {chainId === 2484 ? '✅ U2U Nebulas Testnet' : '❌ Wrong Network'}
+              </div>
+              {chainId !== 2484 && (
+                <div className="text-sm text-yellow-400">
+                  Please switch to U2U Nebulas Testnet
+                </div>
+              )}
+              {chainId !== 2484 && (
+                <Button
+                  onClick={() => switchChain({ chainId: 2484 })}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  size="sm"
+                >
+                  Switch to U2U Testnet
+                </Button>
+              )}
+            </div>
+          </Card>
 
           {/* Room Code Input - Only show for join mode */}
           {mode === 'join' && (
@@ -291,7 +466,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
                   Players: {stakingInfo.playersCount}/{stakingInfo.minPlayers}
                 </div>
                 <div className="text-sm text-gray-400">
-                  Total Staked: {stakingInfo.totalStakedInFlow} FLOW
+                  Total Staked: {stakingInfo.totalStakedInU2U} U2U
                 </div>
               </div>
             </Card>
@@ -301,7 +476,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
           <div className="space-y-3">
             <Button
               onClick={handleStake}
-              disabled={isStaking || isPending || isConfirming || !balanceInfo?.sufficient || (mode === 'join' && !roomCode.trim())}
+              disabled={isStaking || isPending || isConfirming || !balanceInfo?.sufficient || (mode === 'join' && !roomCode.trim()) || chainId !== 2484}
               variant="pixel"
               size="pixelLarge"
               className="w-full"
@@ -314,7 +489,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
                   </span>
                 </div>
               ) : (
-                mode === 'create' ? `🎮 CREATE ROOM & STAKE ${stakeAmount} FLOW` : `💰 STAKE ${stakeAmount} FLOW`
+                mode === 'create' ? `🎮 CREATE ROOM & STAKE ${stakeAmount} U2U` : `💰 STAKE ${stakeAmount} U2U`
               )}
             </Button>
 
@@ -330,7 +505,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
 
           {/* Info */}
           <div className="text-xs text-gray-500 text-center space-y-1">
-            <div>• You need at least 0.1 FLOW to stake</div>
+            <div>• You need at least 0.1 U2U to stake</div>
             <div>• Winners get 70% of prize pool</div>
             <div>• Losers get 30% of prize pool</div>
             <div>• 5% house cut applies</div>
@@ -340,3 +515,4 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
     </div>
   )
 }
+

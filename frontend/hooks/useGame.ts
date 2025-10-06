@@ -44,7 +44,7 @@ export function useGame(gameId?: string): GameState & GameActions {
   const [error, setError] = useState<string | null>(null)
   const [currentGameId, setCurrentGameId] = useState<string | undefined>(gameId)
 
-  // Generate random username in format: name.pepasur.eth
+  // Generate random username without .pepasur.eth
   const generateUsername = useCallback((address: string): string => {
     // Use address as seed for consistent username generation
     const seed = address.slice(2, 8) // Use first 6 chars of address as seed
@@ -66,7 +66,7 @@ export function useGame(gameId?: string): GameState & GameActions {
     const nameIndex = seedNum % names.length
     const selectedName = names[nameIndex]
     
-    return `${selectedName}.pepasur.eth`
+    return selectedName
   }, [])
 
   // Convert backend players to frontend format
@@ -210,9 +210,10 @@ export function useGame(gameId?: string): GameState & GameActions {
     }
   }, [socket, currentGameId, convertPlayers, currentPlayer])
 
-  // Auto-join game when gameId changes
+  // Auto-join game when gameId changes (with duplicate prevention)
   useEffect(() => {
     if (currentGameId && currentPlayer?.address && isConnected) {
+      console.log('🔌 Auto-joining socket game:', { currentGameId, playerAddress: currentPlayer.address })
       socketJoinGame(currentGameId, currentPlayer.address)
     }
   }, [currentGameId, currentPlayer?.address, isConnected, socketJoinGame])
@@ -456,6 +457,19 @@ export function useGame(gameId?: string): GameState & GameActions {
     }
   }, [game])
 
+  const setCurrentPlayerFromAddress = useCallback((address: string) => {
+    const player: Player = {
+      id: address,
+      name: generateUsername(address),
+      avatar: '👤',
+      isAlive: true,
+      isCurrentPlayer: true,
+      address: address
+    }
+    setCurrentPlayer(player)
+    console.log('🔧 setCurrentPlayerFromAddress:', player)
+  }, [generateUsername])
+
   const refreshGame = useCallback(async (): Promise<void> => {
     if (!currentGameId) return
     
@@ -512,6 +526,8 @@ export function useGame(gameId?: string): GameState & GameActions {
     submitTaskAnswer,
     submitVote,
     eliminatePlayer,
-    refreshGame
+    refreshGame,
+    setCurrentGameId,
+    setCurrentPlayerFromAddress
   }
 }

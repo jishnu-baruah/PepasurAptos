@@ -1,30 +1,35 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { defineChain, http } from 'viem';
 
-// Define Flow Testnet chain
-export const flowTestnet = defineChain({
-  id: 545,
-  name: 'Flow Testnet',
+// Define U2U Nebulas Testnet chain
+export const u2uTestnet = defineChain({
+  id: 2484,
+  name: 'U2U Nebulas Testnet',
   nativeCurrency: {
     decimals: 18,
-    name: 'Flow',
-    symbol: 'FLOW',
+    name: 'U2U',
+    symbol: 'U2U',
   },
   rpcUrls: {
     default: {
-      http: ['https://testnet.evm.nodes.onflow.org'],
+      http: ['https://rpc-nebulas-testnet.u2u.xyz'],
     },
     public: {
-      http: ['https://testnet.evm.nodes.onflow.org'],
+      http: ['https://rpc-nebulas-testnet.u2u.xyz'],
     },
   },
   blockExplorers: {
     default: {
-      name: 'Flow Testnet Explorer',
-      url: 'https://testnet.flowscan.io',
+      name: 'U2U Testnet Explorer',
+      url: 'https://testnet.u2uscan.xyz',
     },
   },
   testnet: true,
+  // Add gas configuration for U2U testnet
+  fees: {
+    baseFeeMultiplier: 1,
+    priorityFeeMultiplier: 1,
+  },
 });
 
 // Get project ID from environment or use fallback
@@ -34,10 +39,10 @@ const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '609f45d18
 export const config = getDefaultConfig({
   appName: 'Pepasur Game',
   projectId: projectId,
-  chains: [flowTestnet],
+  chains: [u2uTestnet],
   ssr: true, // Enable SSR support
   // Fix transports configuration - use functions instead of objects
   transports: {
-    [flowTestnet.id]: http('https://testnet.evm.nodes.onflow.org'),
+    [u2uTestnet.id]: http('https://rpc-nebulas-testnet.u2u.xyz'),
   },
 });

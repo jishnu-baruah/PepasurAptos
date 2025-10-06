@@ -34,9 +34,9 @@ Each player gets an **ENS subname** (e.g., `alice.prepasur.eth`) that links thei
 - Marketplace contract (in progress) for NFTs on Flow.  
 
 **Deployed on Flow Testnet**  
-- PepAsurGame → `0x1234abcd...`  
-- FlowToken → `0xabcd5678...`  
-- Faucet → `0x9876efgh...`  
+- PepAsurGame → `0x9CA9147887D22D41FaA98B50533F79b7502572D7` ✅  
+- FlowToken → `0xfcB696bA25aCaEA20997ca3e08B0e87432985BB6` ✅  
+- FlowFaucet → `0x87A63B1ae283278bAe7feDA6a07247070A5eD148` ✅  
 
 ---
 

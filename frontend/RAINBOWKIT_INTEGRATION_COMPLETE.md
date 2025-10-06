@@ -88,3 +88,6 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-project-id-here
 
 The wallet integration is now complete and ready for testing! 🎉
 
+
+
+

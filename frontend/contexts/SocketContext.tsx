@@ -25,6 +25,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [reconnectAttempts, setReconnectAttempts] = useState(0)
+  const [joinedGames, setJoinedGames] = useState<Set<string>>(new Set())
 
   const connect = () => {
     if (socket?.connected) return
@@ -117,8 +118,14 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
   const joinGame = (gameId: string, playerAddress: string) => {
     if (socket && isConnected) {
-      console.log('🎮 Joining game:', { gameId, playerAddress })
-      socket.emit('join_game', { gameId, playerAddress })
+      const joinKey = `${gameId}-${playerAddress}`
+      if (!joinedGames.has(joinKey)) {
+        console.log('🎮 Joining game:', { gameId, playerAddress })
+        socket.emit('join_game', { gameId, playerAddress })
+        setJoinedGames(prev => new Set(prev).add(joinKey))
+      } else {
+        console.log('🎮 Already joined game, skipping:', { gameId, playerAddress })
+      }
     } else {
       console.error('🎮 Cannot join game: Socket not connected')
     }

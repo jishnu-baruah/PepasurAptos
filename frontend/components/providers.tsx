@@ -30,7 +30,7 @@ export function Providers({ children }: ProvidersProps) {
         <RainbowKitProvider
           appInfo={{
             appName: 'Pepasur Game',
-            learnMoreUrl: 'https://flow.com',
+            learnMoreUrl: 'https://u2u.xyz',
           }}
           showRecentTransactions={true}
         >

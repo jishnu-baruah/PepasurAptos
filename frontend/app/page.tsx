@@ -21,11 +21,49 @@ import { useGame, Player } from "@/hooks/useGame"
 export type GameState = "loader" | "wallet" | "room-code-input" | "staking" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting" | "ended"
 export type Role = "ASUR" | "DEVA" | "RISHI" | "MANAV"
 
+// Faucet contract configuration
+const FAUCET_CONTRACT_ADDRESS = "0x87A63B1ae283278bAe7feDA6a07247070A5eD148" as const
+const FAUCET_ABI = [
+  {
+    "inputs": [],
+    "name": "claimTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "user", "type": "address"}],
+    "name": "getFaucetInfo",
+    "outputs": [
+      {"name": "canClaim", "type": "bool"},
+      {"name": "timeUntilNextClaim", "type": "uint256"},
+      {"name": "faucetBalance", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getFaucetStats",
+    "outputs": [
+      {"name": "faucetBalance", "type": "uint256"},
+      {"name": "claimAmount", "type": "uint256"},
+      {"name": "cooldownPeriod", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+] as const
+
 export default function Home() {
   const [gameState, setGameState] = useState<GameState>("loader")
   const [walletConnected, setWalletConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null)
+  const [claimingU2U, setClaimingU2U] = useState(false)
+  const [faucetInfo, setFaucetInfo] = useState(null)
+  const [stakingMode, setStakingMode] = useState<'create' | 'join'>('create')
+  const [faucetStats, setFaucetStats] = useState(null)
   
   // Use the new game hook for backend integration
   const {
@@ -41,7 +79,9 @@ export default function Home() {
     submitNightAction,
     submitTaskAnswer,
     submitVote,
-    refreshGame
+    refreshGame,
+    setCurrentGameId,
+    setCurrentPlayerFromAddress
   } = useGame()
 
   // Auto-advance from loader after 3 seconds
@@ -60,12 +100,12 @@ export default function Home() {
   // Track disconnected warning with delay
   const [showDisconnectedWarning, setShowDisconnectedWarning] = useState(false)
 
-  // Handle disconnected warning with 3-second delay
+  // Handle disconnected warning with 15-second delay
   useEffect(() => {
     if (!isConnected && gameState !== "loader") {
       const timer = setTimeout(() => {
         setShowDisconnectedWarning(true)
-      }, 3000) // Show warning after 3 seconds of disconnection
+      }, 15000) // Show warning after 15 seconds of disconnection
 
       return () => clearTimeout(timer)
     } else {
@@ -105,7 +145,7 @@ export default function Home() {
       } else if (game.phase === 'night' && currentPlayer.role && !hasSeenRole) {
         console.log("✅ SHOWING ROLE ASSIGNMENT")
         setGameState('role-assignment')
-      } else if (game.phase === 'night' && gameState !== 'night' && gameState !== 'role-assignment') {
+      } else if (game.phase === 'night' && gameState !== 'night' && gameState !== 'role-assignment' && hasSeenRole) {
         console.log("✅ SWITCHING TO NIGHT PHASE")
         setGameState('night')
       } else if (game.phase === 'resolution' && gameState !== 'resolution') {
@@ -124,10 +164,12 @@ export default function Home() {
         console.log("⏸️ NO PHASE CHANGE NEEDED")
       }
       
-      // Emergency refresh if timer is 0 and we're stuck
+      // Emergency refresh if timer is 0 and we're stuck (with delay to avoid spam)
       if (game.timeLeft === 0 && gameState === 'night') {
         console.log("🚨 EMERGENCY REFRESH - Timer expired")
-        refreshGame()
+        setTimeout(() => {
+          refreshGame()
+        }, 2000) // Add 2-second delay to prevent immediate refresh spam
       }
     } else {
       console.log("❌ MISSING GAME OR CURRENT PLAYER")
@@ -146,7 +188,7 @@ export default function Home() {
     const pollInterval = setInterval(() => {
       console.log("🔄 Backup polling: refreshing game state")
       refreshGame()
-    }, 5000) // Poll every 5 seconds
+    }, 10000) // Poll every 10 seconds as backup (socket provides real-time updates)
     
     return () => {
       console.log("🔄 Stopping backup polling")
@@ -176,7 +218,10 @@ export default function Home() {
   }
 
   const handleJoinGame = () => {
-    setGameState("room-code-input")
+    // Set a flag to indicate we're in join mode
+    setStakingMode('join')
+    setGameState("staking")
+    // We'll handle room code input in the staking screen
   }
 
   const handleJoinByRoomCode = async (roomCode: string) => {
@@ -207,28 +252,94 @@ export default function Home() {
     setGameState("wallet")
   }
 
-  const handleClaimFlow = async () => {
+  const handleClaimU2U = async () => {
     if (!walletAddress) {
       alert("Please connect your wallet first")
       return
     }
     
+    // Check if user can claim
+    if (faucetInfo && !faucetInfo[0]) {
+      const timeUntilNextClaim = Number(faucetInfo[1])
+      const hours = Math.floor(timeUntilNextClaim / 3600)
+      const minutes = Math.floor((timeUntilNextClaim % 3600) / 60)
+      alert(`⏰ You can claim again in ${hours}h ${minutes}m`)
+      return
+    }
+    
+    // Check if faucet has tokens
+    if (faucetStats && Number(faucetStats[0]) === 0) {
+      alert("⚠️ Faucet is empty. Please try again later.")
+      return
+    }
+    
     try {
-      console.log("Claiming 0.5 FLOW for wallet:", walletAddress)
+      setClaimingU2U(true)
+      console.log("Claiming 0.5 U2U from faucet for wallet:", walletAddress)
       
-      // For now, just show a success message
-      // In a real implementation, this would interact with Flow blockchain
-      alert("🎉 Successfully claimed 0.5 FLOW! Check your wallet.")
+      // Call server-side API (server pays network fees)
+      const response = await fetch('/api/faucet/claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userAddress: walletAddress
+        })
+      })
       
-      // TODO: Implement actual Flow token claim logic
-      // This would typically involve:
-      // 1. Calling a smart contract function
-      // 2. Signing a transaction
-      // 3. Waiting for confirmation
+      const result = await response.json()
+      
+      if (result.success) {
+        alert(`🎉 Successfully claimed 0.5 U2U!\n\nClaim TX: ${result.data.claimTxHash}\nTransfer TX: ${result.data.transferTxHash}\n\nYou can claim again in 24 hours.`)
+        // Refresh faucet info
+        fetchFaucetInfo()
+        fetchFaucetStats()
+      } else {
+        alert(`❌ Failed to claim: ${result.error}`)
+      }
       
     } catch (error) {
-      console.error("Failed to claim FLOW:", error)
-      alert(`Failed to claim FLOW: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error("Failed to claim U2U:", error)
+      alert(`Failed to claim U2U: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setClaimingU2U(false)
+    }
+  }
+  
+  // Fetch faucet info when wallet address changes
+  useEffect(() => {
+    if (walletAddress) {
+      fetchFaucetInfo()
+      fetchFaucetStats()
+    }
+  }, [walletAddress])
+
+  const fetchFaucetInfo = async () => {
+    if (!walletAddress) return
+    
+    try {
+      const response = await fetch(`/api/faucet/info/${walletAddress}`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setFaucetInfo([result.data.canClaim, result.data.timeUntilNextClaim, result.data.faucetBalance])
+      }
+    } catch (error) {
+      console.error("Failed to fetch faucet info:", error)
+    }
+  }
+
+  const fetchFaucetStats = async () => {
+    try {
+      const response = await fetch('/api/faucet/stats')
+      const result = await response.json()
+      
+      if (result.success) {
+        setFaucetStats([result.data.faucetBalance, result.data.claimAmount, result.data.cooldownPeriod])
+      }
+    } catch (error) {
+      console.error("Failed to fetch faucet stats:", error)
     }
   }
 
@@ -239,16 +350,17 @@ export default function Home() {
     }
     
     try {
-      console.log("Starting staking flow for room creation...")
+      console.log("Starting staking process for room creation...")
       console.log("Using wallet address:", walletAddress)
       
-      // Go directly to staking screen first
+      // Go directly to staking screen for room creation
+      setStakingMode('create')
       setGameState("staking")
       console.log("Redirecting to staking screen for room creation")
     } catch (error) {
-      console.error("Failed to start staking flow:", error)
+      console.error("Failed to start staking process:", error)
       // Show error to user
-      alert(`Failed to start staking flow: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(`Failed to start staking process: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -323,12 +435,12 @@ export default function Home() {
         </div>
       )}
 
-      {/* Loading Overlay - Muted */}
+      {/* Loading Overlay - Very Muted */}
       {isLoading && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-40">
-          <div className="bg-[#111111]/60 p-4 rounded border border-[#2a2a2a]/50 text-center opacity-50">
-            <div className="font-press-start text-white/70 mb-1 text-sm">LOADING...</div>
-            <div className="text-xs text-gray-500">Connecting to game server</div>
+        <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-40">
+          <div className="bg-[#111111]/40 p-3 rounded border border-[#2a2a2a]/30 text-center opacity-30">
+            <div className="font-press-start text-white/50 mb-1 text-xs">LOADING...</div>
+            <div className="text-xs text-gray-600">Connecting to game server</div>
           </div>
         </div>
       )}
@@ -345,51 +457,102 @@ export default function Home() {
           {/* Claim FLOW Button */}
           {walletAddress && (
             <div className="fixed top-4 left-4 z-50">
-              <button
-                onClick={handleClaimFlow}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 border-2 border-green-500/50"
-              >
-                💎 Claim 0.5 FLOW
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleClaimU2U}
+                  disabled={claimingU2U || (faucetInfo && !faucetInfo[0])}
+                  className={`font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 border-2 ${
+                    claimingU2U
+                      ? "bg-gray-600 text-gray-300 border-gray-500 cursor-not-allowed"
+                      : faucetInfo && !faucetInfo[0]
+                      ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-500/50"
+                      : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-green-500/50"
+                  }`}
+                >
+                  {claimingU2U ? (
+                    <>⏳ Claiming...</>
+                  ) : faucetInfo && !faucetInfo[0] ? (
+                    <>⏰ On Cooldown</>
+                  ) : (
+                    <>💎 Claim 0.5 U2U</>
+                  )}
+                </button>
+                
+                {/* Faucet Info */}
+                {faucetStats && (
+                  <div className="text-xs text-gray-400 bg-black/50 p-2 rounded">
+                    <div>Faucet: {Number(faucetStats[0]) / 1e18} U2U</div>
+                    <div>Claim: {Number(faucetStats[1]) / 1e18} U2U</div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </>
       )}
-      {gameState === "staking" && walletAddress && !game && (
+      {gameState === "staking" && walletAddress && (
         <StakingScreen
+          gameId={game?.gameId} // Pass gameId if we have a game (join mode)
           playerAddress={walletAddress}
-          mode="create"
-          onStakeSuccess={async () => {
-            console.log('✅ Contract staking successful, creating backend room...')
-            try {
-              const { gameId, roomCode } = await createGame(walletAddress)
-              console.log('✅ Room created successfully:', { gameId, roomCode })
-              setCurrentRoomCode(roomCode)
-              setGameState("lobby")
-            } catch (error) {
-              console.error('❌ Failed to create room after staking:', error)
-              alert('Staking successful but failed to create room. Please try again.')
+          mode={stakingMode} // Use the staking mode state
+          onStakeSuccess={async (gameId, roomCode) => {
+            if (stakingMode === 'join') {
+              // Join mode - we already have a game, but need to join it in the backend
+              console.log('✅ Staking successful, joining game:', gameId)
+              try {
+                // First join the game in the backend
+                await joinGameByRoomCode(roomCode, walletAddress)
+                console.log('✅ Joined game in backend')
+                // Then set the game state
+                setGameState("lobby")
+              } catch (error) {
+                console.error('❌ Failed to join game:', error)
+                alert(`Failed to join game: ${error instanceof Error ? error.message : 'Unknown error'}`)
+              }
+            } else {
+              // Create mode - room already created by backend, refresh game data
+              console.log('✅ Contract staking successful, refreshing game data...')
+              if (roomCode) {
+                setCurrentRoomCode(roomCode)
+                console.log('✅ Room code set:', roomCode)
+              }
+              if (gameId) {
+                console.log('✅ GameId available:', gameId)
+                try {
+                  // Set the current player first
+                  setCurrentPlayerFromAddress(walletAddress)
+                  console.log('✅ CurrentPlayer set:', walletAddress)
+                  // Set the current game ID so refreshGame can work
+                  setCurrentGameId(gameId)
+                  console.log('✅ CurrentGameId set:', gameId)
+                  // Join the game in backend (creator is already in game, but this refreshes data)
+                  await joinGameByRoomCode(roomCode, walletAddress)
+                  console.log('✅ Joined own game in backend')
+                  setGameState("lobby")
+                } catch (error) {
+                  console.error('❌ Failed to join own game:', error)
+                  // Try refreshGame as fallback
+                  try {
+                    await refreshGame()
+                    console.log('✅ Fallback refreshGame successful')
+                    setGameState("lobby")
+                  } catch (refreshError) {
+                    console.error('❌ Fallback refreshGame failed:', refreshError)
+                    alert(`Failed to load game data: ${error instanceof Error ? error.message : 'Unknown error'}`)
+                  }
+                }
+              } else {
+                console.log('❌ No gameId available for refresh')
+              }
             }
           }}
-          onCancel={() => setGameState("wallet")}
-        />
-      )}
-      {gameState === "room-code-input" && (
-        <RoomCodeInput
-          onJoin={handleJoinByRoomCode}
-          onCancel={handleCancelJoin}
-        />
-      )}
-      {gameState === "staking" && currentPlayer && game && currentPlayer.address && (
-        <StakingScreen
-          gameId={game.gameId}
-          playerAddress={currentPlayer.address}
-          mode="join"
-          onStakeSuccess={(gameId) => {
-            console.log('✅ Staking successful, joining game:', gameId)
-            setGameState("lobby")
+          onCancel={() => {
+            if (game) {
+              setGameState("room-code-input")
+            } else {
+              setGameState("wallet")
+            }
           }}
-          onCancel={() => setGameState("room-code-input")}
         />
       )}
       {gameState === "lobby" && currentPlayer && (
@@ -403,18 +566,6 @@ export default function Home() {
           {currentRoomCode && (
             <div className="fixed top-4 right-4 z-50">
               <RoomCodeDisplay roomCode={currentRoomCode} />
-            </div>
-          )}
-          
-          {/* Claim FLOW Button */}
-          {walletAddress && (
-            <div className="fixed top-4 left-4 z-50">
-              <button
-                onClick={handleClaimFlow}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 border-2 border-green-500/50"
-              >
-                💎 Claim 0.5 FLOW
-              </button>
             </div>
           )}
         </>
@@ -481,18 +632,6 @@ export default function Home() {
               setHasSeenRole(false)
             }}
           />
-          
-          {/* Claim FLOW Button */}
-          {walletAddress && (
-            <div className="fixed top-4 left-4 z-50">
-              <button
-                onClick={handleClaimFlow}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 border-2 border-green-500/50"
-              >
-                💎 Claim 0.5 FLOW
-              </button>
-            </div>
-          )}
         </>
       )}
 

@@ -87,3 +87,6 @@ console.log('🔄 refreshGame - currentPlayerFromConverted:', currentPlayerFromC
 
 The debugging should now reveal exactly where the role assignment is failing! 🔍
 
+
+
+

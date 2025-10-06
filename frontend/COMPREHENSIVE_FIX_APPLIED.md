@@ -98,3 +98,6 @@ The frontend should now work perfectly with the backend! 🚀
 3. Verify that `currentPlayerRole` is no longer `undefined`
 4. Confirm that role-specific actions are displayed correctly
 
+
+
+
