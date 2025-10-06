@@ -315,7 +315,81 @@ class FlowService {
 
   // Parse U2U amount
   parseU2U(u2uAmount) {
-    return ethers.parseEther(flowAmount.toString());
+    return ethers.parseEther(u2uAmount.toString());
+  }
+
+  // Extract gameId from a createGame transaction
+  async extractGameIdFromTransaction(txHash) {
+    try {
+      console.log(`🔍 Extracting gameId from transaction: ${txHash}`);
+      
+      // Get transaction receipt
+      const receipt = await this.provider.getTransactionReceipt(txHash);
+      if (!receipt) {
+        throw new Error('Transaction not found');
+      }
+
+      // Get transaction details
+      const tx = await this.provider.getTransaction(txHash);
+      if (!tx) {
+        throw new Error('Transaction details not found');
+      }
+
+      // Decode the transaction data to get the gameId
+      // The createGame function returns a uint64 gameId
+      const contractInterface = new ethers.Interface([
+        {
+          "inputs": [
+            {"name": "stakeAmount", "type": "uint256"},
+            {"name": "minPlayers", "type": "uint8"}
+          ],
+          "name": "createGame",
+          "outputs": [{"name": "gameId", "type": "uint64"}],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {"indexed": true, "name": "gameId", "type": "uint64"},
+            {"indexed": true, "name": "creator", "type": "address"},
+            {"indexed": false, "name": "stake", "type": "uint256"},
+            {"indexed": false, "name": "minPlayers", "type": "uint8"}
+          ],
+          "name": "GameCreated",
+          "type": "event"
+        }
+      ]);
+
+      // Decode the transaction data
+      const decodedData = contractInterface.parseTransaction({ data: tx.data });
+      console.log(`📋 Decoded transaction data:`, decodedData);
+
+      // The gameId should be in the transaction logs
+      // Look for the GameCreated event
+      const gameCreatedEvent = receipt.logs.find(log => {
+        try {
+          const parsedLog = contractInterface.parseLog(log);
+          return parsedLog && parsedLog.name === 'GameCreated';
+        } catch {
+          return false;
+        }
+      });
+
+      if (gameCreatedEvent) {
+        const parsedLog = contractInterface.parseLog(gameCreatedEvent);
+        const gameId = parsedLog.args.gameId.toString();
+        console.log(`🎮 Extracted gameId: ${gameId}`);
+        return gameId;
+      }
+
+      // Fallback: try to get gameId from transaction result
+      // This might not work for all cases, but worth trying
+      throw new Error('Could not extract gameId from transaction logs');
+    } catch (error) {
+      console.error('❌ Error extracting gameId from transaction:', error);
+      throw error;
+    }
   }
 }
 

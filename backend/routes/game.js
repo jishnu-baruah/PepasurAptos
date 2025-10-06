@@ -26,6 +26,37 @@ module.exports = (gameManager, flowService) => {
     }
   });
 
+  // Create game and join it (for room creators)
+  router.post('/create-and-join', async (req, res) => {
+    try {
+      const { creatorAddress, createTxHash, stakeAmount } = req.body;
+      
+      if (!creatorAddress || !createTxHash) {
+        return res.status(400).json({ error: 'Creator address and transaction hash are required' });
+      }
+
+      // Extract gameId from the create transaction
+      const gameId = await flowService.extractGameIdFromTransaction(createTxHash);
+      
+      if (!gameId) {
+        return res.status(400).json({ error: 'Could not extract gameId from transaction' });
+      }
+
+      // Join the game with the creator's stake
+      const joinTxHash = await flowService.joinGame(gameId, creatorAddress, stakeAmount);
+      
+      res.json({
+        success: true,
+        gameId,
+        joinTxHash,
+        message: 'Game created and creator joined successfully'
+      });
+    } catch (error) {
+      console.error('Error creating and joining game:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get game state
   router.get('/:gameId', (req, res) => {
     try {
@@ -111,14 +142,9 @@ module.exports = (gameManager, flowService) => {
         return res.status(404).json({ error: 'Room code not found' });
       }
 
-      const publicGameState = gameManager.getPublicGameState(game.gameId);
-      
       res.json({
         success: true,
-        game: {
-          ...publicGameState,
-          onChainGameId: game.onChainGameId // Include the on-chain game ID for contract calls
-        }
+        game: gameManager.getPublicGameState(game.gameId)
       });
     } catch (error) {
       console.error('Error getting game by room code:', error);
@@ -301,50 +327,6 @@ module.exports = (gameManager, flowService) => {
       });
     } catch (error) {
       console.error('Error getting active games:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Create game and stake for creator
-  router.post('/create-and-stake', async (req, res) => {
-    try {
-      const { creatorAddress, stakeAmount, minPlayers } = req.body;
-      
-      if (!creatorAddress) {
-        return res.status(400).json({ error: 'Creator address is required' });
-      }
-
-      console.log('🎮 Creating game and staking for creator:', creatorAddress);
-      
-      // Step 1: Create the game
-      const { gameId, roomCode, game } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers);
-      
-      console.log('✅ Game created:', { gameId, roomCode });
-      
-      // Step 2: Creator stakes to join their own game
-      if (game.stakingRequired) {
-        console.log('💰 Creator staking for their own game...');
-        const stakeResult = await gameManager.stakeForGame(gameId, creatorAddress, roomCode);
-        
-        console.log('✅ Creator staked successfully:', stakeResult);
-        
-        res.json({
-          success: true,
-          gameId,
-          roomCode,
-          stakeResult,
-          message: 'Game created and creator staked successfully'
-        });
-      } else {
-        res.json({
-          success: true,
-          gameId,
-          roomCode,
-          message: 'Game created successfully (no staking required)'
-        });
-      }
-    } catch (error) {
-      console.error('Error creating game and staking:', error);
       res.status(500).json({ error: error.message });
     }
   });
