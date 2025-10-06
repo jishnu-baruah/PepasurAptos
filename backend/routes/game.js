@@ -47,11 +47,12 @@ module.exports = (gameManager, flowService) => {
       console.log(`🎮 Extracted gameId: ${gameId}`);
 
       // Step 3: Create room in game manager (user will stake from frontend)
-      const { roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers || 4);
+      const { gameId: managerGameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers || 4);
       
       res.json({
         success: true,
-        gameId,
+        gameId: managerGameId, // Use game manager's gameId for socket communication
+        contractGameId: gameId, // Keep contract gameId for reference
         roomCode,
         createTxHash,
         message: 'Game created successfully. Creator can now stake to join.'
