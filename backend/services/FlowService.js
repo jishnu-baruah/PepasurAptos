@@ -308,13 +308,13 @@ class FlowService {
     }
   }
 
-  // Format FLOW amount
-  formatFlow(weiAmount) {
+  // Format U2U amount
+  formatU2U(weiAmount) {
     return ethers.formatEther(weiAmount);
   }
 
-  // Parse FLOW amount
-  parseFlow(flowAmount) {
+  // Parse U2U amount
+  parseU2U(u2uAmount) {
     return ethers.parseEther(flowAmount.toString());
   }
 }

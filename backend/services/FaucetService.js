@@ -15,7 +15,7 @@ class FaucetService {
       console.log('Environment variables:');
       console.log('- U2U_ACCESS_NODE:', process.env.U2U_ACCESS_NODE);
       console.log('- FAUCET_CONTRACT_ADDRESS:', process.env.FAUCET_CONTRACT_ADDRESS);
-      console.log('- FLOW_TOKEN_ADDRESS:', process.env.FLOW_TOKEN_ADDRESS);
+      console.log('- U2U_TOKEN_ADDRESS:', process.env.U2U_TOKEN_ADDRESS);
       console.log('- SERVER_PRIVATE_KEY:', process.env.SERVER_PRIVATE_KEY ? 'SET' : 'NOT SET');
       
       // Initialize U2U EVM provider
@@ -53,7 +53,7 @@ class FaucetService {
       console.log('- Wallet available:', !!this.wallet);
       console.log('- Provider available:', !!this.provider);
       
-      // Native FLOW Faucet contract ABI (for native FLOW tokens only)
+      // Native U2U Faucet contract ABI (for native U2U tokens only)
       const faucetABI = [
         "function claimTokens() external",
         "function fundFaucet() external payable",
@@ -137,7 +137,7 @@ class FaucetService {
         throw new Error('Faucet contract or wallet not initialized');
       }
 
-      console.log(`💰 Funding faucet with ${ethers.formatEther(amount)} FLOWT`);
+      console.log(`💰 Funding faucet with ${ethers.formatEther(amount)} U2U`);
       
       const tx = await this.faucetContract.fundFaucet(amount);
       await tx.wait();
@@ -157,7 +157,7 @@ class FaucetService {
         throw new Error('Faucet contract or wallet not initialized');
       }
 
-      console.log(`🚨 Emergency withdrawing ${ethers.formatEther(amount)} FLOWT from faucet`);
+      console.log(`🚨 Emergency withdrawing ${ethers.formatEther(amount)} U2U from faucet`);
       
       const tx = await this.faucetContract.emergencyWithdraw(amount);
       await tx.wait();
@@ -224,13 +224,13 @@ class FaucetService {
     }
   }
 
-  // Format FLOWT amount
-  formatFlowToken(weiAmount) {
+  // Format U2U amount
+  formatU2U(weiAmount) {
     return ethers.formatEther(weiAmount);
   }
 
-  // Parse FLOWT amount
-  parseFlowToken(flowTokenAmount) {
+  // Parse U2U amount
+  parseU2U(u2uAmount) {
     return ethers.parseEther(flowTokenAmount.toString());
   }
 
@@ -274,7 +274,7 @@ class FaucetService {
       console.log('Transaction confirmed:', receipt.blockNumber);
 
       // Transfer the claimed tokens to the user
-      const claimAmount = ethers.parseEther("0.5"); // 0.5 FLOW
+      const claimAmount = ethers.parseEther("0.5"); // 0.5 U2U
       const transferTx = await this.wallet.sendTransaction({
         to: userAddress,
         value: claimAmount
@@ -289,7 +289,7 @@ class FaucetService {
         claimTxHash: tx.hash,
         transferTxHash: transferTx.hash,
         claimAmount: "0.5",
-        message: "Successfully claimed 0.5 FLOW tokens"
+        message: "Successfully claimed 0.5 U2U tokens"
       };
 
     } catch (error) {

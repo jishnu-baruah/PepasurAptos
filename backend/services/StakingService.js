@@ -3,9 +3,9 @@ const crypto = require('crypto');
 
 class StakingService {
   constructor() {
-    this.stakeAmount = ethers.parseEther('0.1'); // 0.1 FLOW per player
+    this.stakeAmount = ethers.parseEther('0.1'); // 0.1 U2U per player
     this.minPlayers = 4;
-    this.totalPool = ethers.parseEther('0.4'); // 4 players × 0.1 FLOW = 0.4 FLOW total pool
+    this.totalPool = ethers.parseEther('0.4'); // 4 players × 0.1 U2U = 0.4 U2U total pool
     this.stakedGames = new Map(); // Track staked games
     this.playerStakes = new Map(); // Track individual player stakes
     this.provider = null;
@@ -75,20 +75,20 @@ class StakingService {
         console.log('⚠️ Provider not initialized, using mock balance for testing');
         return {
           balance: "1000000000000000000", // 1 U2U in wei
-          balanceInFlow: "1.0",
+          balanceInU2U: "1.0",
           sufficient: true,
           mock: true
         };
       }
 
       const balance = await this.provider.getBalance(playerAddress);
-      const balanceInFlow = ethers.formatEther(balance);
+      const balanceInU2U = ethers.formatEther(balance);
       
       console.log(`💰 Player ${playerAddress} balance: ${balanceInFlow} U2U`);
       
       return {
         balance: balance.toString(),
-        balanceInFlow: balanceInFlow,
+        balanceInU2U: balanceInU2U,
         sufficient: balance >= this.stakeAmount
       };
     } catch (error) {
@@ -97,7 +97,7 @@ class StakingService {
     }
   }
 
-  // Stake FLOW for a game (REAL CONTRACT MODE)
+  // Stake U2U for a game (REAL CONTRACT MODE)
   async stakeForGame(gameId, playerAddress, roomCode) {
     try {
       console.log(`💰 Player ${playerAddress} staking ${ethers.formatEther(this.stakeAmount)} U2U for game ${gameId}`);
@@ -199,7 +199,7 @@ class StakingService {
       playersCount: game.players.length,
       minPlayers: this.minPlayers,
       totalStaked: game.totalStaked.toString(),
-      totalStakedInFlow: ethers.formatEther(game.totalStaked),
+      totalStakedInU2U: ethers.formatEther(game.totalStaked),
       status: game.status,
       createdAt: game.createdAt,
       isReady: game.players.length === this.minPlayers
@@ -219,7 +219,7 @@ class StakingService {
       gameId: stake.gameId,
       playerAddress: stake.playerAddress,
       amount: stake.amount.toString(),
-      amountInFlow: ethers.formatEther(stake.amount),
+      amountInU2U: ethers.formatEther(stake.amount),
       txHash: stake.txHash,
       timestamp: stake.timestamp,
       status: stake.status
@@ -261,9 +261,9 @@ class StakingService {
           role: 'winner',
           stakeAmount: this.stakeAmount.toString(),
           rewardAmount: winnerRewardPerPlayer.toString(),
-          rewardInFlow: ethers.formatEther(winnerRewardPerPlayer),
+          rewardInU2U: ethers.formatEther(winnerRewardPerPlayer),
           totalReceived: (this.stakeAmount + winnerRewardPerPlayer).toString(),
-          totalReceivedInFlow: ethers.formatEther(this.stakeAmount + winnerRewardPerPlayer)
+          totalReceivedInU2U: ethers.formatEther(this.stakeAmount + winnerRewardPerPlayer)
         });
       });
 
@@ -274,9 +274,9 @@ class StakingService {
           role: 'loser',
           stakeAmount: this.stakeAmount.toString(),
           rewardAmount: loserRewardPerPlayer.toString(),
-          rewardInFlow: ethers.formatEther(loserRewardPerPlayer),
+          rewardInU2U: ethers.formatEther(loserRewardPerPlayer),
           totalReceived: (this.stakeAmount + loserRewardPerPlayer).toString(),
-          totalReceivedInFlow: ethers.formatEther(this.stakeAmount + loserRewardPerPlayer)
+          totalReceivedInU2U: ethers.formatEther(this.stakeAmount + loserRewardPerPlayer)
         });
       });
 
@@ -285,11 +285,11 @@ class StakingService {
       return {
         gameId: gameId,
         totalPool: totalPool.toString(),
-        totalPoolInFlow: ethers.formatEther(totalPool),
+        totalPoolInU2U: ethers.formatEther(totalPool),
         houseCut: houseCut.toString(),
-        houseCutInFlow: ethers.formatEther(houseCut),
+        houseCutInU2U: ethers.formatEther(houseCut),
         prizePool: prizePool.toString(),
-        prizePoolInFlow: ethers.formatEther(prizePool),
+        prizePoolInU2U: ethers.formatEther(prizePool),
         rewards: rewards
       };
     } catch (error) {
@@ -347,9 +347,9 @@ class StakingService {
         role: reward.role,
         stakeAmount: reward.stakeAmount,
         rewardAmount: reward.rewardAmount,
-        rewardInFlow: reward.rewardInFlow,
+        rewardInU2U: reward.rewardInU2U,
         totalReceived: reward.totalReceived,
-        totalReceivedInFlow: reward.totalReceivedInFlow,
+        totalReceivedInU2U: reward.totalReceivedInU2U,
         txHash: tx.hash,
         timestamp: Date.now(),
         status: 'distributed'
@@ -369,7 +369,7 @@ class StakingService {
         gameId: gameId,
         distributions: distributionResults,
         totalDistributed: rewards.prizePool,
-        totalDistributedInFlow: rewards.prizePoolInFlow,
+        totalDistributedInU2U: rewards.prizePoolInU2U,
         settlementTxHash: tx.hash
       };
     } catch (error) {
@@ -395,7 +395,7 @@ class StakingService {
         playersCount: game.players.length,
         minPlayers: this.minPlayers,
         totalStaked: game.totalStaked.toString(),
-        totalStakedInFlow: ethers.formatEther(game.totalStaked),
+        totalStakedInU2U: ethers.formatEther(game.totalStaked),
         status: game.status,
         createdAt: game.createdAt,
         isReady: game.players.length === this.minPlayers

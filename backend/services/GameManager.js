@@ -70,7 +70,7 @@ class GameManager {
       try {
         console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(game.stakeAmount)} U2U`);
         
-        // Use FlowService to create game on-chain
+        // Use U2UService to create game on-chain
         const flowService = require('./FlowService');
         const flowServiceInstance = new flowService();
         const onChainGameId = await flowServiceInstance.createGame(game.stakeAmount, game.minPlayers);
@@ -87,7 +87,7 @@ class GameManager {
     return { gameId, roomCode, game };
   }
 
-  // Stake FLOW for a game
+  // Stake U2U for a game
   async stakeForGame(gameId, playerAddress, roomCode) {
     try {
       const game = this.games.get(gameId);

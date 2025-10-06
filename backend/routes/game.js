@@ -300,5 +300,49 @@ module.exports = (gameManager, flowService) => {
     }
   });
 
+  // Create game and stake for creator
+  router.post('/create-and-stake', async (req, res) => {
+    try {
+      const { creatorAddress, stakeAmount, minPlayers } = req.body;
+      
+      if (!creatorAddress) {
+        return res.status(400).json({ error: 'Creator address is required' });
+      }
+
+      console.log('🎮 Creating game and staking for creator:', creatorAddress);
+      
+      // Step 1: Create the game
+      const { gameId, roomCode, game } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers);
+      
+      console.log('✅ Game created:', { gameId, roomCode });
+      
+      // Step 2: Creator stakes to join their own game
+      if (game.stakingRequired) {
+        console.log('💰 Creator staking for their own game...');
+        const stakeResult = await gameManager.stakeForGame(gameId, creatorAddress, roomCode);
+        
+        console.log('✅ Creator staked successfully:', stakeResult);
+        
+        res.json({
+          success: true,
+          gameId,
+          roomCode,
+          stakeResult,
+          message: 'Game created and creator staked successfully'
+        });
+      } else {
+        res.json({
+          success: true,
+          gameId,
+          roomCode,
+          message: 'Game created successfully (no staking required)'
+        });
+      }
+    } catch (error) {
+      console.error('Error creating game and staking:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return router;
 };
