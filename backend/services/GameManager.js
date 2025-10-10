@@ -145,40 +145,20 @@ class GameManager {
   isGameReadyToStart(gameId) {
     const game = this.games.get(gameId);
     if (!game) {
-      console.log(`❌ isGameReadyToStart: Game ${gameId} not found`);
       return false;
     }
-
-    console.log(`🔍 isGameReadyToStart for game ${gameId}:`, {
-      players: game.players.length,
-      minPlayers: game.minPlayers,
-      stakingRequired: game.stakingRequired,
-      onChainGameId: game.onChainGameId,
-      phase: game.phase
-    });
 
     if (!game.stakingRequired) {
-      const ready = game.players.length >= game.minPlayers;
-      console.log(`✅ Non-staking game ready: ${ready}`);
-      return ready;
+      return game.players.length >= game.minPlayers;
     }
 
-    // For staking games, check if all players have staked
-    const contractGameId = game.onChainGameId;
-    if (!contractGameId) {
-      console.log(`❌ No contract gameId for staking game ${gameId}`);
-      return false;
-    }
-
-    const stakingInfo = this.stakingService.getGameStakingInfo(contractGameId);
-    if (!stakingInfo) {
-      console.log(`❌ No staking info for contract gameId ${contractGameId}`);
-      return false;
-    }
+    // For staking games, check if all players have staked using local game.playerStakes
+    const allPlayersStaked = game.players.every(playerAddress => {
+      const stakeKey = `${gameId}-${playerAddress}`;
+      return game.playerStakes && game.playerStakes.has(stakeKey);
+    });
     
-    const ready = game.players.length >= game.minPlayers && stakingInfo.isReady;
-    console.log(`✅ Staking game ready: ${ready} (players: ${game.players.length}/${game.minPlayers}, staked: ${stakingInfo.isReady})`);
-    return ready;
+    return game.players.length >= game.minPlayers && allPlayersStaked;
   }
 
   // Record that a player has staked
@@ -227,22 +207,26 @@ class GameManager {
       return;
     }
 
-    const stakingInfo = this.getGameStakingInfo(gameId);
-    if (!stakingInfo) {
-      console.log(`❌ checkStakingStatus: No staking info for game ${gameId}`);
-      return;
-    }
+    // Check if all players have staked using local game.playerStakes
+    const allPlayersStaked = game.players.every(playerAddress => {
+      const stakeKey = `${gameId}-${playerAddress}`;
+      return game.playerStakes && game.playerStakes.has(stakeKey);
+    });
+
+    const stakedCount = game.playerStakes ? game.playerStakes.size : 0;
+    const isReady = game.players.length >= game.minPlayers && allPlayersStaked;
 
     console.log(`🔍 checkStakingStatus for game ${gameId}:`, {
       players: game.players.length,
       minPlayers: game.minPlayers,
-      stakedPlayers: stakingInfo.playersCount,
-      isReady: stakingInfo.isReady,
+      stakedPlayers: stakedCount,
+      allPlayersStaked: allPlayersStaked,
+      isReady: isReady,
       phase: game.phase
     });
 
     // If staking is complete and game is still in lobby, start the game with a delay
-    if (stakingInfo.isReady && game.phase === 'lobby') {
+    if (isReady && game.phase === 'lobby') {
       console.log(`🎯 Staking complete for game ${gameId}, starting game in 3 seconds...`);
       // Add a 3-second delay to ensure all players have time to see role assignment
       setTimeout(async () => {
@@ -250,10 +234,10 @@ class GameManager {
       }, 3000);
     } else {
       console.log(`⏳ Game ${gameId} not ready to start yet:`, {
-        isReady: stakingInfo.isReady,
+        isReady: isReady,
         phase: game.phase,
         players: game.players.length,
-        staked: stakingInfo.playersCount
+        staked: stakedCount
       });
     }
   }
