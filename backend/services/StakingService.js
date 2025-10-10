@@ -335,7 +335,8 @@ class StakingService {
       console.log(`🔐 Server signer from contract: ${await this.contract.serverSigner()}`);
 
       // Sign settlement using Ethereum message format (matches contract's MessageHashUtils.toEthSignedMessageHash)
-      const signature = await this.wallet.signMessage(`0x${settlementHash}`);
+      // Pass the raw hash without 0x prefix - signMessage will handle the Ethereum prefix
+      const signature = await this.wallet.signMessage(settlementHash);
       console.log(`✍️ Settlement signature: ${signature}`);
 
       // Submit settlement to contract
