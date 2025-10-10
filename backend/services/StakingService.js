@@ -333,11 +333,30 @@ class StakingService {
       console.log(`🔐 Settlement hash (0x format): 0x${settlementHash}`);
       console.log(`🔐 Wallet address: ${this.wallet.address}`);
       console.log(`🔐 Server signer from contract: ${await this.contract.serverSigner()}`);
+      
+      // Check if wallet address matches server signer
+      const serverSigner = await this.contract.serverSigner();
+      const addressMatch = this.wallet.address.toLowerCase() === serverSigner.toLowerCase();
+      console.log(`🔐 Address match: ${addressMatch}`);
+      
+      if (!addressMatch) {
+        console.error(`❌ Wallet address (${this.wallet.address}) does not match server signer (${serverSigner})`);
+        throw new Error(`Wallet address does not match server signer in contract`);
+      }
 
       // Sign settlement using Ethereum message format (matches contract's MessageHashUtils.toEthSignedMessageHash)
       // Pass the raw hash without 0x prefix - signMessage will handle the Ethereum prefix
       const signature = await this.wallet.signMessage(settlementHash);
       console.log(`✍️ Settlement signature: ${signature}`);
+      
+      // Verify the signature locally to debug
+      try {
+        const recoveredAddress = ethers.verifyMessage(settlementHash, signature);
+        console.log(`🔍 Recovered address from signature: ${recoveredAddress}`);
+        console.log(`🔍 Signature verification: ${recoveredAddress.toLowerCase() === this.wallet.address.toLowerCase()}`);
+      } catch (verifyError) {
+        console.error(`❌ Error verifying signature locally:`, verifyError);
+      }
 
       // Submit settlement to contract
       const tx = await this.contract.submitSettlement(
