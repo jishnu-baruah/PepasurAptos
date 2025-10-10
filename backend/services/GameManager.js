@@ -1006,8 +1006,16 @@ class GameManager {
 
   // End game
   async endGame(gameId) {
+    console.log(`🎯 endGame called for game ${gameId}`);
     const game = this.games.get(gameId);
-    if (!game) return;
+    if (!game) {
+      console.log(`❌ endGame: Game ${gameId} not found`);
+      return;
+    }
+
+    console.log(`🎯 Ending game ${gameId} with winners:`, game.winners);
+    console.log(`🎯 Game staking required: ${game.stakingRequired}`);
+    console.log(`🎯 Game onChainGameId: ${game.onChainGameId}`);
 
     game.phase = 'ended';
     game.status = 'completed';
@@ -1024,6 +1032,8 @@ class GameManager {
         const winners = game.winners || [];
         const losers = game.players.filter(player => !winners.includes(player));
         
+        console.log(`💰 Winners: ${winners.length}, Losers: ${losers.length}`);
+        
         // Distribute rewards using contract gameId
         const contractGameId = game.onChainGameId;
         if (!contractGameId) {
@@ -1031,8 +1041,11 @@ class GameManager {
           return game;
         }
         
+        console.log(`💰 Using contract gameId: ${contractGameId}`);
+        
         // Calculate rewards using contract gameId
         const rewards = this.stakingService.calculateRewards(contractGameId, winners, losers);
+        console.log(`💰 Rewards calculated:`, rewards);
         
         const distributionResult = await this.stakingService.distributeRewards(contractGameId, rewards);
         
@@ -1045,6 +1058,8 @@ class GameManager {
         console.error('❌ Error distributing rewards:', error);
         // Don't throw error - game should still end even if rewards fail
       }
+    } else {
+      console.log(`💰 No staking required for game ${gameId}, skipping rewards`);
     }
 
     return game;
