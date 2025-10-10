@@ -12,14 +12,41 @@ module.exports = (gameManager, flowService) => {
         return res.status(400).json({ error: 'Creator address is required' });
       }
 
-      const { gameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers);
-      
-      res.json({
-        success: true,
-        gameId,
-        roomCode,
-        message: 'Game created successfully'
-      });
+      // For staking games, create the contract game first
+      if (stakeAmount) {
+        console.log(`🎮 Creating game and contract for creator: ${creatorAddress}`);
+        console.log(`💰 Stake amount: ${stakeAmount} U2U`);
+
+        // Step 1: Create the game on-chain
+        const createTxHash = await flowService.createGame(stakeAmount, minPlayers || 4);
+        console.log(`✅ Game created, transaction: ${createTxHash}`);
+
+        // Step 2: Extract gameId from the create transaction
+        const contractGameId = await flowService.extractGameIdFromTransaction(createTxHash);
+        console.log(`🎮 Extracted contract gameId: ${contractGameId}`);
+
+        // Step 3: Create room in game manager with contract gameId
+        const { gameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers, contractGameId);
+        
+        res.json({
+          success: true,
+          gameId,
+          roomCode,
+          contractGameId,
+          createTxHash,
+          message: 'Game created successfully'
+        });
+      } else {
+        // Non-staking game
+        const { gameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers);
+        
+        res.json({
+          success: true,
+          gameId,
+          roomCode,
+          message: 'Game created successfully'
+        });
+      }
     } catch (error) {
       console.error('Error creating game:', error);
       res.status(500).json({ error: error.message });

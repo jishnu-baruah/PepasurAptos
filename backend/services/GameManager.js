@@ -153,13 +153,17 @@ class GameManager {
     }
 
     // For staking games, check if all players have staked
-    // Since we're tracking staking directly in GameManager, check if all players have staked
-    const allPlayersStaked = game.players.every(playerAddress => {
-      const stakeKey = `${gameId}-${playerAddress}`;
-      return game.playerStakes && game.playerStakes.has(stakeKey);
-    });
+    const contractGameId = game.onChainGameId;
+    if (!contractGameId) {
+      return false;
+    }
+
+    const stakingInfo = this.stakingService.getGameStakingInfo(contractGameId);
+    if (!stakingInfo) {
+      return false;
+    }
     
-    return game.players.length >= game.minPlayers && allPlayersStaked;
+    return game.players.length >= game.minPlayers && stakingInfo.isReady;
   }
 
   // Record that a player has staked
@@ -216,7 +220,7 @@ class GameManager {
     console.log(`🔍 checkStakingStatus for game ${gameId}:`, {
       players: game.players.length,
       minPlayers: game.minPlayers,
-      stakedPlayers: game.playerStakes.size,
+      stakedPlayers: stakingInfo.playersCount,
       isReady: stakingInfo.isReady,
       phase: game.phase
     });
