@@ -333,7 +333,7 @@ class StakingService {
       // Submit settlement to contract
       const tx = await this.contract.submitSettlement(
         gameId,
-        settlementHash,
+        `0x${settlementHash}`, // Convert hash to bytes format
         winners,
         payoutAmounts,
         signature
