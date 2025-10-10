@@ -25,7 +25,9 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
   if (!game || !showResults) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
-        <RetroAnimation />
+        <RetroAnimation>
+          <div className="text-white text-xl">Loading results...</div>
+        </RetroAnimation>
       </div>
     )
   }
@@ -61,6 +63,16 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
   }
 
   const result = getResultMessage()
+
+  // Debug logging for rewards
+  console.log('Game Results Debug:', {
+    gameId: game.gameId,
+    phase: game.phase,
+    status: game.status,
+    rewards: game.rewards,
+    stakingRequired: game.stakingRequired,
+    winners: game.winners
+  })
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
@@ -148,7 +160,7 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
           </div>
 
           {/* All Roles Revealed */}
-          <Card className="p-6 bg-purple-900/50 border-purple-500/50 backdrop-blur-sm">
+          {/* <Card className="p-6 bg-purple-900/50 border-purple-500/50 backdrop-blur-sm">
             <h3 className="text-2xl font-bold text-purple-400 mb-6 flex items-center justify-center gap-2">
               🎭 ALL ROLES REVEALED
             </h3>
@@ -177,10 +189,10 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
                 </div>
               ))}
             </div>
-          </Card>
+          </Card> */}
 
           {/* Game Summary */}
-          <Card className="p-6 bg-gray-900/50 border-gray-500/50 backdrop-blur-sm">
+          {/* <Card className="p-6 bg-gray-900/50 border-gray-500/50 backdrop-blur-sm">
             <h3 className="text-2xl font-bold text-gray-300 mb-6 flex items-center justify-center gap-2">
               📊 GAME SUMMARY
             </h3>
@@ -198,10 +210,10 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
                 <strong className="text-white">Final Result:</strong> {mafiaWon ? 'ASUR Victory' : 'Villager Victory'}
               </div>
             </div>
-          </Card>
+          </Card> */}
 
           {/* Rewards Section */}
-          {game.rewards && (
+          {game.rewards ? (
             <Card className="p-6 bg-yellow-900/50 border-yellow-500/50 backdrop-blur-sm">
               <h3 className="text-2xl font-bold text-yellow-400 mb-6 flex items-center justify-center gap-2">
                 💰 REWARDS DISTRIBUTED
@@ -267,7 +279,19 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
                 ))}
               </div>
             </Card>
-          )}
+          ) : game.stakingRequired ? (
+            <Card className="p-6 bg-orange-900/50 border-orange-500/50 backdrop-blur-sm">
+              <h3 className="text-2xl font-bold text-orange-400 mb-6 flex items-center justify-center gap-2">
+                ⏳ REWARDS PROCESSING
+              </h3>
+              <div className="text-center text-orange-300">
+                <p className="text-lg mb-4">Rewards are being processed...</p>
+                <p className="text-sm text-gray-400">
+                  This was a staked game. Rewards will be distributed shortly.
+                </p>
+              </div>
+            </Card>
+          ) : null}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-6 justify-center pt-4">

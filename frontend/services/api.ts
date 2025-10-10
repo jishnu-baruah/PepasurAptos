@@ -21,6 +21,18 @@ export interface Game {
   winners: string[]
   roleCommit: string | null
   status: 'active' | 'completed'
+  rewards?: {
+    settlementTxHash: string
+    distributions: Array<{
+      playerAddress: string
+      role: string
+      stakeAmount: string
+      rewardAmount: string
+      rewardInU2U: string
+      totalReceived: string
+      totalReceivedInU2U: string
+    }>
+  }
 }
 
 export interface CreateGameRequest {
