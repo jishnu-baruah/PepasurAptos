@@ -1,7 +1,7 @@
 # Pepasur 🐸
 
 **An on-chain Mafia game powered by U2U Blockchain**\
-*Built for U2U Vietbuild Hackathon 2024*
+*Built for U2U Vietbuidl Hackathon 2025*
 
 Pepasur is a multiplayer Mafia-style social deduction game built
 entirely on the U2U blockchain. Players take on mythological roles,
