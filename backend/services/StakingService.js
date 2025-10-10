@@ -331,8 +331,8 @@ class StakingService {
       console.log(`📋 Settlement data:`, settlementData);
       console.log(`🔐 Settlement hash: ${settlementHash}`);
 
-      // Sign settlement
-      const signature = await this.wallet.signMessage(settlementHash);
+      // Sign settlement using Ethereum message format (matches contract's MessageHashUtils.toEthSignedMessageHash)
+      const signature = await this.wallet.signMessage(`0x${settlementHash}`);
       console.log(`✍️ Settlement signature: ${signature}`);
 
       // Submit settlement to contract
