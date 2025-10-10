@@ -308,8 +308,13 @@ class StakingService {
       }
 
       // Prepare settlement data
-      const winners = rewards.rewards.filter(r => r.role === 'winner').map(r => r.playerAddress);
-      const payoutAmounts = rewards.rewards.map(r => BigInt(r.rewardAmount));
+      // For now, include all players in the settlement since there might be no winners
+      const allPlayers = rewards.rewards.map(r => r.playerAddress);
+      const allPayoutAmounts = rewards.rewards.map(r => BigInt(r.rewardAmount));
+      
+      // Use all players as "winners" for the settlement (the contract will handle the actual distribution)
+      const winners = allPlayers;
+      const payoutAmounts = allPayoutAmounts;
 
       // Create settlement hash
       const settlementData = {
