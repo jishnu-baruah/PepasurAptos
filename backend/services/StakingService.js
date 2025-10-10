@@ -303,6 +303,11 @@ class StakingService {
     try {
       console.log(`💰 Distributing rewards for game ${gameId}`);
       
+      // Check if wallet is initialized
+      if (!this.wallet) {
+        throw new Error('Wallet not initialized - SERVER_PRIVATE_KEY not set in environment');
+      }
+      
       if (!this.contract || !this.wallet) {
         throw new Error('Contract or wallet not initialized');
       }
