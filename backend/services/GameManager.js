@@ -121,8 +121,13 @@ class GameManager {
         throw new Error('This game does not require staking');
       }
 
-      // Use staking service to handle the stake
-      const stakeResult = await this.stakingService.stakeForGame(gameId, playerAddress, roomCode);
+      // Use staking service to handle the stake with contract gameId
+      const contractGameId = game.onChainGameId;
+      if (!contractGameId) {
+        throw new Error('No contract gameId available for staking');
+      }
+      
+      const stakeResult = await this.stakingService.stakeForGame(contractGameId, playerAddress, roomCode);
       
       // Update game staking status
       game.stakingStatus = stakeResult.gameStatus;
@@ -185,18 +190,13 @@ class GameManager {
       return null;
     }
 
-    return {
-      gameId: gameId,
-      roomCode: game.roomCode,
-      players: game.players,
-      playersCount: game.players.length,
-      minPlayers: game.minPlayers,
-      totalStaked: (BigInt(game.playerStakes.size) * BigInt(game.stakeAmount)).toString(),
-      totalStakedInU2U: ethers.formatEther(BigInt(game.playerStakes.size) * BigInt(game.stakeAmount)),
-      status: game.stakingStatus,
-      createdAt: game.createdAt,
-      isReady: game.players.length >= game.minPlayers && game.playerStakes.size === game.players.length
-    };
+    // Use contract gameId for staking service
+    const contractGameId = game.onChainGameId;
+    if (!contractGameId) {
+      return null;
+    }
+
+    return this.stakingService.getGameStakingInfo(contractGameId);
   }
 
   // Check and update game phase based on staking status
@@ -240,7 +240,18 @@ class GameManager {
 
   // Get player's stake info
   getPlayerStakeInfo(gameId, playerAddress) {
-    return this.stakingService.getPlayerStakeInfo(gameId, playerAddress);
+    const game = this.games.get(gameId);
+    if (!game) {
+      return null;
+    }
+
+    // Use contract gameId for staking service
+    const contractGameId = game.onChainGameId;
+    if (!contractGameId) {
+      return null;
+    }
+
+    return this.stakingService.getPlayerStakeInfo(contractGameId, playerAddress);
   }
 
   // Check player balance
@@ -1009,15 +1020,15 @@ class GameManager {
         const winners = game.winners || [];
         const losers = game.players.filter(player => !winners.includes(player));
         
-        // Calculate rewards
-        const rewards = this.stakingService.calculateRewards(gameId, winners, losers);
-        
         // Distribute rewards using contract gameId
         const contractGameId = game.onChainGameId;
         if (!contractGameId) {
           console.error('❌ No contract gameId available for reward distribution');
           return game;
         }
+        
+        // Calculate rewards using contract gameId
+        const rewards = this.stakingService.calculateRewards(contractGameId, winners, losers);
         
         const distributionResult = await this.stakingService.distributeRewards(contractGameId, rewards);
         
