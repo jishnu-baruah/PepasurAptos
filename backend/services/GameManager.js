@@ -178,6 +178,29 @@ class GameManager {
 
     console.log(`💰 Recorded stake for player ${playerAddress} in game ${gameId}`);
     
+    // Also store the game in StakingService if it doesn't exist
+    const contractGameId = game.onChainGameId;
+    if (contractGameId && !this.stakingService.stakedGames.has(contractGameId)) {
+      console.log(`💰 Creating game in StakingService with contract gameId: ${contractGameId}`);
+      this.stakingService.stakedGames.set(contractGameId, {
+        roomCode: game.roomCode,
+        players: [],
+        totalStaked: 0n,
+        status: 'waiting',
+        createdAt: game.createdAt || Date.now()
+      });
+    }
+    
+    // Add player to StakingService game if it exists
+    if (contractGameId && this.stakingService.stakedGames.has(contractGameId)) {
+      const stakingGame = this.stakingService.stakedGames.get(contractGameId);
+      if (!stakingGame.players.includes(playerAddress)) {
+        stakingGame.players.push(playerAddress);
+        stakingGame.totalStaked += game.stakeAmount;
+        console.log(`💰 Added player ${playerAddress} to StakingService game ${contractGameId}`);
+      }
+    }
+    
     // Check if game is ready to start
     this.checkStakingStatus(gameId);
   }
