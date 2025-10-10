@@ -10,10 +10,11 @@ import { Player } from "@/hooks/useGame"
 interface GameResultsScreenProps {
   game?: any
   players: Player[]
+  currentPlayer?: Player
   onNewGame?: () => void
 }
 
-export default function GameResultsScreen({ game, players, onNewGame }: GameResultsScreenProps) {
+export default function GameResultsScreen({ game, players, currentPlayer, onNewGame }: GameResultsScreenProps) {
   const [showResults, setShowResults] = useState(false)
 
   // Show results after a brief delay
@@ -267,16 +268,26 @@ export default function GameResultsScreen({ game, players, onNewGame }: GameResu
                   </p>
                 </div>
                 
-                {/* Withdraw Component for Current Player */}
-                {game.rewards.distributions?.map((reward: any) => (
-                  <WithdrawRewards
-                    key={reward.playerAddress}
-                    gameId={game.gameId}
-                    playerAddress={reward.playerAddress}
-                    rewardAmount={reward.rewardAmount}
-                    rewardInU2U={reward.rewardInU2U}
-                  />
-                ))}
+                {/* Withdraw Component for Current Player Only */}
+                {(() => {
+                  // Get current player's reward
+                  const currentPlayerReward = currentPlayer && game.rewards.distributions?.find(
+                    (reward: any) => reward.playerAddress === currentPlayer.address
+                  );
+                  
+                  if (currentPlayerReward) {
+                    return (
+                      <WithdrawRewards
+                        key={currentPlayerReward.playerAddress}
+                        gameId={game.gameId}
+                        playerAddress={currentPlayerReward.playerAddress}
+                        rewardAmount={currentPlayerReward.rewardAmount}
+                        rewardInU2U={currentPlayerReward.rewardInU2U}
+                      />
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </Card>
           ) : game.stakingRequired ? (

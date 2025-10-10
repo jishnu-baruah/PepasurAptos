@@ -125,12 +125,9 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
                 
                 {/* Swaggy Avatar - Responsive */}
                 <div className="flex justify-center">
-                  <img 
-                    src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674" 
-                    alt="ASUR is winning"
-                    className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#FF0000] shadow-lg animate-pulse"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 flex items-center justify-center text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[10rem] border-2 border-[#FF0000] shadow-lg animate-pulse bg-red-900/50">
+                    🎭
+                  </div>
                 </div>
               </div>
             )}

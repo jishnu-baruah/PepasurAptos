@@ -93,19 +93,19 @@ export function useGame(gameId?: string): GameState & GameActions {
       
       console.log(`Player ${index + 1} (${address}): ${backendRole} -> ${frontendRole}`)
       
-      // Assign role-specific avatars
+      // Assign role-specific avatars with fallback emojis
       let avatar = '👤' // Default avatar
       if (frontendRole === 'DEVA') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/dev.png?updatedAt=1758923141278'
+        avatar = '🧙‍♂️' // Fallback emoji for DEVA
         console.log(`🎭 DEVA avatar assigned: ${avatar}`)
       } else if (frontendRole === 'ASUR') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/asur.png?updatedAt=1758922659571'
+        avatar = '🎭' // Fallback emoji for ASUR
         console.log(`🎭 ASUR avatar assigned: ${avatar}`)
       } else if (frontendRole === 'RISHI') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/sage.png?updatedAt=1758922659655'
+        avatar = '🧙‍♀️' // Fallback emoji for RISHI
         console.log(`🎭 RISHI avatar assigned: ${avatar}`)
       } else if (frontendRole === 'MANAV') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560'
+        avatar = '👨‍🌾' // Fallback emoji for MANAV
         console.log(`🎭 MANAV avatar assigned: ${avatar}`)
       }
       

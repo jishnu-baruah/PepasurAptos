@@ -627,6 +627,7 @@ export default function Home() {
           <GameResultsScreen 
             game={game}
             players={players}
+            currentPlayer={currentPlayer}
             onNewGame={() => {
               setGameState('wallet')
               setHasSeenRole(false)
