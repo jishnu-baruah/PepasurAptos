@@ -248,11 +248,11 @@ class StakingService {
 
       // Winners get 70% of prize pool
       const winnerReward = (prizePool * 70n) / 100n;
-      const winnerRewardPerPlayer = winnerReward / BigInt(winners.length);
+      const winnerRewardPerPlayer = winners.length > 0 ? winnerReward / BigInt(winners.length) : 0n;
 
       // Losers get 30% of prize pool
       const loserReward = (prizePool * 30n) / 100n;
-      const loserRewardPerPlayer = loserReward / BigInt(losers.length);
+      const loserRewardPerPlayer = losers.length > 0 ? loserReward / BigInt(losers.length) : 0n;
 
       // Add winner rewards
       winners.forEach(playerAddress => {
