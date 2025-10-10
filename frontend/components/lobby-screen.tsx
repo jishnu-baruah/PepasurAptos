@@ -103,7 +103,20 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
                       <div className="text-gray-500">👤</div>
                     ) : (
                       <RetroAnimation type="pulse">
-                        {getPlayerAvatar(player)}
+                        {getPlayerAvatar(player) && getPlayerAvatar(player).startsWith('http') ? (
+                          <img 
+                            src={getPlayerAvatar(player)} 
+                            alt={`${player.name} avatar`}
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextSibling.style.display = 'inline';
+                            }}
+                          />
+                        ) : null}
+                        <span style={{ display: getPlayerAvatar(player) && getPlayerAvatar(player).startsWith('http') ? 'none' : 'inline' }}>
+                          {getPlayerAvatar(player)}
+                        </span>
                       </RetroAnimation>
                     )}
                   </div>

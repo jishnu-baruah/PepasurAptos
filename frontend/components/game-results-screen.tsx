@@ -240,7 +240,20 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
                       }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <span className="text-2xl">{player?.avatar || '👤'}</span>
+                            {player?.avatar && player.avatar.startsWith('http') ? (
+                              <img 
+                                src={player.avatar} 
+                                alt={player?.name || 'Player'} 
+                                className="w-8 h-8 rounded object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextSibling.style.display = 'inline';
+                                }}
+                              />
+                            ) : null}
+                            <span className="text-2xl" style={{ display: player?.avatar && player.avatar.startsWith('http') ? 'none' : 'inline' }}>
+                              {player?.avatar || '👤'}
+                            </span>
                             <div>
                               <div className="font-bold text-lg">{player?.name || 'Unknown'}</div>
                               <div className={`text-sm ${isWinner ? 'text-green-300' : 'text-red-300'}`}>
