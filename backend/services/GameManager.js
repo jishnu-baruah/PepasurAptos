@@ -145,25 +145,40 @@ class GameManager {
   isGameReadyToStart(gameId) {
     const game = this.games.get(gameId);
     if (!game) {
+      console.log(`❌ isGameReadyToStart: Game ${gameId} not found`);
       return false;
     }
 
+    console.log(`🔍 isGameReadyToStart for game ${gameId}:`, {
+      players: game.players.length,
+      minPlayers: game.minPlayers,
+      stakingRequired: game.stakingRequired,
+      onChainGameId: game.onChainGameId,
+      phase: game.phase
+    });
+
     if (!game.stakingRequired) {
-      return game.players.length >= game.minPlayers;
+      const ready = game.players.length >= game.minPlayers;
+      console.log(`✅ Non-staking game ready: ${ready}`);
+      return ready;
     }
 
     // For staking games, check if all players have staked
     const contractGameId = game.onChainGameId;
     if (!contractGameId) {
+      console.log(`❌ No contract gameId for staking game ${gameId}`);
       return false;
     }
 
     const stakingInfo = this.stakingService.getGameStakingInfo(contractGameId);
     if (!stakingInfo) {
+      console.log(`❌ No staking info for contract gameId ${contractGameId}`);
       return false;
     }
     
-    return game.players.length >= game.minPlayers && stakingInfo.isReady;
+    const ready = game.players.length >= game.minPlayers && stakingInfo.isReady;
+    console.log(`✅ Staking game ready: ${ready} (players: ${game.players.length}/${game.minPlayers}, staked: ${stakingInfo.isReady})`);
+    return ready;
   }
 
   // Record that a player has staked
@@ -205,6 +220,7 @@ class GameManager {
 
   // Check and update game phase based on staking status
   async checkStakingStatus(gameId) {
+    console.log(`🔍 checkStakingStatus called for game ${gameId}`);
     const game = this.games.get(gameId);
     if (!game || !game.stakingRequired) {
       console.log(`❌ checkStakingStatus: Game ${gameId} not found or staking not required`);
@@ -237,7 +253,7 @@ class GameManager {
         isReady: stakingInfo.isReady,
         phase: game.phase,
         players: game.players.length,
-        staked: game.playerStakes.size
+        staked: stakingInfo.playersCount
       });
     }
   }
