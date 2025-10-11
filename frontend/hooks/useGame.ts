@@ -474,7 +474,7 @@ export function useGame(gameId?: string): GameState & GameActions {
     if (!currentGameId) return
     
     console.log('🔄 refreshGame called for gameId:', currentGameId)
-    setIsLoading(true)
+    // Don't set loading state for background refreshes
     setError(null)
     
     try {
@@ -507,9 +507,8 @@ export function useGame(gameId?: string): GameState & GameActions {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh game'
       setError(errorMessage)
-    } finally {
-      setIsLoading(false)
     }
+    // Don't set loading state for background refreshes
   }, [currentGameId, currentPlayer?.address, convertPlayers])
 
   return {

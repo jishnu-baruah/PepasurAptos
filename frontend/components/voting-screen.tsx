@@ -59,6 +59,11 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
         }, 10000) // 10 seconds to match backend timer
       }
     }
+    
+    // Also handle transition to ended phase
+    if (game?.phase === 'ended') {
+      onComplete()
+    }
   }, [game?.phase, game?.eliminated, players, onComplete])
 
   const handleVote = (playerId: string) => {
