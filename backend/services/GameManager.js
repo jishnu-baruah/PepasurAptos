@@ -844,7 +844,10 @@ class GameManager {
     // Check if there are any votes at all
     const totalVotes = Object.keys(game.votes).length;
     if (totalVotes === 0) {
-      console.log(`🗳️ No votes submitted, ending game without resolution`);
+      console.log(`🗳️ No votes submitted - villagers win by default (no elimination)`);
+      // According to ASUR Mafia rules: if no one is eliminated, villagers win
+      game.winners = game.players.filter(p => game.roles[p] !== 'Mafia');
+      console.log(`🗳️ Villagers win by default:`, game.winners);
       await this.endGame(gameId);
       return;
     }
@@ -1042,16 +1045,21 @@ class GameManager {
     const mafiaCount = activePlayers.filter(p => game.roles[p] === 'Mafia').length;
     const villagerCount = activePlayers.length - mafiaCount;
 
+    console.log(`🎯 Checking win conditions: ${mafiaCount} Mafia, ${villagerCount} Villagers`);
+
     if (mafiaCount === 0) {
-      // Villagers win
+      // Villagers win - all Mafia eliminated
       game.winners = activePlayers.filter(p => game.roles[p] !== 'Mafia');
+      console.log(`🎯 Villagers win - Mafia eliminated:`, game.winners);
       return true;
     } else if (mafiaCount >= villagerCount) {
-      // Mafia wins
+      // Mafia wins - Mafia outnumbers villagers
       game.winners = activePlayers.filter(p => game.roles[p] === 'Mafia');
+      console.log(`🎯 Mafia wins - outnumbers villagers:`, game.winners);
       return true;
     }
 
+    console.log(`🎯 No win conditions met - game continues`);
     return false;
   }
 
