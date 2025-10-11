@@ -411,7 +411,10 @@ class StakingService {
       }
       
       const allPlayers = rewards.rewards.map(r => r.playerAddress);
-      const allPayoutAmounts = rewards.rewards.map(r => BigInt(r.rewardAmount));
+      const allPayoutAmounts = rewards.rewards.map(r => BigInt(r.totalReceived)); // Use totalReceived (stake + reward)
+      
+      console.log(`💰 Payout amounts:`, allPayoutAmounts.map(a => ethers.formatEther(a)));
+      console.log(`💰 Total payout: ${ethers.formatEther(allPayoutAmounts.reduce((sum, amount) => sum + amount, 0n))} U2U`);
       
       // Use all players as "winners" for the settlement (the contract will handle the actual distribution)
       const winners = allPlayers;
