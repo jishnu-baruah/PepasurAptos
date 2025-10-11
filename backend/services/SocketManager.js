@@ -210,7 +210,8 @@ class SocketManager {
         roleCommit: game.roleCommit,
         rewards: game.rewards,
         winners: game.winners,
-        status: game.status
+        status: game.status,
+        votingResolved: game.votingResolved
       };
       
       // Emit to all players in the game

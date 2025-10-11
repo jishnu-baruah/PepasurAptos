@@ -48,22 +48,29 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
 
   // Handle voting results
   useEffect(() => {
-    if (game?.phase === 'voting' && game?.eliminated && game.eliminated.length > 0) {
-      const lastEliminated = game.eliminated[game.eliminated.length - 1]
-      const eliminated = players.find(p => p.address === lastEliminated)
-      if (eliminated) {
-        setEliminatedPlayer(eliminated)
-        setEliminatedPlayerAvatar(eliminated.avatar) // Cache the avatar to prevent alternation
-        setShowResult(true)
-        // Backend will handle transition to ended phase
+    if (game?.phase === 'voting' && game?.votingResolved) {
+      // Check if someone was eliminated in this voting round
+      if (game.eliminated && game.eliminated.length > 0) {
+        const lastEliminated = game.eliminated[game.eliminated.length - 1]
+        const eliminated = players.find(p => p.address === lastEliminated)
+        if (eliminated) {
+          setEliminatedPlayer(eliminated)
+          setEliminatedPlayerAvatar(eliminated.avatar) // Cache the avatar to prevent alternation
+        }
+      } else {
+        // No one was eliminated
+        setEliminatedPlayer(null)
+        setEliminatedPlayerAvatar(null)
       }
+      setShowResult(true)
+      // Backend will handle transition to ended phase
     }
     
     // Also handle transition to ended phase
     if (game?.phase === 'ended') {
       onComplete()
     }
-  }, [game?.phase, game?.eliminated, players, onComplete])
+  }, [game?.phase, game?.votingResolved, game?.eliminated, players, onComplete])
 
   const handleVote = (playerId: string) => {
     if (!submitted && game?.phase === 'voting') {
@@ -83,9 +90,9 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
     }
   }
 
-  if (showResult && eliminatedPlayer) {
-    // Check if the eliminated player was innocent (not ASUR)
-    const wasInnocent = eliminatedPlayer.role !== "ASUR"
+  if (showResult) {
+    // Check if someone was eliminated
+    const wasInnocent = eliminatedPlayer && eliminatedPlayer.role !== "ASUR"
     
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -93,50 +100,100 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
           <div className="space-y-8">
             {/* Main Avatar Section - BIG FOCUS */}
             <div className="space-y-6">
-              <div className="text-4xl sm:text-5xl">⚰️</div>
-              <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">PLAYER ELIMINATED</div>
+              {eliminatedPlayer ? (
+                <>
+                  <div className="text-4xl sm:text-5xl">⚰️</div>
+                  <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">PLAYER ELIMINATED</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-4xl sm:text-5xl">🤝</div>
+                  <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-green pixel-text-3d-float">NO ONE ELIMINATED</div>
+                </>
+              )}
               
-              {/* Eliminated Player Avatar - Responsive */}
-              <div className="flex justify-center">
-                {eliminatedPlayerAvatar && eliminatedPlayerAvatar.startsWith('http') ? (
-                  <img 
-                    src={eliminatedPlayerAvatar} 
-                    alt={eliminatedPlayer.name}
-                    className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#666666] shadow-lg"
-                    style={{ imageRendering: 'pixelated' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
-                <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-[#333333] border-2 border-[#666666] flex items-center justify-center shadow-lg" style={{ display: eliminatedPlayerAvatar && eliminatedPlayerAvatar.startsWith('http') ? 'none' : 'flex' }}>
-                  <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">💀</span>
+              {/* Eliminated Player Avatar - Only show if someone was eliminated */}
+              {eliminatedPlayer && (
+                <div className="flex justify-center">
+                  {eliminatedPlayerAvatar && eliminatedPlayerAvatar.startsWith('http') ? (
+                    <img 
+                      src={eliminatedPlayerAvatar} 
+                      alt={eliminatedPlayer.name}
+                      className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#666666] shadow-lg"
+                      style={{ imageRendering: 'pixelated' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-[#333333] border-2 border-[#666666] flex items-center justify-center shadow-lg" style={{ display: eliminatedPlayerAvatar && eliminatedPlayerAvatar.startsWith('http') ? 'none' : 'flex' }}>
+                    <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">💀</span>
+                  </div>
                 </div>
-              </div>
+              )}
               
-              {/* Player Info */}
-              <div className="space-y-2">
-                <div className="text-xl sm:text-2xl md:text-3xl font-press-start pixel-text-3d-white">{eliminatedPlayer.name}</div>
-                {eliminatedPlayer.role && (
-                  <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">Role: {eliminatedPlayer.role}</div>
-                )}
-              </div>
+              {/* Player Info - Only show if someone was eliminated */}
+              {eliminatedPlayer && (
+                <div className="space-y-2">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-press-start pixel-text-3d-white">{eliminatedPlayer.name}</div>
+                  {eliminatedPlayer.role && (
+                    <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">Role: {eliminatedPlayer.role}</div>
+                  )}
+                </div>
+              )}
             </div>
             
-            {/* Show ASUR winning message if innocent was eliminated */}
-            {wasInnocent && (
+            {/* Show appropriate message based on elimination result */}
+            {eliminatedPlayer ? (
+              wasInnocent ? (
+                // Innocent eliminated - ASUR winning
+                <div className="space-y-6">
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">
+                    ASUR IS WINNING
+                  </div>
+                  
+                  {/* Swaggy Avatar - Responsive */}
+                  <div className="flex justify-center">
+                    <img 
+                      src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674" 
+                      alt="ASUR is winning"
+                      className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#FF0000] shadow-lg animate-pulse"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                // ASUR eliminated - Villagers winning
+                <div className="space-y-6">
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-green pixel-text-3d-float">
+                    VILLAGERS ARE WINNING
+                  </div>
+                  
+                  {/* Villager Avatar - Responsive */}
+                  <div className="flex justify-center">
+                    <img 
+                      src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560" 
+                      alt="Villagers are winning"
+                      className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#00FF00] shadow-lg animate-pulse"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  </div>
+                </div>
+              )
+            ) : (
+              // No one eliminated - Villagers win by default
               <div className="space-y-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">
-                  ASUR IS WINNING
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-green pixel-text-3d-float">
+                  VILLAGERS WIN
                 </div>
                 
-                {/* Swaggy Avatar - Responsive */}
+                {/* Villager Avatar - Responsive */}
                 <div className="flex justify-center">
                   <img 
-                    src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674" 
-                    alt="ASUR is winning"
-                    className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#FF0000] shadow-lg animate-pulse"
+                    src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560" 
+                    alt="Villagers win"
+                    className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#00FF00] shadow-lg animate-pulse"
                     style={{ imageRendering: 'pixelated' }}
                   />
                 </div>

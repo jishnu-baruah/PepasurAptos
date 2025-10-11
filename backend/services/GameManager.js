@@ -858,6 +858,14 @@ class GameManager {
 
     console.log(`🗳️ Vote counts:`, voteCounts);
 
+    // Check if there are any votes at all
+    const totalVotes = Object.keys(game.votes).length;
+    if (totalVotes === 0) {
+      console.log(`🗳️ No votes submitted, ending game without resolution`);
+      await this.endGame(gameId);
+      return;
+    }
+
     // Find player with most votes
     let maxVotes = 0;
     let eliminated = null;
@@ -887,7 +895,7 @@ class GameManager {
       return;
     }
 
-    // Keep voting phase active to show resolution (same pattern as night resolution)
+    // Always show resolution (same pattern as night resolution)
     console.log(`🗳️ Keeping voting phase active to show resolution for game ${gameId}`);
     game.timeLeft = 10; // Show resolution for 10 seconds
     game.votingResolved = true; // Mark that voting has been resolved
