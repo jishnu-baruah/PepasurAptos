@@ -229,8 +229,13 @@ class StakingService {
   // Calculate rewards for game completion
   calculateRewards(gameId, winners, losers, gameRoles, eliminatedPlayers) {
     try {
+      console.log(`💰 calculateRewards called with gameId: ${gameId}`);
+      console.log(`💰 Available staked games:`, Array.from(this.stakedGames.keys()));
+      
       const game = this.stakedGames.get(gameId);
       if (!game) {
+        console.error(`❌ Game ${gameId} not found in stakedGames`);
+        console.error(`❌ Available games:`, Array.from(this.stakedGames.keys()));
         throw new Error('Game not found');
       }
 
@@ -364,8 +369,8 @@ class StakingService {
         totalPoolInU2U: ethers.formatEther(totalPool),
         houseCut: houseCut.toString(),
         houseCutInU2U: ethers.formatEther(houseCut),
-        prizePool: prizePool.toString(),
-        prizePoolInU2U: ethers.formatEther(prizePool),
+        rewardPool: rewardPool.toString(),
+        rewardPoolInU2U: ethers.formatEther(rewardPool),
         rewards: rewards
       };
     } catch (error) {

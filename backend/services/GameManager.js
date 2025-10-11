@@ -1115,12 +1115,17 @@ class GameManager {
         
         // Distribute rewards using contract gameId
         const contractGameId = game.onChainGameId;
+        console.log(`💰 Game ${gameId} has onChainGameId: ${contractGameId}`);
         if (!contractGameId) {
           console.error('❌ No contract gameId available for reward distribution');
           return game;
         }
         
         console.log(`💰 Using contract gameId: ${contractGameId}`);
+        console.log(`💰 Winners:`, winners);
+        console.log(`💰 Losers:`, losers);
+        console.log(`💰 Game roles:`, game.roles);
+        console.log(`💰 Eliminated players:`, game.eliminated || []);
         
         // Calculate rewards using contract gameId
         const rewards = this.stakingService.calculateRewards(contractGameId, winners, losers, game.roles, game.eliminated || []);
