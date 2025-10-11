@@ -762,7 +762,7 @@ class GameManager {
 
     // Start timer for task phase (same pattern as game start)
     console.log(`Starting task phase timer for game ${gameId}`);
-    this.startTimer(gameId, true);
+    await this.startTimer(gameId, true);
 
     console.log(`Resolution phase resolved for game ${gameId}, moved to task phase`);
     
@@ -796,7 +796,7 @@ class GameManager {
 
     // Start timer for voting phase (same pattern as game start)
     console.log(`Starting voting phase timer for game ${gameId}`);
-    this.startTimer(gameId, true);
+    await this.startTimer(gameId, true);
 
     console.log(`Task phase resolved for game ${gameId}, moved to voting phase`);
     

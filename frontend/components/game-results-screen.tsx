@@ -263,10 +263,10 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
                           </div>
                           <div className="text-right">
                             <div className="text-lg font-bold text-yellow-400">
-                              {reward.totalReceivedInU2U} U2U
+                              {parseFloat(reward.totalReceivedInU2U).toFixed(4)} U2U
                             </div>
                             <div className="text-sm text-gray-400">
-                              +{reward.rewardInU2U} U2U reward
+                              +{parseFloat(reward.rewardInU2U).toFixed(4)} U2U reward
                             </div>
                           </div>
                         </div>
