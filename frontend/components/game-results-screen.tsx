@@ -76,28 +76,28 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
   })
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
-      <Card className="w-full max-w-4xl p-8 bg-black/80 border-4 border-white/20 text-white backdrop-blur-sm">
-        <div className="space-y-8 text-center">
+    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 gaming-bg scanlines">
+      <Card className="w-full max-w-4xl p-4 sm:p-6 lg:p-8 bg-black/80 border-2 sm:border-4 border-white/20 text-white backdrop-blur-sm">
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8 text-center">
           {/* Title Section */}
-          <div className="space-y-6">
-            <div className="text-8xl">{result.emoji}</div>
+          <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+            <div className="text-4xl sm:text-6xl lg:text-8xl">{result.emoji}</div>
             <h1 
-              className="text-5xl font-bold tracking-wider"
+              className="text-2xl sm:text-3xl lg:text-5xl font-bold tracking-wider"
               style={{ color: result.color }}
             >
               {result.title}
             </h1>
-            <p className="text-2xl text-gray-300">
+            <p className="text-lg sm:text-xl lg:text-2xl text-gray-300">
               {result.message}
             </p>
           </div>
 
           {/* Game Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
             {/* Winners */}
-            <Card className="p-6 bg-green-900/50 border-green-500/50 backdrop-blur-sm">
-              <h3 className="text-2xl font-bold text-green-400 mb-6 flex items-center justify-center gap-2">
+            <Card className="p-3 sm:p-4 lg:p-6 bg-green-900/50 border-green-500/50 backdrop-blur-sm">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400 mb-3 sm:mb-4 lg:mb-6 flex items-center justify-center gap-2">
                 🏆 WINNERS
               </h3>
               <div className="space-y-3">
@@ -126,8 +126,8 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
             </Card>
 
             {/* Eliminated */}
-            <Card className="p-6 bg-red-900/50 border-red-500/50 backdrop-blur-sm">
-              <h3 className="text-2xl font-bold text-red-400 mb-6 flex items-center justify-center gap-2">
+            <Card className="p-3 sm:p-4 lg:p-6 bg-red-900/50 border-red-500/50 backdrop-blur-sm">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-red-400 mb-3 sm:mb-4 lg:mb-6 flex items-center justify-center gap-2">
                 💀 ELIMINATED
               </h3>
               <div className="space-y-3">
@@ -215,8 +215,8 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
 
           {/* Rewards Section */}
           {game.rewards ? (
-            <Card className="p-6 bg-yellow-900/50 border-yellow-500/50 backdrop-blur-sm">
-              <h3 className="text-2xl font-bold text-yellow-400 mb-6 flex items-center justify-center gap-2">
+            <Card className="p-3 sm:p-4 lg:p-6 bg-yellow-900/50 border-yellow-500/50 backdrop-blur-sm">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-400 mb-3 sm:mb-4 lg:mb-6 flex items-center justify-center gap-2">
                 💰 REWARDS DISTRIBUTED
               </h3>
               <div className="space-y-4">
@@ -318,11 +318,11 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
           ) : null}
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-6 justify-center pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-6 justify-center pt-2 sm:pt-3 lg:pt-4">
             {onNewGame && (
               <Button 
                 onClick={onNewGame}
-                className="px-12 py-4 text-xl bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg"
+                className="px-6 sm:px-8 lg:px-12 py-2 sm:py-3 lg:py-4 text-sm sm:text-lg lg:text-xl bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg"
               >
                 🎮 Start New Game
               </Button>
@@ -330,7 +330,7 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
             <Button 
               onClick={() => window.location.reload()}
               variant="outline"
-              className="px-12 py-4 text-xl border-white/50 text-white hover:bg-white/10 font-bold rounded-lg shadow-lg"
+              className="px-6 sm:px-8 lg:px-12 py-2 sm:py-3 lg:py-4 text-sm sm:text-lg lg:text-xl border-white/50 text-white hover:bg-white/10 font-bold rounded-lg shadow-lg"
             >
               🔄 Refresh Page
             </Button>
