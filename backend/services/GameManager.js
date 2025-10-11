@@ -536,10 +536,10 @@ class GameManager {
       await this.resolveNightPhase(gameId);
     } else if (game.phase === 'resolution') {
       console.log(`Calling resolveResolutionPhase for game ${gameId}`);
-      this.resolveResolutionPhase(gameId);
+      await this.resolveResolutionPhase(gameId);
     } else if (game.phase === 'task') {
       console.log(`Calling resolveTaskPhase for game ${gameId}`);
-      this.resolveTaskPhase(gameId);
+      await this.resolveTaskPhase(gameId);
     } else if (game.phase === 'voting') {
       if (game.votingResolved) {
         console.log(`Voting already resolved, transitioning to ended phase for game ${gameId}`);
@@ -753,7 +753,7 @@ class GameManager {
   }
 
   // Resolve resolution phase
-  resolveResolutionPhase(gameId) {
+  async resolveResolutionPhase(gameId) {
     const game = this.games.get(gameId);
     if (!game) return;
 
@@ -800,7 +800,7 @@ class GameManager {
   }
 
   // Resolve task phase
-  resolveTaskPhase(gameId) {
+  async resolveTaskPhase(gameId) {
     const game = this.games.get(gameId);
     if (!game) return;
 
