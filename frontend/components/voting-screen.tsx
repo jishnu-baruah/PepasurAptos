@@ -20,6 +20,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
   const [submitted, setSubmitted] = useState(false)
   const [showResult, setShowResult] = useState(false)
   const [eliminatedPlayer, setEliminatedPlayer] = useState<Player | null>(null)
+  const [eliminatedPlayerAvatar, setEliminatedPlayerAvatar] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState(0)
 
   // Real-time timer sync with backend
@@ -52,6 +53,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
       const eliminated = players.find(p => p.address === lastEliminated)
       if (eliminated) {
         setEliminatedPlayer(eliminated)
+        setEliminatedPlayerAvatar(eliminated.avatar) // Cache the avatar to prevent alternation
         setShowResult(true)
         // Transition to results after timer expires
         setTimeout(() => {
@@ -99,18 +101,21 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
               
               {/* Eliminated Player Avatar - Responsive */}
               <div className="flex justify-center">
-                {eliminatedPlayer.avatar && eliminatedPlayer.avatar.startsWith('http') ? (
+                {eliminatedPlayerAvatar && eliminatedPlayerAvatar.startsWith('http') ? (
                   <img 
-                    src={eliminatedPlayer.avatar} 
+                    src={eliminatedPlayerAvatar} 
                     alt={eliminatedPlayer.name}
                     className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#666666] shadow-lg"
                     style={{ imageRendering: 'pixelated' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextSibling.style.display = 'flex';
+                    }}
                   />
-                ) : (
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-[#333333] border-2 border-[#666666] flex items-center justify-center shadow-lg">
-                    <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">💀</span>
-                  </div>
-                )}
+                ) : null}
+                <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-[#333333] border-2 border-[#666666] flex items-center justify-center shadow-lg" style={{ display: eliminatedPlayerAvatar && eliminatedPlayerAvatar.startsWith('http') ? 'none' : 'flex' }}>
+                  <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">💀</span>
+                </div>
               </div>
               
               {/* Player Info */}

@@ -815,6 +815,12 @@ class GameManager {
     const game = this.games.get(gameId);
     if (!game) return;
 
+    // Safety check: only resolve if we're actually in voting phase
+    if (game.phase !== 'voting') {
+      console.log(`Skipping voting phase resolve - current phase is ${game.phase}`);
+      return;
+    }
+
     console.log(`🗳️ Resolving voting phase for game ${gameId}`);
     console.log(`🗳️ Current votes:`, game.votes);
     console.log(`🗳️ Active players:`, game.players.filter(p => !game.eliminated.includes(p)));
