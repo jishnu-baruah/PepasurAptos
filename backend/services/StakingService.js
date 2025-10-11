@@ -265,70 +265,86 @@ class StakingService {
 
       // SIMPLIFIED LOGIC: Ensure total payout never exceeds available pool
       if (mafiaWon) {
-        // Case 1: Mafia Wins - Mafia gets entire available pool
-        console.log(`💰 Mafia won - distributing entire available pool to Mafia`);
+        // Case 1: Mafia Wins - Distribute available pool exactly
+        console.log(`💰 Mafia won - distributing available pool exactly`);
         
-        const mafiaRewardPerPlayer = mafiaPlayers.length > 0 ? rewardPool / BigInt(mafiaPlayers.length) : 0n;
+        // Calculate total payout needed for all players
+        const totalPlayers = mafiaPlayers.length + losers.length;
+        const basePayoutPerPlayer = rewardPool / BigInt(totalPlayers);
+        const extraReward = rewardPool % BigInt(totalPlayers); // Distribute remainder to Mafia
         
-        // Mafia players get rewards (stake is already in contract)
-        mafiaPlayers.forEach(playerAddress => {
+        console.log(`💰 Base payout per player: ${ethers.formatEther(basePayoutPerPlayer)} U2U`);
+        console.log(`💰 Extra reward to distribute: ${ethers.formatEther(extraReward)} U2U`);
+        
+        // Mafia players get base payout + extra reward
+        mafiaPlayers.forEach((playerAddress, index) => {
+          const extraAmount = index < extraReward ? 1n : 0n; // Distribute extra 1 wei to first few Mafia
+          const totalPayout = basePayoutPerPlayer + extraAmount;
+          
           rewards.push({
             playerAddress: playerAddress,
             role: 'ASUR',
             stakeAmount: this.stakeAmount.toString(),
-            rewardAmount: mafiaRewardPerPlayer.toString(),
-            rewardInU2U: ethers.formatEther(mafiaRewardPerPlayer),
-            totalReceived: mafiaRewardPerPlayer.toString(), // Only reward, stake already in contract
-            totalReceivedInU2U: ethers.formatEther(mafiaRewardPerPlayer)
+            rewardAmount: (totalPayout - this.stakeAmount).toString(),
+            rewardInU2U: ethers.formatEther(totalPayout - this.stakeAmount),
+            totalReceived: totalPayout.toString(),
+            totalReceivedInU2U: ethers.formatEther(totalPayout)
           });
         });
 
-        // Non-Mafia players get only their stake back
+        // Non-Mafia players get base payout only
         losers.forEach(playerAddress => {
           rewards.push({
             playerAddress: playerAddress,
             role: gameRoles[playerAddress] === 'Doctor' ? 'DEVA' : 
                   gameRoles[playerAddress] === 'Detective' ? 'RISHI' : 'MANAV',
             stakeAmount: this.stakeAmount.toString(),
-            rewardAmount: '0',
-            rewardInU2U: '0',
-            totalReceived: this.stakeAmount.toString(), // Stake back
-            totalReceivedInU2U: ethers.formatEther(this.stakeAmount)
+            rewardAmount: (basePayoutPerPlayer - this.stakeAmount).toString(),
+            rewardInU2U: ethers.formatEther(basePayoutPerPlayer - this.stakeAmount),
+            totalReceived: basePayoutPerPlayer.toString(),
+            totalReceivedInU2U: ethers.formatEther(basePayoutPerPlayer)
           });
         });
 
       } else {
-        // Case 2: Villagers Win - Simple equal distribution of available pool
-        console.log(`💰 Villagers won - distributing available pool equally among villagers`);
+        // Case 2: Villagers Win - Distribute available pool exactly
+        console.log(`💰 Villagers won - distributing available pool exactly`);
         
-        const villagerRewardPerPlayer = villagerPlayers.length > 0 ? rewardPool / BigInt(villagerPlayers.length) : 0n;
+        // Calculate total payout needed for all players
+        const totalPlayers = villagerPlayers.length + losers.length;
+        const basePayoutPerPlayer = rewardPool / BigInt(totalPlayers);
+        const extraReward = rewardPool % BigInt(totalPlayers); // Distribute remainder to villagers
         
-        console.log(`💰 Villager reward per player: ${ethers.formatEther(villagerRewardPerPlayer)} U2U`);
+        console.log(`💰 Base payout per player: ${ethers.formatEther(basePayoutPerPlayer)} U2U`);
+        console.log(`💰 Extra reward to distribute: ${ethers.formatEther(extraReward)} U2U`);
 
-        // All villagers get equal share of available pool
-        villagerPlayers.forEach(playerAddress => {
+        // Villagers get base payout + extra reward
+        villagerPlayers.forEach((playerAddress, index) => {
+          const extraAmount = index < extraReward ? 1n : 0n; // Distribute extra 1 wei to first few villagers
+          const totalPayout = basePayoutPerPlayer + extraAmount;
+          
           rewards.push({
             playerAddress: playerAddress,
             role: gameRoles[playerAddress] === 'Doctor' ? 'DEVA' : 
                   gameRoles[playerAddress] === 'Detective' ? 'RISHI' : 'MANAV',
             stakeAmount: this.stakeAmount.toString(),
-            rewardAmount: villagerRewardPerPlayer.toString(),
-            rewardInU2U: ethers.formatEther(villagerRewardPerPlayer),
-            totalReceived: villagerRewardPerPlayer.toString(), // Only reward, stake already in contract
-            totalReceivedInU2U: ethers.formatEther(villagerRewardPerPlayer)
+            rewardAmount: (totalPayout - this.stakeAmount).toString(),
+            rewardInU2U: ethers.formatEther(totalPayout - this.stakeAmount),
+            totalReceived: totalPayout.toString(),
+            totalReceivedInU2U: ethers.formatEther(totalPayout)
           });
         });
 
-        // Mafia players get only their stake back
+        // Mafia players get base payout only
         losers.forEach(playerAddress => {
           rewards.push({
             playerAddress: playerAddress,
             role: 'ASUR',
             stakeAmount: this.stakeAmount.toString(),
-            rewardAmount: '0',
-            rewardInU2U: '0',
-            totalReceived: this.stakeAmount.toString(), // Stake back
-            totalReceivedInU2U: ethers.formatEther(this.stakeAmount)
+            rewardAmount: (basePayoutPerPlayer - this.stakeAmount).toString(),
+            rewardInU2U: ethers.formatEther(basePayoutPerPlayer - this.stakeAmount),
+            totalReceived: basePayoutPerPlayer.toString(),
+            totalReceivedInU2U: ethers.formatEther(basePayoutPerPlayer)
           });
         });
       }
