@@ -147,12 +147,19 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-press-start);
     -webkit-font-smoothing: none;
     -moz-osx-font-smoothing: grayscale;
     font-smooth: never;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-height: 100vh;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -290,10 +297,8 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #2A2A2A,
     2px 2px 0px #1A1A1A,
-    3px 3px 0px #0F0F0F,
-    4px 4px 0px #000000,
-    0 0 6px rgba(255, 255, 255, 0.2);
-  transform: perspective(600px) rotateX(5deg);
+    3px 3px 0px #000000;
+  transform: perspective(200px) rotateX(2deg);
   transform-style: preserve-3d;
 }
 
@@ -310,16 +315,9 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #2d5a2d,
     2px 2px 0px #1a3d1a,
-    3px 3px 0px #0f250f,
-    4px 4px 0px #000000,
-    5px 5px 0px #000000,
-    6px 6px 0px #000000,
-    7px 7px 0px #000000,
-    8px 8px 0px #000000,
-    0 0 15px rgba(74, 140, 74, 0.6),
-    0 0 30px rgba(74, 140, 74, 0.3),
-    0 0 45px rgba(74, 140, 74, 0.1);
-  transform: perspective(800px) rotateX(8deg);
+    3px 3px 0px #000000,
+    0 0 8px rgba(74, 140, 74, 0.4);
+  transform: perspective(300px) rotateX(3deg);
   transform-style: preserve-3d;
 }
 
@@ -335,16 +333,9 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #cc0000,
     2px 2px 0px #990000,
-    3px 3px 0px #660000,
-    4px 4px 0px #330000,
-    5px 5px 0px #000000,
-    6px 6px 0px #000000,
-    7px 7px 0px #000000,
-    8px 8px 0px #000000,
-    0 0 15px rgba(255, 68, 68, 0.6),
-    0 0 30px rgba(255, 68, 68, 0.3),
-    0 0 45px rgba(255, 68, 68, 0.1);
-  transform: perspective(800px) rotateX(8deg);
+    3px 3px 0px #000000,
+    0 0 8px rgba(255, 68, 68, 0.4);
+  transform: perspective(300px) rotateX(3deg);
   transform-style: preserve-3d;
 }
 
@@ -360,16 +351,9 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #7a3fcc,
     2px 2px 0px #5a2e99,
-    3px 3px 0px #3d1f66,
-    4px 4px 0px #2a0f44,
-    5px 5px 0px #000000,
-    6px 6px 0px #000000,
-    7px 7px 0px #000000,
-    8px 8px 0px #000000,
-    0 0 15px rgba(162, 89, 255, 0.6),
-    0 0 30px rgba(162, 89, 255, 0.3),
-    0 0 45px rgba(162, 89, 255, 0.1);
-  transform: perspective(800px) rotateX(8deg);
+    3px 3px 0px #000000,
+    0 0 8px rgba(162, 89, 255, 0.4);
+  transform: perspective(300px) rotateX(3deg);
   transform-style: preserve-3d;
 }
 
@@ -385,16 +369,9 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #ccb800,
     2px 2px 0px #998800,
-    3px 3px 0px #665500,
-    4px 4px 0px #332200,
-    5px 5px 0px #000000,
-    6px 6px 0px #000000,
-    7px 7px 0px #000000,
-    8px 8px 0px #000000,
-    0 0 15px rgba(255, 234, 0, 0.6),
-    0 0 30px rgba(255, 234, 0, 0.3),
-    0 0 45px rgba(255, 234, 0, 0.1);
-  transform: perspective(800px) rotateX(8deg);
+    3px 3px 0px #000000,
+    0 0 8px rgba(255, 234, 0, 0.4);
+  transform: perspective(300px) rotateX(3deg);
   transform-style: preserve-3d;
 }
 
@@ -411,10 +388,9 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #2A2A2A,
     2px 2px 0px #1A1A1A,
-    3px 3px 0px #0F0F0F,
-    4px 4px 0px #000000,
-    0 0 8px rgba(255, 255, 255, 0.3);
-  transform: perspective(600px) rotateX(5deg);
+    3px 3px 0px #000000,
+    0 0 6px rgba(255, 255, 255, 0.2);
+  transform: perspective(200px) rotateX(2deg);
   transform-style: preserve-3d;
 }
 
@@ -430,16 +406,9 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #0088CC,
     2px 2px 0px #006699,
-    3px 3px 0px #004466,
-    4px 4px 0px #002233,
-    5px 5px 0px #000000,
-    6px 6px 0px #000000,
-    7px 7px 0px #000000,
-    8px 8px 0px #000000,
-    0 0 15px rgba(0, 170, 255, 0.6),
-    0 0 30px rgba(0, 170, 255, 0.3),
-    0 0 45px rgba(0, 170, 255, 0.1);
-  transform: perspective(800px) rotateX(8deg);
+    3px 3px 0px #000000,
+    0 0 8px rgba(0, 170, 255, 0.4);
+  transform: perspective(300px) rotateX(3deg);
   transform-style: preserve-3d;
 }
 
@@ -455,16 +424,9 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #CC6600,
     2px 2px 0px #994400,
-    3px 3px 0px #662200,
-    4px 4px 0px #331100,
-    5px 5px 0px #000000,
-    6px 6px 0px #000000,
-    7px 7px 0px #000000,
-    8px 8px 0px #000000,
-    0 0 15px rgba(255, 136, 0, 0.6),
-    0 0 30px rgba(255, 136, 0, 0.3),
-    0 0 45px rgba(255, 136, 0, 0.1);
-  transform: perspective(800px) rotateX(8deg);
+    3px 3px 0px #000000,
+    0 0 8px rgba(255, 136, 0, 0.4);
+  transform: perspective(300px) rotateX(3deg);
   transform-style: preserve-3d;
 }
 
@@ -940,10 +902,8 @@ input, textarea, select {
   text-shadow: 
     1px 1px 0px #000,
     2px 2px 0px #000,
-    3px 3px 0px #000,
-    4px 4px 0px #000,
-    5px 5px 0px #000;
-  transform: perspective(500px) rotateX(10deg);
+    3px 3px 0px #000;
+  transform: perspective(200px) rotateX(3deg);
   transform-style: preserve-3d;
 }
 
