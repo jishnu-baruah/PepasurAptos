@@ -270,7 +270,7 @@ class StakingService {
         
         const mafiaRewardPerPlayer = mafiaPlayers.length > 0 ? rewardPool / BigInt(mafiaPlayers.length) : 0n;
         
-        // Mafia players get rewards
+        // Mafia players get rewards (stake is already in contract)
         mafiaPlayers.forEach(playerAddress => {
           rewards.push({
             playerAddress: playerAddress,
@@ -278,8 +278,8 @@ class StakingService {
             stakeAmount: this.stakeAmount.toString(),
             rewardAmount: mafiaRewardPerPlayer.toString(),
             rewardInU2U: ethers.formatEther(mafiaRewardPerPlayer),
-            totalReceived: (this.stakeAmount + mafiaRewardPerPlayer).toString(),
-            totalReceivedInU2U: ethers.formatEther(this.stakeAmount + mafiaRewardPerPlayer)
+            totalReceived: mafiaRewardPerPlayer.toString(), // Only reward, stake already in contract
+            totalReceivedInU2U: ethers.formatEther(mafiaRewardPerPlayer)
           });
         });
 
@@ -292,7 +292,7 @@ class StakingService {
             stakeAmount: this.stakeAmount.toString(),
             rewardAmount: '0',
             rewardInU2U: '0',
-            totalReceived: this.stakeAmount.toString(),
+            totalReceived: this.stakeAmount.toString(), // Stake back
             totalReceivedInU2U: ethers.formatEther(this.stakeAmount)
           });
         });
@@ -314,8 +314,8 @@ class StakingService {
             stakeAmount: this.stakeAmount.toString(),
             rewardAmount: villagerRewardPerPlayer.toString(),
             rewardInU2U: ethers.formatEther(villagerRewardPerPlayer),
-            totalReceived: (this.stakeAmount + villagerRewardPerPlayer).toString(),
-            totalReceivedInU2U: ethers.formatEther(this.stakeAmount + villagerRewardPerPlayer)
+            totalReceived: villagerRewardPerPlayer.toString(), // Only reward, stake already in contract
+            totalReceivedInU2U: ethers.formatEther(villagerRewardPerPlayer)
           });
         });
 
@@ -327,7 +327,7 @@ class StakingService {
             stakeAmount: this.stakeAmount.toString(),
             rewardAmount: '0',
             rewardInU2U: '0',
-            totalReceived: this.stakeAmount.toString(),
+            totalReceived: this.stakeAmount.toString(), // Stake back
             totalReceivedInU2U: ethers.formatEther(this.stakeAmount)
           });
         });
