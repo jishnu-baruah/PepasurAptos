@@ -915,11 +915,11 @@ class GameManager {
     if (!detective || !game.pendingActions[detective]) return { target: null, result: null };
     
     const target = game.pendingActions[detective].action.target;
-    const isMafia = game.roles[target] === 'Mafia';
+    const actualRole = game.roles[target]; // Return the actual role instead of just Mafia/Not Mafia
     
     return {
       target: target,
-      result: isMafia ? 'Mafia' : 'Not Mafia'
+      result: actualRole // Return actual role: 'Mafia', 'Doctor', 'Detective', 'Villager'
     };
   }
 

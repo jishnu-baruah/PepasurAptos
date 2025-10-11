@@ -217,6 +217,7 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
                   currentPlayerAddress={currentPlayerAddress}
                   game={game}
                   submitTaskAnswer={submitTaskAnswer}
+                  showHeader={false}
                 />
               ) : (
                 <div className="text-center text-gray-500 font-press-start text-sm">

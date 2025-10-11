@@ -37,9 +37,9 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
 
   const getPlayerDisplayName = (player: Player, index: number) => {
     if (player.isCurrentPlayer) {
-      return "You (YOU)"
+      return `${player.name} (YOU)` // Show the actual generated name
     }
-    return `Player ${index + 1}`
+    return player.name || `Player ${index + 1}` // Show actual name for other players too
   }
 
   const getPlayerAvatar = (player: Player) => {

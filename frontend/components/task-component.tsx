@@ -10,9 +10,10 @@ interface TaskComponentProps {
   currentPlayerAddress: string
   game: Game | null
   submitTaskAnswer: (answer: any) => Promise<void>
+  showHeader?: boolean // Add prop to control header display
 }
 
-export default function TaskComponent({ gameId, currentPlayerAddress, game, submitTaskAnswer }: TaskComponentProps) {
+export default function TaskComponent({ gameId, currentPlayerAddress, game, submitTaskAnswer, showHeader = true }: TaskComponentProps) {
   const [answer, setAnswer] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<"correct" | "incorrect" | null>(null)
@@ -123,13 +124,15 @@ export default function TaskComponent({ gameId, currentPlayerAddress, game, subm
   return (
     <div className="min-h-screen p-4 gaming-bg">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-2xl font-press-start text-white pixel-text-3d-glow">TASK PHASE</h1>
-          <div className="text-sm text-gray-400 mt-2">
-            Complete the task to continue
+        {/* Header - Only show if showHeader is true */}
+        {showHeader && (
+          <div className="text-center">
+            <h1 className="text-2xl font-press-start text-white pixel-text-3d-glow">TASK PHASE</h1>
+            <div className="text-sm text-gray-400 mt-2">
+              Complete the task to continue
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Timer */}
         <Card className="p-4 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] text-center">
