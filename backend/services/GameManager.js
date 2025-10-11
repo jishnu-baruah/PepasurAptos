@@ -858,12 +858,11 @@ class GameManager {
       return;
     }
 
-    // Transition to resolution phase to show voting results
-    console.log(`🗳️ Transitioning to resolution phase for game ${gameId}`);
-    game.phase = 'resolution';
+    // Keep voting phase active to show resolution in voting screen
+    console.log(`🗳️ Keeping voting phase active to show resolution for game ${gameId}`);
     game.timeLeft = 10; // Show resolution for 10 seconds
     
-    // Start timer for resolution phase
+    // Start timer for resolution display
     this.startActualTimer(gameId);
     
     // Emit game state update

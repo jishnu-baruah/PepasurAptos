@@ -13,7 +13,6 @@ import ChatComponent from "@/components/chat-component"
 import TaskComponent from "@/components/task-component"
 import GameResultsScreen from "@/components/game-results-screen"
 import NightResolutionScreen from "@/components/night-resolution-screen"
-import VotingResolutionScreen from "@/components/voting-resolution-screen"
 import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
 import StakingScreen from "@/components/staking-screen"
@@ -598,16 +597,6 @@ export default function Home() {
         <NightResolutionScreen 
           resolution={game.nightResolution}
           onContinue={handleResolutionComplete}
-          game={game}
-          currentPlayer={currentPlayer}
-        />
-      )}
-      {gameState === "resolution" && !game?.nightResolution && game?.eliminated && (
-        <VotingResolutionScreen
-          eliminatedPlayer={players.find(p => p.address === game.eliminated[game.eliminated.length - 1]) || null}
-          onContinue={() => {
-            setGameState('ended')
-          }}
           game={game}
           currentPlayer={currentPlayer}
         />

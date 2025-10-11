@@ -47,15 +47,16 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
 
   // Handle voting results
   useEffect(() => {
-    if (game?.phase === 'night' && game?.eliminated && game.eliminated.length > 0) {
+    if (game?.phase === 'voting' && game?.eliminated && game.eliminated.length > 0) {
       const lastEliminated = game.eliminated[game.eliminated.length - 1]
       const eliminated = players.find(p => p.address === lastEliminated)
       if (eliminated) {
         setEliminatedPlayer(eliminated)
         setShowResult(true)
+        // Transition to results after timer expires
         setTimeout(() => {
           onComplete()
-        }, 4000)
+        }, 10000) // 10 seconds to match backend timer
       }
     }
   }, [game?.phase, game?.eliminated, players, onComplete])
@@ -135,7 +136,9 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
               </div>
             )}
             
-            <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">The game continues...</div>
+            <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">
+              {timeLeft > 0 ? `Continuing in ${timeLeft}s...` : 'The game continues...'}
+            </div>
           </div>
         </Card>
       </div>
