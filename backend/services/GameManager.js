@@ -1123,7 +1123,7 @@ class GameManager {
         console.log(`💰 Using contract gameId: ${contractGameId}`);
         
         // Calculate rewards using contract gameId
-        const rewards = this.stakingService.calculateRewards(contractGameId, winners, losers);
+        const rewards = this.stakingService.calculateRewards(contractGameId, winners, losers, game.roles, game.eliminated || []);
         console.log(`💰 Rewards calculated:`, rewards);
         
         const distributionResult = await this.stakingService.distributeRewards(contractGameId, rewards);
