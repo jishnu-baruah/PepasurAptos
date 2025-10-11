@@ -275,11 +275,10 @@ class StakingService {
         console.log(`💰 Mafia reward per player: ${ethers.formatEther(mafiaRewardPerPlayer)} U2U`);
         console.log(`💰 Extra reward to distribute: ${ethers.formatEther(extraReward)} U2U`);
         
-        // Mafia players get stake + reward
+        // Mafia players get reward only (stake stays in contract)
         mafiaPlayers.forEach((playerAddress, index) => {
           const extraAmount = index < extraReward ? 1n : 0n;
           const totalReward = mafiaRewardPerPlayer + extraAmount;
-          const totalPayout = this.stakeAmount + totalReward;
           
           rewards.push({
             playerAddress: playerAddress,
@@ -287,12 +286,12 @@ class StakingService {
             stakeAmount: this.stakeAmount.toString(),
             rewardAmount: totalReward.toString(),
             rewardInU2U: ethers.formatEther(totalReward),
-            totalReceived: totalPayout.toString(),
-            totalReceivedInU2U: ethers.formatEther(totalPayout)
+            totalReceived: totalReward.toString(), // Only reward, no stake back
+            totalReceivedInU2U: ethers.formatEther(totalReward)
           });
         });
 
-        // Non-Mafia players get only their stake back
+        // Non-Mafia players get nothing (stake stays in contract)
         losers.forEach(playerAddress => {
           rewards.push({
             playerAddress: playerAddress,
@@ -301,8 +300,8 @@ class StakingService {
             stakeAmount: this.stakeAmount.toString(),
             rewardAmount: '0',
             rewardInU2U: '0',
-            totalReceived: this.stakeAmount.toString(),
-            totalReceivedInU2U: ethers.formatEther(this.stakeAmount)
+            totalReceived: '0', // No payout at all
+            totalReceivedInU2U: '0'
           });
         });
 
@@ -317,11 +316,10 @@ class StakingService {
         console.log(`💰 Villager reward per player: ${ethers.formatEther(villagerRewardPerPlayer)} U2U`);
         console.log(`💰 Extra reward to distribute: ${ethers.formatEther(extraReward)} U2U`);
 
-        // Villagers get stake + reward
+        // Villagers get reward only (stake stays in contract)
         villagerPlayers.forEach((playerAddress, index) => {
           const extraAmount = index < extraReward ? 1n : 0n;
           const totalReward = villagerRewardPerPlayer + extraAmount;
-          const totalPayout = this.stakeAmount + totalReward;
           
           rewards.push({
             playerAddress: playerAddress,
@@ -330,12 +328,12 @@ class StakingService {
             stakeAmount: this.stakeAmount.toString(),
             rewardAmount: totalReward.toString(),
             rewardInU2U: ethers.formatEther(totalReward),
-            totalReceived: totalPayout.toString(),
-            totalReceivedInU2U: ethers.formatEther(totalPayout)
+            totalReceived: totalReward.toString(), // Only reward, no stake back
+            totalReceivedInU2U: ethers.formatEther(totalReward)
           });
         });
 
-        // Mafia players get only their stake back
+        // Mafia players get nothing (stake stays in contract)
         losers.forEach(playerAddress => {
           rewards.push({
             playerAddress: playerAddress,
@@ -343,8 +341,8 @@ class StakingService {
             stakeAmount: this.stakeAmount.toString(),
             rewardAmount: '0',
             rewardInU2U: '0',
-            totalReceived: this.stakeAmount.toString(),
-            totalReceivedInU2U: ethers.formatEther(this.stakeAmount)
+            totalReceived: '0', // No payout at all
+            totalReceivedInU2U: '0'
           });
         });
       }
