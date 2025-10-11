@@ -542,26 +542,9 @@ class GameManager {
       await this.resolveTaskPhase(gameId);
     } else if (game.phase === 'voting') {
       if (game.votingResolved) {
-        console.log(`Voting already resolved, transitioning to ended phase for game ${gameId}`);
-        // Clear timers
-        if (game.timerInterval) {
-          clearInterval(game.timerInterval);
-          game.timerInterval = null;
-        }
-        if (game.readyTimer) {
-          clearTimeout(game.readyTimer);
-          game.readyTimer = null;
-        }
-        game.timerReady = false;
-        
-        // Transition to ended phase
-        game.phase = 'ended';
-        game.timeLeft = 0;
-        
-        // Emit game state update
-        if (this.socketManager) {
-          this.socketManager.emitGameStateUpdate(gameId);
-        }
+        console.log(`Voting already resolved, calling endGame for game ${gameId}`);
+        await this.endGame(gameId);
+        return;
       } else {
         console.log(`Calling resolveVotingPhase for game ${gameId}`);
         await this.resolveVotingPhase(gameId);
