@@ -222,16 +222,16 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
   const canSelectPlayers = currentPlayer.role === "ASUR" || currentPlayer.role === "DEVA" || currentPlayer.role === "RISHI"
 
   return (
-    <div className="min-h-screen p-2 sm:p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+    <div className="min-h-screen p-2 sm:p-4">
+      <div className="max-w-7xl mx-auto space-y-2 sm:space-y-3 lg:space-y-4">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">
             {game?.phase === 'night' ? 'NIGHT PHASE' : 
              game?.phase === 'task' ? 'TASK PHASE' : 
              game?.phase === 'voting' ? 'VOTING PHASE' : 'GAMEPLAY'}
           </h1>
-          <div className="text-sm sm:text-base md:text-lg font-press-start pixel-text-3d-white">
+          <div className="text-xs sm:text-sm font-press-start pixel-text-3d-white">
             {getActionText()}
           </div>
           {!isConnected && (
@@ -255,7 +255,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         </Card>
 
         {/* Players Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2 lg:gap-3">
           {players
             .filter((p) => p.id !== currentPlayer.id)
             .map((player) => {
@@ -265,7 +265,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
               return (
                 <Card
                   key={player.id}
-                  className={`p-2 sm:p-3 md:p-4 border-2 text-center cursor-pointer transition-all ${
+                  className={`p-1 sm:p-2 lg:p-3 border-2 text-center cursor-pointer transition-all ${
                     canSelectPlayers && timeLeft > 0 && !actionTaken
                       ? "hover:scale-105 hover:border-primary"
                       : "cursor-not-allowed opacity-50"
@@ -276,10 +276,10 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
                   }}
                   onClick={() => handlePlayerSelect(player.id)}
                 >
-                  <div className="text-2xl sm:text-3xl md:text-4xl mb-1 sm:mb-2">
+                  <div className="text-lg sm:text-xl lg:text-2xl mb-1">
                     {/* Hide other players' avatars - show generic silhouette */}
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 bg-[#333333] border-2 border-[#666666] mx-auto flex items-center justify-center">
-                      <span className="text-sm sm:text-base md:text-lg lg:text-xl">👤</span>
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-[#333333] border-2 border-[#666666] mx-auto flex items-center justify-center">
+                      <span className="text-xs sm:text-sm lg:text-base">👤</span>
                     </div>
                   </div>
                   <div className="font-press-start text-xs sm:text-sm pixel-text-3d-white">{player.name}</div>

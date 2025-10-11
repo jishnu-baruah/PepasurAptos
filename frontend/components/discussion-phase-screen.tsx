@@ -139,20 +139,20 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
   const totalTasks = tasks.length
 
   return (
-    <div className="min-h-screen gaming-bg p-2 sm:p-4 md:p-6">
+    <div className="min-h-screen gaming-bg p-2 sm:p-4">
       <div className="max-w-7xl mx-auto h-screen flex flex-col">
         {/* Header */}
-        <div className="p-3 sm:p-4 md:p-6 border-b-2 border-[#4A8C4A] bg-gradient-to-r from-[#0A0A0A] to-[#1A1A1A] relative">
-          <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="text-xl sm:text-2xl md:text-3xl">💬</div>
-              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-press-start pixel-text-3d-white pixel-text-3d-float">DISCUSSION PHASE</h1>
+        <div className="p-2 sm:p-3 lg:p-4 border-b-2 border-[#4A8C4A] bg-gradient-to-r from-[#0A0A0A] to-[#1A1A1A] relative">
+          <div className="flex flex-col sm:flex-row justify-between items-center space-y-1 sm:space-y-0">
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <div className="text-lg sm:text-xl lg:text-2xl">💬</div>
+              <h1 className="text-sm sm:text-base lg:text-lg font-press-start pixel-text-3d-white pixel-text-3d-float">DISCUSSION PHASE</h1>
             </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="text-base sm:text-lg md:text-xl font-press-start pixel-text-3d-green timer-pulse">
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <div className="text-sm sm:text-base lg:text-lg font-press-start pixel-text-3d-green timer-pulse">
                 ⏰ {timeLeft}s
               </div>
-              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-[#4A8C4A] animate-pulse rounded-none"></div>
+              <div className="w-2 h-2 bg-[#4A8C4A] animate-pulse rounded-none"></div>
             </div>
           </div>
 

@@ -153,49 +153,49 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
   const investigation = getInvestigationMessage()
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 md:p-6 gaming-bg scanlines">
-      <Card className="w-full max-w-2xl p-4 sm:p-6 md:p-8 bg-[#111111]/90 border-2 border-[#2a2a2a]">
-        <div className="text-center space-y-4 sm:space-y-6 md:space-y-8">
+    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 gaming-bg scanlines">
+      <Card className="w-full max-w-2xl p-3 sm:p-4 lg:p-6 bg-[#111111]/90 border-2 border-[#2a2a2a]">
+        <div className="text-center space-y-2 sm:space-y-3 lg:space-y-4">
           {!showResults ? (
-            <div className="space-y-4">
-              <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">
+            <div className="space-y-2 sm:space-y-3">
+              <div className="text-sm sm:text-base lg:text-lg font-press-start pixel-text-3d-white">
                 PROCESSING NIGHT ACTIONS...
               </div>
               <div className="flex justify-center">
-                <div className="animate-spin text-4xl">🌙</div>
+                <div className="animate-spin text-2xl sm:text-3xl lg:text-4xl">🌙</div>
               </div>
             </div>
           ) : (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-2 sm:space-y-3 lg:space-y-4">
               <RetroAnimation type="bounce">
-                <div className="text-4xl sm:text-5xl md:text-6xl">
+                <div className="text-2xl sm:text-3xl lg:text-4xl">
                   {result.emoji}
                 </div>
               </RetroAnimation>
 
-              <div className="space-y-2">
-                <div className="text-lg sm:text-xl md:text-2xl font-bold font-press-start pixel-text-3d-white">
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-sm sm:text-base lg:text-lg font-bold font-press-start pixel-text-3d-white">
                   NIGHT PHASE RESULTS
                 </div>
                 <div 
-                  className="text-xl sm:text-2xl md:text-3xl font-bold font-press-start pixel-text-3d-float"
+                  className="text-base sm:text-lg lg:text-xl font-bold font-press-start pixel-text-3d-float"
                   style={{ color: result.color }}
                 >
                   {result.title}
                 </div>
               </div>
 
-              <Card className="text-sm sm:text-base md:text-lg font-press-start pixel-text-3d-white bg-[#111111]/50 p-3 sm:p-4 border border-[#2a2a2a]">
+              <Card className="text-xs sm:text-sm lg:text-base font-press-start pixel-text-3d-white bg-[#111111]/50 p-2 sm:p-3 border border-[#2a2a2a]">
                 {result.message}
               </Card>
 
               {/* Action Details */}
-              <div className="space-y-2">
-                <div className="text-sm sm:text-base font-press-start pixel-text-3d-green mb-2">
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm font-press-start pixel-text-3d-green mb-1">
                   NIGHT ACTIONS SUMMARY:
                 </div>
                 {result.details.map((detail, index) => (
-                  <div key={index} className="text-xs sm:text-sm font-press-start pixel-text-3d-white bg-[#1A1A1A]/50 p-2 border border-[#2a2a2a]">
+                  <div key={index} className="text-xs font-press-start pixel-text-3d-white bg-[#1A1A1A]/50 p-1 sm:p-2 border border-[#2a2a2a]">
                     {detail}
                   </div>
                 ))}

@@ -29,13 +29,13 @@ export default function RoomCodeDisplay({ roomCode }: RoomCodeDisplayProps) {
   }
 
   return (
-    <Card className="p-4 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] text-center">
-      <div className="space-y-3">
-        <div className="text-sm font-press-start text-white pixel-text-3d-glow">
+    <Card className="p-2 sm:p-3 lg:p-4 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] text-center">
+      <div className="space-y-1 sm:space-y-2 lg:space-y-3">
+        <div className="text-xs sm:text-sm font-press-start text-white pixel-text-3d-glow">
           ROOM CODE
         </div>
         
-        <div className="text-3xl font-press-start text-blue-400 pixel-text-3d-glow tracking-widest">
+        <div className="text-xl sm:text-2xl lg:text-3xl font-press-start text-blue-400 pixel-text-3d-glow tracking-widest">
           {roomCode}
         </div>
         

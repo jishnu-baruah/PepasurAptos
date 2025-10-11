@@ -50,32 +50,32 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 md:p-6 gaming-bg scanlines">
-      <div className="w-full max-w-4xl space-y-4 sm:space-y-6">
+    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 gaming-bg scanlines">
+      <div className="w-full max-w-4xl space-y-2 sm:space-y-3 lg:space-y-4">
         {/* Header */}
         <div className="text-center">
           <RetroAnimation type="bounce">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">
               LOBBY
             </h1>
           </RetroAnimation>
           
           {!isConnected && (
-            <div className="text-xs text-yellow-400 mt-2 font-press-start">⚠️ DISCONNECTED</div>
+            <div className="text-xs text-yellow-400 mt-1 font-press-start">⚠️ DISCONNECTED</div>
           )}
         </div>
 
         {/* Game Status */}
-        <Card className="p-4 sm:p-6 bg-card border-2 border-border text-center">
-          <div className="space-y-2">
-            <div className="text-lg sm:text-xl font-press-start pixel-text-3d-white">
+        <Card className="p-2 sm:p-3 lg:p-4 bg-card border-2 border-border text-center">
+          <div className="space-y-1 sm:space-y-2">
+            <div className="text-sm sm:text-base lg:text-lg font-press-start pixel-text-3d-white">
               WAITING FOR PLAYERS...
             </div>
-            <div className="text-sm sm:text-base font-press-start pixel-text-3d-white">
+            <div className="text-xs sm:text-sm font-press-start pixel-text-3d-white">
               {players.length}/4 players joined
             </div>
             {timeLeft > 0 && (
-              <div className="text-sm font-press-start pixel-text-3d-red">
+              <div className="text-xs sm:text-sm font-press-start pixel-text-3d-red">
                 Game starting in {timeLeft}s
               </div>
             )}
@@ -83,7 +83,7 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
         </Card>
 
         {/* Players Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
           {Array.from({ length: 4 }, (_, index) => {
             const player = players[index]
             const isEmpty = !player
@@ -91,14 +91,14 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
             return (
               <Card 
                 key={index} 
-                className={`p-3 sm:p-4 text-center transition-all duration-300 ${
+                className={`p-2 sm:p-3 text-center transition-all duration-300 ${
                   isEmpty 
                     ? 'bg-[#111111]/50 border border-[#2a2a2a] opacity-50' 
                     : 'bg-card border-2 border-border hover:border-primary/50'
                 }`}
               >
-                <div className="space-y-2">
-                  <div className="text-2xl sm:text-3xl">
+                <div className="space-y-1 sm:space-y-2">
+                  <div className="text-lg sm:text-xl lg:text-2xl">
                     {isEmpty ? (
                       <div className="text-gray-500">👤</div>
                     ) : (
@@ -107,7 +107,7 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
                           <img 
                             src={getPlayerAvatar(player)} 
                             alt={`${player.name} avatar`}
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded object-cover"
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded object-cover"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                               e.currentTarget.nextSibling.style.display = 'inline';
@@ -121,7 +121,7 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
                     )}
                   </div>
                   
-                  <div className="text-xs sm:text-sm font-press-start pixel-text-3d-white">
+                  <div className="text-xs font-press-start pixel-text-3d-white">
                     {isEmpty ? "EMPTY SLOT" : getPlayerDisplayName(player, index)}
                   </div>
                   

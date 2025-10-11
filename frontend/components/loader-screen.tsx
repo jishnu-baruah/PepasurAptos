@@ -28,10 +28,10 @@ export default function LoaderScreen() {
       </div>
 
       {/* Main content */}
-      <div className="text-center space-y-8 relative z-10 px-4">
+      <div className="text-center space-y-4 sm:space-y-6 lg:space-y-8 relative z-10 px-4">
         <RetroAnimation type="pulse">
           <div className="relative">
-            <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-press-start tracking-wider">
+            <div className="text-2xl sm:text-3xl lg:text-4xl font-bold font-press-start tracking-wider">
               <span className="pixel-text-3d-green pixel-text-3d-float">P</span>
               <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.1s' }}>E</span>
               <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.2s' }}>P</span>
@@ -40,14 +40,14 @@ export default function LoaderScreen() {
               <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.5s' }}>U</span>
               <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.6s' }}>R</span>
             </div>
-            <div className="text-sm sm:text-base md:text-lg lg:text-xl font-press-start text-[#4A8C4A] mt-2 tracking-widest pixel-text-3d-green pixel-text-3d-glow">
+            <div className="text-xs sm:text-sm lg:text-base font-press-start text-[#4A8C4A] mt-1 sm:mt-2 tracking-widest pixel-text-3d-green pixel-text-3d-glow">
               GALAXY MAFIA
             </div>
           </div>
         </RetroAnimation>
 
-        <div className="space-y-6">
-          <div className="text-lg sm:text-xl md:text-2xl font-press-start text-[#4A8C4A] pixel-text-3d-green pixel-text-3d-glow">
+        <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+          <div className="text-sm sm:text-base lg:text-lg font-press-start text-[#4A8C4A] pixel-text-3d-green pixel-text-3d-glow">
             LOADING{dots}
           </div>
           <div className="flex justify-center">
