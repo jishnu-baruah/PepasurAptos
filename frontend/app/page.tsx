@@ -10,7 +10,6 @@ import GameplayScreen from "@/components/gameplay-screen"
 import RoomCodeInput from "@/components/room-code-input"
 import RoomCodeDisplay from "@/components/room-code-display"
 import ChatComponent from "@/components/chat-component"
-import TaskComponent from "@/components/task-component"
 import GameResultsScreen from "@/components/game-results-screen"
 import NightResolutionScreen from "@/components/night-resolution-screen"
 import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
@@ -645,15 +644,7 @@ export default function Home() {
         />
       )}
 
-      {/* Task Component - Show during task phase */}
-      {game?.phase === 'task' && currentPlayer?.address && game?.gameId && (
-        <TaskComponent 
-          gameId={game.gameId} 
-          currentPlayerAddress={currentPlayer.address}
-          game={game}
-          submitTaskAnswer={submitTaskAnswer}
-        />
-      )}
+      {/* Task Component is now handled within DiscussionPhaseScreen as a tab */}
     </main>
   )
 }
