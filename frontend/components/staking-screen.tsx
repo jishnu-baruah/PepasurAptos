@@ -372,31 +372,31 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
-      <Card className="w-full max-w-md p-6 bg-[#111111]/80 border border-[#2a2a2a]">
-        <div className="space-y-6">
+    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 gaming-bg scanlines">
+      <Card className="w-full max-w-md p-3 sm:p-4 lg:p-6 bg-[#111111]/80 border border-[#2a2a2a]">
+        <div className="space-y-3 sm:space-y-4 lg:space-y-6">
           {/* Header */}
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-1 sm:space-y-2">
             <RetroAnimation type="bounce">
-              <div className="text-4xl">💰</div>
+              <div className="text-2xl sm:text-3xl lg:text-4xl">💰</div>
             </RetroAnimation>
-            <div className="text-xl font-bold font-press-start pixel-text-3d-white">
+            <div className="text-lg sm:text-xl font-bold font-press-start pixel-text-3d-white">
               STAKE TO PLAY
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-xs sm:text-sm text-gray-400">
               Stake 0.1 U2U to join the game
             </div>
           </div>
 
           {/* Balance Info */}
           {balanceInfo && (
-            <Card className="p-4 bg-[#1a1a1a]/50 border border-[#333333]">
-              <div className="space-y-2">
-                <div className="text-sm font-press-start text-gray-300">YOUR BALANCE</div>
-                <div className="text-lg font-bold text-white">
+            <Card className="p-2 sm:p-3 lg:p-4 bg-[#1a1a1a]/50 border border-[#333333]">
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm font-press-start text-gray-300">YOUR BALANCE</div>
+                <div className="text-base sm:text-lg font-bold text-white">
                   {parseFloat(balanceInfo.balanceInU2U).toFixed(4)} U2U
                 </div>
-                <div className={`text-sm font-press-start ${balanceInfo.sufficient ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-xs sm:text-sm font-press-start ${balanceInfo.sufficient ? 'text-green-400' : 'text-red-400'}`}>
                   {balanceInfo.sufficient ? '✅ SUFFICIENT' : '❌ INSUFFICIENT'}
                 </div>
               </div>
@@ -404,21 +404,21 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
           )}
 
           {/* Chain Info */}
-          <Card className="p-4 bg-[#1a1a1a]/50 border border-[#333333]">
-            <div className="space-y-2">
-              <div className="text-sm font-press-start text-gray-300">NETWORK</div>
-              <div className="text-lg font-bold text-white">
+          <Card className="p-2 sm:p-3 lg:p-4 bg-[#1a1a1a]/50 border border-[#333333]">
+            <div className="space-y-1 sm:space-y-2">
+              <div className="text-xs sm:text-sm font-press-start text-gray-300">NETWORK</div>
+              <div className="text-base sm:text-lg font-bold text-white">
                 {chainId === 2484 ? '✅ U2U Nebulas Testnet' : '❌ Wrong Network'}
               </div>
               {chainId !== 2484 && (
-                <div className="text-sm text-yellow-400">
+                <div className="text-xs sm:text-sm text-yellow-400">
                   Please switch to U2U Nebulas Testnet
                 </div>
               )}
               {chainId !== 2484 && (
                 <Button
                   onClick={() => switchChain({ chainId: 2484 })}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
                   size="sm"
                 >
                   Switch to U2U Testnet
@@ -429,8 +429,8 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
 
           {/* Room Code Input - Only show for join mode */}
           {mode === 'join' && (
-            <div className="space-y-2">
-              <Label htmlFor="roomCode" className="text-sm font-press-start text-gray-300">
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="roomCode" className="text-xs sm:text-sm font-press-start text-gray-300">
                 ROOM CODE
               </Label>
               <Input
@@ -440,15 +440,15 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                 placeholder="Enter 6-character room code"
                 maxLength={6}
-                className="font-press-start text-center text-lg tracking-widest"
+                className="font-press-start text-center text-sm sm:text-lg tracking-widest"
               />
             </div>
           )}
 
           {/* Error Message */}
           {error && (
-            <Card className="p-3 bg-red-900/20 border border-red-500/50">
-              <div className="text-sm text-red-400 font-press-start">
+            <Card className="p-2 sm:p-3 bg-red-900/20 border border-red-500/50">
+              <div className="text-xs sm:text-sm text-red-400 font-press-start">
                 ❌ {error}
               </div>
             </Card>
@@ -456,16 +456,16 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
 
           {/* Staking Info */}
           {stakingInfo && (
-            <Card className="p-4 bg-[#1a1a1a]/50 border border-[#333333]">
-              <div className="space-y-2">
-                <div className="text-sm font-press-start text-gray-300">GAME STATUS</div>
-                <div className={`text-lg font-bold font-press-start ${getStakingStatusColor(stakingInfo.status)}`}>
+            <Card className="p-2 sm:p-3 lg:p-4 bg-[#1a1a1a]/50 border border-[#333333]">
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm font-press-start text-gray-300">GAME STATUS</div>
+                <div className={`text-base sm:text-lg font-bold font-press-start ${getStakingStatusColor(stakingInfo.status)}`}>
                   {getStakingStatusText(stakingInfo.status)}
                 </div>
-                <div className="text-sm text-gray-400">
+                <div className="text-xs sm:text-sm text-gray-400">
                   Players: {stakingInfo.playersCount}/{stakingInfo.minPlayers}
                 </div>
-                <div className="text-sm text-gray-400">
+                <div className="text-xs sm:text-sm text-gray-400">
                   Total Staked: {stakingInfo.totalStakedInU2U} U2U
                 </div>
               </div>
@@ -473,7 +473,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
           )}
 
           {/* Action Buttons */}
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <Button
               onClick={handleStake}
               disabled={isStaking || isPending || isConfirming || !balanceInfo?.sufficient || (mode === 'join' && !roomCode.trim()) || chainId !== 2484}
@@ -504,7 +504,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
           </div>
 
           {/* Info */}
-          <div className="text-xs text-gray-500 text-center space-y-1">
+          <div className="text-xs text-gray-500 text-center space-y-0.5 sm:space-y-1">
             <div>• You need at least 0.1 U2U to stake</div>
             <div>• Winners get 70% of prize pool</div>
             <div>• Losers get 30% of prize pool</div>
