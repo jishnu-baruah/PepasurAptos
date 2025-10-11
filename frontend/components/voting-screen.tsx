@@ -55,10 +55,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
         setEliminatedPlayer(eliminated)
         setEliminatedPlayerAvatar(eliminated.avatar) // Cache the avatar to prevent alternation
         setShowResult(true)
-        // Transition to results after timer expires
-        setTimeout(() => {
-          onComplete()
-        }, 10000) // 10 seconds to match backend timer
+        // Backend will handle transition to ended phase
       }
     }
     

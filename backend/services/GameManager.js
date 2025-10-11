@@ -864,6 +864,17 @@ class GameManager {
       return;
     }
 
+    // Clear any existing timer before transitioning
+    if (game.timerInterval) {
+      clearInterval(game.timerInterval);
+      game.timerInterval = null;
+    }
+    if (game.readyTimer) {
+      clearTimeout(game.readyTimer);
+      game.readyTimer = null;
+    }
+    game.timerReady = false;
+
     // Transition to ended phase after showing resolution
     console.log(`🗳️ Transitioning to ended phase for game ${gameId}`);
     game.phase = 'ended';
@@ -1050,6 +1061,17 @@ class GameManager {
     console.log(`🎯 Ending game ${gameId} with winners:`, game.winners);
     console.log(`🎯 Game staking required: ${game.stakingRequired}`);
     console.log(`🎯 Game onChainGameId: ${game.onChainGameId}`);
+
+    // Clear any existing timers
+    if (game.timerInterval) {
+      clearInterval(game.timerInterval);
+      game.timerInterval = null;
+    }
+    if (game.readyTimer) {
+      clearTimeout(game.readyTimer);
+      game.readyTimer = null;
+    }
+    game.timerReady = false;
 
     game.phase = 'ended';
     game.status = 'completed';
