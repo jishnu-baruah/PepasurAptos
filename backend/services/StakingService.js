@@ -242,12 +242,12 @@ class StakingService {
       const totalPool = game.totalStaked;
       const houseCutBps = 200; // 2% house cut (as per specification)
       const houseCut = (totalPool * BigInt(houseCutBps)) / 10000n;
-      const rewardPool = totalPool - houseCut; // 98% of total pool
+      const rewardPool = totalPool - houseCut; // 98% of total pool - this is what contract has available
 
       console.log(`💰 Calculating rewards for game ${gameId}:`);
       console.log(`💰 Total pool: ${ethers.formatEther(totalPool)} U2U`);
       console.log(`💰 House cut (${houseCutBps/100}%): ${ethers.formatEther(houseCut)} U2U`);
-      console.log(`💰 Reward pool: ${ethers.formatEther(rewardPool)} U2U`);
+      console.log(`💰 Available pool (contract): ${ethers.formatEther(rewardPool)} U2U`);
       console.log(`💰 Winners:`, winners);
       console.log(`💰 Losers:`, losers);
       console.log(`💰 Game roles:`, gameRoles);
@@ -263,9 +263,10 @@ class StakingService {
       
       const mafiaWon = mafiaPlayers.length > 0;
 
+      // SIMPLIFIED LOGIC: Ensure total payout never exceeds available pool
       if (mafiaWon) {
-        // Case 1: Mafia Wins - Mafia gets entire 98% pool
-        console.log(`💰 Mafia won - distributing entire reward pool to Mafia`);
+        // Case 1: Mafia Wins - Mafia gets entire available pool
+        console.log(`💰 Mafia won - distributing entire available pool to Mafia`);
         
         const mafiaRewardPerPlayer = mafiaPlayers.length > 0 ? rewardPool / BigInt(mafiaPlayers.length) : 0n;
         
@@ -282,7 +283,7 @@ class StakingService {
           });
         });
 
-        // Non-Mafia players get nothing (just their stake back)
+        // Non-Mafia players get only their stake back
         losers.forEach(playerAddress => {
           rewards.push({
             playerAddress: playerAddress,
@@ -297,63 +298,28 @@ class StakingService {
         });
 
       } else {
-        // Case 2: Villagers Win - Living villagers get 1.5× reward of dead villagers
-        console.log(`💰 Villagers won - distributing reward pool with living/dead ratio`);
+        // Case 2: Villagers Win - Simple equal distribution of available pool
+        console.log(`💰 Villagers won - distributing available pool equally among villagers`);
         
-        // Separate living and dead villagers
-        const livingVillagers = villagerPlayers.filter(player => !eliminatedPlayers.includes(player));
-        const deadVillagers = villagerPlayers.filter(player => eliminatedPlayers.includes(player));
+        const villagerRewardPerPlayer = villagerPlayers.length > 0 ? rewardPool / BigInt(villagerPlayers.length) : 0n;
         
-        console.log(`💰 Living villagers: ${livingVillagers.length}, Dead villagers: ${deadVillagers.length}`);
+        console.log(`💰 Villager reward per player: ${ethers.formatEther(villagerRewardPerPlayer)} U2U`);
 
-        // Calculate base unit x using the formula: L×1.5x + D×x = RewardPool
-        // x = RewardPool / (1.5L + D)
-        const L = BigInt(livingVillagers.length);
-        const D = BigInt(deadVillagers.length);
-        
-        if (L === 0n && D === 0n) {
-          console.log(`💰 No villagers to reward`);
-          return rewards;
-        }
-
-        const denominator = (L * 150n) / 100n + D; // 1.5L + D
-        const baseUnitX = denominator > 0n ? rewardPool / denominator : 0n;
-        const livingReward = (baseUnitX * 150n) / 100n; // 1.5x
-        const deadReward = baseUnitX; // x
-
-        console.log(`💰 Base unit x: ${ethers.formatEther(baseUnitX)} U2U`);
-        console.log(`💰 Living reward per player: ${ethers.formatEther(livingReward)} U2U`);
-        console.log(`💰 Dead reward per player: ${ethers.formatEther(deadReward)} U2U`);
-
-        // Living villagers get 1.5x reward
-        livingVillagers.forEach(playerAddress => {
+        // All villagers get equal share of available pool
+        villagerPlayers.forEach(playerAddress => {
           rewards.push({
             playerAddress: playerAddress,
             role: gameRoles[playerAddress] === 'Doctor' ? 'DEVA' : 
                   gameRoles[playerAddress] === 'Detective' ? 'RISHI' : 'MANAV',
             stakeAmount: this.stakeAmount.toString(),
-            rewardAmount: livingReward.toString(),
-            rewardInU2U: ethers.formatEther(livingReward),
-            totalReceived: (this.stakeAmount + livingReward).toString(),
-            totalReceivedInU2U: ethers.formatEther(this.stakeAmount + livingReward)
+            rewardAmount: villagerRewardPerPlayer.toString(),
+            rewardInU2U: ethers.formatEther(villagerRewardPerPlayer),
+            totalReceived: (this.stakeAmount + villagerRewardPerPlayer).toString(),
+            totalReceivedInU2U: ethers.formatEther(this.stakeAmount + villagerRewardPerPlayer)
           });
         });
 
-        // Dead villagers get x reward
-        deadVillagers.forEach(playerAddress => {
-          rewards.push({
-            playerAddress: playerAddress,
-            role: gameRoles[playerAddress] === 'Doctor' ? 'DEVA' : 
-                  gameRoles[playerAddress] === 'Detective' ? 'RISHI' : 'MANAV',
-            stakeAmount: this.stakeAmount.toString(),
-            rewardAmount: deadReward.toString(),
-            rewardInU2U: ethers.formatEther(deadReward),
-            totalReceived: (this.stakeAmount + deadReward).toString(),
-            totalReceivedInU2U: ethers.formatEther(this.stakeAmount + deadReward)
-          });
-        });
-
-        // Mafia players get nothing (just their stake back)
+        // Mafia players get only their stake back
         losers.forEach(playerAddress => {
           rewards.push({
             playerAddress: playerAddress,
