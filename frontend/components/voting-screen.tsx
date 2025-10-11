@@ -204,7 +204,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
           <Card className="p-2 sm:p-3 md:p-4 bg-[#111111]/50 border border-[#2a2a2a] text-center">
             <div className="text-xs sm:text-sm font-press-start pixel-text-3d-green">👥 ALIVE PLAYERS</div>
             <div className="text-base sm:text-lg md:text-xl font-bold font-press-start pixel-text-3d-white">
-              {players.filter(p => p.isAlive).length}/{game?.maxPlayers || 4}
+              {players.filter(p => p.isAlive).length}/{players.length}
             </div>
           </Card>
           <Card className="p-2 sm:p-3 md:p-4 bg-[#111111]/50 border border-[#2a2a2a] text-center">
@@ -216,7 +216,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
           <Card className="p-2 sm:p-3 md:p-4 bg-[#111111]/50 border border-[#2a2a2a] text-center">
             <div className="text-xs sm:text-sm font-press-start pixel-text-3d-blue">⏰ TIME LEFT</div>
             <div className="text-base sm:text-lg md:text-xl font-bold font-press-start pixel-text-3d-white">
-              30s
+              {timeLeft}s
             </div>
           </Card>
           <Card className="p-2 sm:p-3 md:p-4 bg-[#111111]/50 border border-[#2a2a2a] text-center">

@@ -858,10 +858,18 @@ class GameManager {
       return;
     }
 
-        // END GAME AFTER VOTING - Show results indefinitely
-        console.log(`🗳️ Ending game after voting phase for game ${gameId}`);
-        await this.endGame(gameId);
-        return;
+    // Transition to resolution phase to show voting results
+    console.log(`🗳️ Transitioning to resolution phase for game ${gameId}`);
+    game.phase = 'resolution';
+    game.timeLeft = 10; // Show resolution for 10 seconds
+    
+    // Start timer for resolution phase
+    this.startActualTimer(gameId);
+    
+    // Emit game state update
+    if (this.socketManager) {
+      this.socketManager.emitGameStateUpdate(gameId);
+    }
   }
 
   // Process detective action
