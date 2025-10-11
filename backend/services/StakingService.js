@@ -248,12 +248,18 @@ class StakingService {
       console.log(`💰 Total pool: ${ethers.formatEther(totalPool)} U2U`);
       console.log(`💰 House cut (${houseCutBps/100}%): ${ethers.formatEther(houseCut)} U2U`);
       console.log(`💰 Reward pool: ${ethers.formatEther(rewardPool)} U2U`);
+      console.log(`💰 Winners:`, winners);
+      console.log(`💰 Losers:`, losers);
+      console.log(`💰 Game roles:`, gameRoles);
 
       const rewards = [];
 
       // Determine if Mafia won or Villagers won
       const mafiaPlayers = winners.filter(player => gameRoles[player] === 'Mafia');
       const villagerPlayers = winners.filter(player => gameRoles[player] !== 'Mafia');
+      
+      console.log(`💰 Mafia players in winners:`, mafiaPlayers);
+      console.log(`💰 Villager players in winners:`, villagerPlayers);
       
       const mafiaWon = mafiaPlayers.length > 0;
 
@@ -394,7 +400,16 @@ class StakingService {
       }
 
       // Prepare settlement data
-      // For now, include all players in the settlement since there might be no winners
+      // Check if rewards array exists and has data
+      if (!rewards.rewards || rewards.rewards.length === 0) {
+        console.log(`💰 No rewards to distribute for game ${gameId}`);
+        return {
+          success: false,
+          error: 'No rewards to distribute',
+          gameId: gameId
+        };
+      }
+      
       const allPlayers = rewards.rewards.map(r => r.playerAddress);
       const allPayoutAmounts = rewards.rewards.map(r => BigInt(r.rewardAmount));
       
