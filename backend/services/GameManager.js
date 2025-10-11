@@ -541,8 +541,31 @@ class GameManager {
       console.log(`Calling resolveTaskPhase for game ${gameId}`);
       this.resolveTaskPhase(gameId);
     } else if (game.phase === 'voting') {
-      console.log(`Calling resolveVotingPhase for game ${gameId}`);
-      await this.resolveVotingPhase(gameId);
+      if (game.votingResolved) {
+        console.log(`Voting already resolved, transitioning to ended phase for game ${gameId}`);
+        // Clear timers
+        if (game.timerInterval) {
+          clearInterval(game.timerInterval);
+          game.timerInterval = null;
+        }
+        if (game.readyTimer) {
+          clearTimeout(game.readyTimer);
+          game.readyTimer = null;
+        }
+        game.timerReady = false;
+        
+        // Transition to ended phase
+        game.phase = 'ended';
+        game.timeLeft = 0;
+        
+        // Emit game state update
+        if (this.socketManager) {
+          this.socketManager.emitGameStateUpdate(gameId);
+        }
+      } else {
+        console.log(`Calling resolveVotingPhase for game ${gameId}`);
+        await this.resolveVotingPhase(gameId);
+      }
     } else {
       console.log(`Unknown phase ${game.phase} for game ${gameId}`);
     }
@@ -864,21 +887,13 @@ class GameManager {
       return;
     }
 
-    // Clear any existing timer before transitioning
-    if (game.timerInterval) {
-      clearInterval(game.timerInterval);
-      game.timerInterval = null;
-    }
-    if (game.readyTimer) {
-      clearTimeout(game.readyTimer);
-      game.readyTimer = null;
-    }
-    game.timerReady = false;
-
-    // Transition to ended phase after showing resolution
-    console.log(`🗳️ Transitioning to ended phase for game ${gameId}`);
-    game.phase = 'ended';
-    game.timeLeft = 0;
+    // Keep voting phase active to show resolution (same pattern as night resolution)
+    console.log(`🗳️ Keeping voting phase active to show resolution for game ${gameId}`);
+    game.timeLeft = 10; // Show resolution for 10 seconds
+    game.votingResolved = true; // Mark that voting has been resolved
+    
+    // Start timer for resolution display
+    this.startActualTimer(gameId);
     
     // Emit game state update
     if (this.socketManager) {
