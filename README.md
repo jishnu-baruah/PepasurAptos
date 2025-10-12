@@ -292,7 +292,7 @@ tokens - Remaining Pool = 900 tokens
 ## 📱 Demo & Links
 
 -   **Live Demo**:
-    [pepasur-game.vercel.app](https://pepasur-game.vercel.app)
+    [www.pepasur.xyz](https://www.pepasur.xyz)
 -   **Contract Source**: [GitHub
     Repository](https://github.com/Mouli51ch/Pepasur-game)
 -   **U2U Explorer**: [View on U2UScan](https://u2uscan.xyz)
