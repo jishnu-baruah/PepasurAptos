@@ -86,8 +86,9 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
         // SDK handles address parsing internally - just pass the string
         // Use getAccountAPTAmount - simpler and more reliable
         try {
+          // SDK v1.39.0 expects object with accountAddress as string
           const balance = await aptos.getAccountAPTAmount({
-            accountAddress: account.address
+            accountAddress: account.address.toString()
           });
 
           const balanceInAPT = (Number(balance) / 100000000).toFixed(4);
@@ -103,8 +104,9 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
 
           // Fallback to getAccountResources
           console.log('⚠️ Trying getAccountResources fallback...');
+          // SDK v1.39.0 expects object with accountAddress as string
           const resources = await aptos.getAccountResources({
-            accountAddress: account.address
+            accountAddress: account.address.toString()
           });
 
           const aptosCoinResource = resources.find(
