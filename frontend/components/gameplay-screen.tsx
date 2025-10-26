@@ -22,6 +22,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
   const [killedPlayer, setKilledPlayer] = useState<Player | null>(null)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showTimeUp, setShowTimeUp] = useState(false)
+  const [lastShownElimination, setLastShownElimination] = useState<string | null>(null)
 
   // Debug game state
   useEffect(() => {
@@ -108,21 +109,40 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
     }
   }, [game?.phase, onComplete])
 
-  // Handle player eliminations
+  // Reset elimination tracking when phase changes away from night
   useEffect(() => {
+    if (game?.phase && game.phase !== 'night') {
+      setLastShownElimination(null)
+    }
+  }, [game?.phase])
+
+  // Handle player eliminations - only during night phase
+  useEffect(() => {
+    // Only show death announcement during night phase
+    if (game?.phase !== 'night') {
+      return
+    }
+
     if (game?.eliminated && game.eliminated.length > 0) {
       const lastEliminated = game.eliminated[game.eliminated.length - 1]
-      const eliminatedPlayer = players.find(p => p.address === lastEliminated)
-      if (eliminatedPlayer) {
-        setKilledPlayer(eliminatedPlayer)
-        setShowDeathAnnouncement(true)
-        setTimeout(() => {
-          setShowDeathAnnouncement(false)
-          onComplete(eliminatedPlayer)
-        }, 3000)
+
+      // Only show if we haven't already shown this elimination
+      if (lastEliminated !== lastShownElimination) {
+        const eliminatedPlayer = players.find(p => p.address === lastEliminated)
+        if (eliminatedPlayer) {
+          console.log('🔔 Showing death announcement for:', eliminatedPlayer.name)
+          setKilledPlayer(eliminatedPlayer)
+          setShowDeathAnnouncement(true)
+          setLastShownElimination(lastEliminated)
+
+          setTimeout(() => {
+            setShowDeathAnnouncement(false)
+            onComplete(eliminatedPlayer)
+          }, 3000)
+        }
       }
     }
-  }, [game?.eliminated, players, onComplete])
+  }, [game?.eliminated, game?.phase, players, onComplete, lastShownElimination])
 
   const handlePlayerSelect = async (playerId: string) => {
     console.log('🎯 handlePlayerSelect called:', {

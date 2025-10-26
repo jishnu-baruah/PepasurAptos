@@ -10,7 +10,13 @@ class SocketManager {
 
   handleJoinGame(socket, data) {
     const { gameId, playerAddress } = data;
-    
+
+    console.log('🔌 handleJoinGame called:', {
+      gameId,
+      playerAddress,
+      playerAddressType: typeof playerAddress
+    });
+
     if (!gameId || !playerAddress) {
       socket.emit('error', { message: 'Missing gameId or playerAddress' });
       return;
@@ -18,12 +24,21 @@ class SocketManager {
 
     const game = this.gameManager.getGame(gameId);
     if (!game) {
+      console.log('❌ Game not found:', gameId);
       socket.emit('error', { message: 'Game not found' });
       return;
     }
 
+    console.log('🎮 Game found. Current players:', game.players);
+    console.log('🎮 Checking if playerAddress is in players:', {
+      playerAddress,
+      isInArray: game.players.includes(playerAddress),
+      arrayContents: game.players
+    });
+
     // Check if player is in the game
     if (!game.players.includes(playerAddress)) {
+      console.log('❌ Player not in game. Players in game:', game.players);
       socket.emit('error', { message: 'Player not in game' });
       return;
     }

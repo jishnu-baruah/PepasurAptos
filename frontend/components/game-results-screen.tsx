@@ -263,10 +263,10 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
                           </div>
                           <div className="text-right">
                             <div className="text-lg font-bold text-yellow-400">
-                              {parseFloat(reward.totalReceivedInU2U).toFixed(4)} U2U
+                              {parseFloat(reward.totalReceivedInAPT).toFixed(4)} APT
                             </div>
                             <div className="text-sm text-gray-400">
-                              +{parseFloat(reward.rewardInU2U).toFixed(4)} U2U reward
+                              +{parseFloat(reward.rewardInAPT).toFixed(4)} APT reward
                             </div>
                           </div>
                         </div>
@@ -295,7 +295,7 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
                         gameId={game.gameId}
                         playerAddress={currentPlayerReward.playerAddress}
                         rewardAmount={currentPlayerReward.rewardAmount}
-                        rewardInU2U={currentPlayerReward.rewardInU2U}
+                        rewardInAPT={currentPlayerReward.rewardInAPT}
                       />
                     );
                   }

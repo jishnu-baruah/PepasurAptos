@@ -28,9 +28,9 @@ export interface Game {
       role: string
       stakeAmount: string
       rewardAmount: string
-      rewardInU2U: string
+      rewardInAPT: string
       totalReceived: string
-      totalReceivedInU2U: string
+      totalReceivedInAPT: string
     }>
   }
 }
@@ -177,6 +177,22 @@ class ApiService {
         startedAt: number | null
       }>
     }>('/api/game')
+  }
+
+  async getPublicGames() {
+    return this.request<{
+      success: boolean
+      games: Array<{
+        gameId: string
+        creator: string
+        players: number
+        maxPlayers: number
+        stakeAmount: string
+        phase: string
+        day: number
+        startedAt: number | null
+      }>
+    }>('/api/game/public')
   }
 
   // Signal that frontend is ready for timer

@@ -1,13 +1,9 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider } from 'wagmi';
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
-import { config } from '@/lib/wagmi';
+import { AptosWalletAdapterProvider } from '@aptos-labs/wallet-adapter-react';
+import { Network } from '@aptos-labs/ts-sdk';
 import { ReactNode, useState } from 'react';
-
-// Import RainbowKit styles
-import '@rainbow-me/rainbowkit/styles.css';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -25,18 +21,21 @@ export function Providers({ children }: ProvidersProps) {
   }));
 
   return (
-    <WagmiProvider config={config}>
+    <AptosWalletAdapterProvider
+      autoConnect={true}
+      dappConfig={{
+        network: Network.DEVNET,
+        aptosApiKeys: {
+          devnet: process.env.NEXT_PUBLIC_APTOS_API_KEY,
+        }
+      }}
+      onError={(error) => {
+        console.log("Wallet adapter error:", error);
+      }}
+    >
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          appInfo={{
-            appName: 'Pepasur Game',
-            learnMoreUrl: 'https://u2u.xyz',
-          }}
-          showRecentTransactions={true}
-        >
-          {children}
-        </RainbowKitProvider>
+        {children}
       </QueryClientProvider>
-    </WagmiProvider>
+    </AptosWalletAdapterProvider>
   );
 }

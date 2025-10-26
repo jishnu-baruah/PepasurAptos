@@ -1,8 +1,8 @@
 'use client';
 
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useDisconnect } from 'wagmi';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useWallet } from '@aptos-labs/wallet-adapter-react';
+import { WalletSelector } from '@aptos-labs/wallet-adapter-ant-design';
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import GifLoader from "@/components/gif-loader"
@@ -11,21 +11,24 @@ interface WalletConnectProps {
   onAddressChange: (address: string | null) => void;
   onJoinGame?: () => void;
   onCreateLobby?: () => void;
+
 }
 
-export default function WalletConnect({ onAddressChange, onJoinGame, onCreateLobby }: WalletConnectProps) {
-  const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
+export default function WalletConnect({ onAddressChange, onJoinGame, onCreateLobby, onPublicLobby }: WalletConnectProps) {
+  const { account, connected, disconnect } = useWallet();
+  const previousAddressRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isConnected && address) {
-      console.log('Wallet connected:', address);
-      onAddressChange(address);
-    } else {
-      console.log('Wallet disconnected');
-      onAddressChange(null);
+    // Convert AccountAddress object to string
+    const currentAddress = connected && account ? account.address.toString() : null;
+
+    // Only call onAddressChange if the address actually changed
+    if (currentAddress !== previousAddressRef.current) {
+      console.log('Wallet address changed:', currentAddress);
+      previousAddressRef.current = currentAddress;
+      onAddressChange(currentAddress);
     }
-  }, [isConnected, address, onAddressChange]);
+  }, [connected, account]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 md:p-6 lg:p-8 gaming-bg scanlines">
@@ -42,75 +45,10 @@ export default function WalletConnect({ onAddressChange, onJoinGame, onCreateLob
               <span className="pixel-text-3d-green pixel-text-3d-float" style={{ animationDelay: '0.6s' }}>R</span>
             </div>
 
-            {!isConnected ? (
+            {!connected ? (
               <div className="space-y-3 sm:space-y-4">
                 <div className="flex justify-center">
-                  <ConnectButton.Custom>
-                    {({
-                      account,
-                      chain,
-                      openAccountModal,
-                      openChainModal,
-                      openConnectModal,
-                      authenticationStatus,
-                      mounted,
-                    }) => {
-                      const ready = mounted && authenticationStatus !== 'loading';
-                      const connected =
-                        ready &&
-                        account &&
-                        chain &&
-                        (!authenticationStatus ||
-                          authenticationStatus === 'authenticated');
-
-                      return (
-                        <div
-                          {...(!ready && {
-                            'aria-hidden': true,
-                            'style': {
-                              opacity: 0,
-                              pointerEvents: 'none',
-                              userSelect: 'none',
-                            },
-                          })}
-                        >
-                          {(() => {
-                            if (!ready) {
-                              return null;
-                            }
-
-                            if (!connected) {
-                              return (
-                                <Button
-                                  onClick={openConnectModal}
-                                  variant="pixel"
-                                  size="pixelLarge"
-                                  className="w-full text-sm sm:text-base"
-                                >
-                                  CONNECT WALLET
-                                </Button>
-                              );
-                            }
-
-                            if (chain.unsupported) {
-                              return (
-                                <Button
-                                  onClick={openChainModal}
-                                  variant="pixelRed"
-                                  size="pixelLarge"
-                                  className="w-full text-sm sm:text-base"
-                                >
-                                  WRONG NETWORK
-                                </Button>
-                              );
-                            }
-
-                            return null;
-                          })()}
-                        </div>
-                      );
-                    }}
-                  </ConnectButton.Custom>
+                  <WalletSelector />
                 </div>
               </div>
             ) : (
@@ -132,10 +70,12 @@ export default function WalletConnect({ onAddressChange, onJoinGame, onCreateLob
                     </Button>
                   )}
 
+
+
                   {onCreateLobby && (
                     <Button
                       onClick={onCreateLobby}
-                      variant="pixelRed"
+                      variant="pixel"
                       size="pixelLarge"
                       className="w-full text-sm sm:text-base"
                     >

@@ -7,10 +7,10 @@ require('dotenv').config();
 const gameRoutes = require('./routes/game');
 const detectiveRoutes = require('./routes/detective');
 const stakingRoutes = require('./routes/staking');
-const faucetRoutes = require('./routes/faucet');
+
 const GameManager = require('./services/GameManager');
 const SocketManager = require('./services/SocketManager');
-const FlowService = require('./services/FlowService');
+const AptosService = require('./services/AptosService');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,23 +19,33 @@ const server = http.createServer(app);
 const corsOptions = {
   origin: "*", // Allow all origins for network access
   credentials: false, // Set to false when using wildcard origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Length', 'X-Request-ID'],
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 const io = socketIo(server, {
   cors: {
     origin: "*", // Allow all origins for Socket.IO
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
     credentials: false // Set to false when using wildcard origin
   },
   allowEIO3: true,
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Explicit preflight OPTIONS handler for all routes
+app.options('*', cors(corsOptions));
 
 // Add request logging for debugging
 app.use((req, res, next) => {
@@ -46,16 +56,16 @@ app.use((req, res, next) => {
 // Initialize services
 const gameManager = new GameManager();
 const socketManager = new SocketManager(io, gameManager);
-const flowService = new FlowService();
+const aptosService = new AptosService();
 
 // Set the socketManager reference in gameManager
 gameManager.socketManager = socketManager;
 
 // Routes
-app.use('/api/game', gameRoutes(gameManager, flowService));
+app.use('/api/game', gameRoutes(gameManager, aptosService));
 app.use('/api/detective', detectiveRoutes(gameManager));
 app.use('/api/staking', stakingRoutes);
-app.use('/api/faucet', faucetRoutes);
+
 app.use('/api/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
@@ -107,7 +117,7 @@ const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces
 server.listen(PORT, HOST, () => {
   console.log(`🚀 ASUR Backend server running on ${HOST}:${PORT}`);
   console.log(`📡 Socket.IO server ready for connections`);
-  console.log(`🔗 U2U integration: ${process.env.U2U_ACCESS_NODE}`);
+  
   console.log(`🌐 CORS enabled for origins:`, corsOptions.origin);
 });
 

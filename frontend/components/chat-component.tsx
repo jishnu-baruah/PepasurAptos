@@ -51,6 +51,7 @@ export default function ChatComponent({ gameId, currentPlayerAddress, players }:
       }
       
       setMessages(prev => [...prev, newChatMessage])
+      soundService.playMessage();
     }
 
     socket.on('chat_message', handleChatMessage)

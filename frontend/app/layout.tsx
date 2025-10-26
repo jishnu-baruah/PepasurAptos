@@ -4,6 +4,8 @@ import { Orbitron, Share_Tech_Mono } from "next/font/google"
 // Added pixel fonts for retro styling
 import { Press_Start_2P, VT323, Silkscreen } from 'next/font/google'
 import { Analytics } from "@vercel/analytics/next"
+// Import ant-design CSS first, then custom CSS to override
+import "@aptos-labs/wallet-adapter-ant-design/dist/index.css"
 import "./globals.css"
 import { Suspense } from "react"
 import { SocketProvider } from "@/contexts/SocketContext"

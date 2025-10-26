@@ -1,11 +1,11 @@
 # ASUR Backend
 
-Real-time Mafia gameplay backend with Flow blockchain integration for staking, role commit-reveal, and final settlements.
+Real-time Mafia gameplay backend with Aptos blockchain integration for staking, role commit-reveal, and final settlements.
 
 ## Features
 
 - **Real-time Gameplay**: Socket.IO for live game updates
-- **Flow Blockchain Integration**: Staking, settlements, and payouts
+- **Aptos Blockchain Integration**: Staking, settlements, and payouts
 - **Commit-Reveal Mechanism**: Secure action submission
 - **Detective Features**: Role revelation and verification
 - **Game Phases**: Night, Task, and Voting phases
@@ -15,7 +15,7 @@ Real-time Mafia gameplay backend with Flow blockchain integration for staking, r
 
 - Node.js + Express
 - Socket.IO (real-time events)
-- Flow Blockchain (EVM integration)
+- Aptos Blockchain
 - In-memory game state management
 
 ## Installation
@@ -27,18 +27,17 @@ Real-time Mafia gameplay backend with Flow blockchain integration for staking, r
 
 2. Copy environment template:
    ```bash
-   copy env.example .env
+   copy .env.example .env
    ```
 
 3. Configure environment variables in `.env`:
    ```env
    PORT=3001
    NODE_ENV=development
-   FLOW_ACCESS_NODE=https://testnet.evm.nodes.onflow.org
-   FLOW_CHAIN_ID=545
-   PEPASUR_CONTRACT_ADDRESS=0x1234567890123456789012345678901234567890
+   APTOS_NODE_URL=https://fullnode.devnet.aptoslabs.com
+   PEPASUR_APTOS_CONTRACT_ADDRESS=your_contract_address_here
    SERVER_PRIVATE_KEY=your_server_private_key_here
-   DEFAULT_STAKE_AMOUNT=1000000000000000000
+   DEFAULT_STAKE_AMOUNT=100000000
    DEFAULT_MIN_PLAYERS=4
    DEFAULT_MAX_PLAYERS=10
    GAME_TIMEOUT_SECONDS=300
@@ -121,7 +120,7 @@ Real-time Mafia gameplay backend with Flow blockchain integration for staking, r
 3. **Validation**: Server verifies commit matches reveal
 4. **Execution**: Actions are processed after all reveals
 
-## Flow Integration
+## Aptos Integration
 
 - **Game Creation**: On-chain game creation with staking
 - **Player Joining**: On-chain stake deposits
@@ -135,17 +134,25 @@ Real-time Mafia gameplay backend with Flow blockchain integration for staking, r
 
 ```
 backend/
-├── server.js              # Main server file
+├── node_modules/         # Project dependencies
 ├── routes/                # API routes
 │   ├── game.js           # Game management routes
 │   └── detective.js      # Detective feature routes
 ├── services/             # Business logic
+│   ├── AptosService.js    # Aptos blockchain integration
+│   ├── FaucetService.js   # Faucet service for testnet tokens
 │   ├── GameManager.js    # Game state management
 │   ├── SocketManager.js  # Socket.IO handling
-│   └── FlowService.js    # Flow blockchain integration
+│   └── StakingService.js  # Staking and reward distribution
 ├── utils/                # Utility functions
 │   └── commitReveal.js   # Commit-reveal mechanism
-└── package.json          # Dependencies
+├── .env                   # Environment variables
+├── .gitignore             # Git ignore file
+├── env.example            # Example environment file
+├── package.json           # Project metadata and dependencies
+├── package-lock.json      # Lockfile for dependencies
+├── README.md              # This file
+└── server.js              # Main server file
 ```
 
 ### Running Tests
@@ -160,11 +167,10 @@ npm test
 |----------|-------------|---------|
 | `PORT` | Server port | 3001 |
 | `NODE_ENV` | Environment | development |
-| `FLOW_ACCESS_NODE` | Flow RPC endpoint | - |
-| `FLOW_CHAIN_ID` | Flow chain ID | 545 |
-| `PEPASUR_CONTRACT_ADDRESS` | Contract address | - |
+| `APTOS_NODE_URL` | Aptos RPC endpoint | - |
+| `PEPASUR_APTOS_CONTRACT_ADDRESS` | Contract address | - |
 | `SERVER_PRIVATE_KEY` | Server wallet private key | - |
-| `DEFAULT_STAKE_AMOUNT` | Default stake in wei | 1000000000000000000 |
+| `DEFAULT_STAKE_AMOUNT` | Default stake in Octas | 100000000 |
 | `DEFAULT_MIN_PLAYERS` | Minimum players | 4 |
 | `DEFAULT_MAX_PLAYERS` | Maximum players | 10 |
 | `GAME_TIMEOUT_SECONDS` | Game timeout | 300 |

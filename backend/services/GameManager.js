@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const { ethers } = require('ethers');
+const AptosService = require('./AptosService');
 const StakingService = require('./StakingService');
 
 class GameManager {
@@ -35,16 +35,6 @@ class GameManager {
     const gameId = uuidv4();
     const roomCode = this.generateRoomCode();
     
-    // Convert stakeAmount to wei if it's a decimal
-    let stakeAmountWei;
-    if (typeof stakeAmount === 'number' && stakeAmount < 1) {
-      // If it's a decimal like 0.1, convert to wei
-      stakeAmountWei = ethers.parseEther(stakeAmount.toString());
-    } else {
-      // If it's already in wei or undefined, use as is
-      stakeAmountWei = stakeAmount || parseInt(process.env.DEFAULT_STAKE_AMOUNT) || 10000000000000000;
-    }
-    
     const game = {
       gameId,
       roomCode,
@@ -55,7 +45,7 @@ class GameManager {
       day: 1,
       timeLeft: 0,
       startedAt: null,
-      stakeAmount: stakeAmountWei,
+      stakeAmount: stakeAmount || 100000000, // 1 APT
       minPlayers: minPlayers || parseInt(process.env.DEFAULT_MIN_PLAYERS) || 4,
       maxPlayers: parseInt(process.env.DEFAULT_MAX_PLAYERS) || 10,
       pendingActions: {}, // address -> { commit, revealed }
@@ -70,29 +60,21 @@ class GameManager {
       status: 'active'
     };
 
-    // If contractGameId is provided, use it; otherwise create a new on-chain game
     if (contractGameId) {
       game.onChainGameId = contractGameId;
       console.log(`🎮 Using provided contract gameId: ${contractGameId}`);
     } else if (game.stakingRequired) {
-      // Create game on-chain only if no contractGameId was provided
       try {
-        console.log(`🎮 Creating game on-chain with stake: ${ethers.formatEther(game.stakeAmount)} U2U`);
+        console.log(`🎮 Creating game on-chain with stake: ${game.stakeAmount} APT`);
         
-        // Use U2UService to create game on-chain
-        const flowService = require('./FlowService');
-        const flowServiceInstance = new flowService();
-        const createTxHash = await flowServiceInstance.createGame(game.stakeAmount, game.minPlayers);
-        
-        // Extract the actual gameId from the transaction
-        const onChainGameId = await flowServiceInstance.extractGameIdFromTransaction(createTxHash);
+        const aptosService = new AptosService();
+        const onChainGameId = await aptosService.createGame(game.stakeAmount, game.minPlayers);
         
         console.log(`✅ Game created on-chain with ID: ${onChainGameId}`);
         game.onChainGameId = onChainGameId;
         
       } catch (error) {
         console.error('❌ Error creating game on-chain:', error);
-        // Don't fail the entire game creation, just log the error
       }
     }
 
@@ -101,9 +83,13 @@ class GameManager {
     
     console.log(`🎮 Game created: ${gameId} (Room: ${roomCode}) by ${creatorAddress}`);
     console.log(`💰 Staking required: ${game.stakingRequired ? 'YES' : 'NO'}`);
+
     
     return { gameId, roomCode, game };
   }
+
+
+
 
   // Stake U2U for a game
   async stakeForGame(gameId, playerAddress, roomCode) {
@@ -163,21 +149,42 @@ class GameManager {
 
   // Record that a player has staked
   recordPlayerStake(gameId, playerAddress, transactionHash) {
+    console.log(`💰 recordPlayerStake called with:`, { gameId, playerAddress: typeof playerAddress === 'object' ? JSON.stringify(playerAddress) : playerAddress, transactionHash });
+
     const game = this.games.get(gameId);
     if (!game) {
       throw new Error('Game not found');
     }
 
-    const stakeKey = `${gameId}-${playerAddress}`;
+    // Ensure playerAddress is a string
+    const addressString = typeof playerAddress === 'string' ? playerAddress : playerAddress?.address || String(playerAddress);
+
+    const stakeKey = `${gameId}-${addressString}`;
     game.playerStakes.set(stakeKey, {
-      playerAddress,
+      playerAddress: addressString,
       transactionHash,
       stakedAt: Date.now(),
       amount: game.stakeAmount
     });
 
-    console.log(`💰 Recorded stake for player ${playerAddress} in game ${gameId}`);
-    
+    // Add player to game if not already in it
+    if (!game.players.includes(addressString)) {
+      game.players.push(addressString);
+      console.log(`✅ Added player ${addressString} to game ${gameId}`);
+
+      // Notify all players in the game about the update
+      if (this.socketManager) {
+        this.socketManager.broadcastGameUpdate(gameId, {
+          type: 'player_staked',
+          playerAddress: addressString,
+          playersCount: game.players.length,
+          minPlayers: game.minPlayers
+        });
+      }
+    }
+
+    console.log(`💰 Recorded stake for player ${addressString} in game ${gameId}`);
+
     // Also store the game in StakingService if it doesn't exist
     const contractGameId = game.onChainGameId;
     if (contractGameId && !this.stakingService.stakedGames.has(contractGameId)) {
@@ -185,7 +192,7 @@ class GameManager {
       this.stakingService.stakedGames.set(contractGameId, {
         roomCode: game.roomCode,
         players: [],
-        totalStaked: 0n,
+        totalStaked: 0,
         status: 'waiting',
         createdAt: game.createdAt || Date.now()
       });
@@ -557,23 +564,23 @@ class GameManager {
   // Assign roles to players
   assignRoles(game) {
     const players = [...game.players];
+    const numPlayers = players.length;
     const roles = ['Mafia', 'Doctor', 'Detective'];
-    const villagers = players.length - 3;
 
-    // Shuffle players
-    for (let i = players.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [players[i], players[j]] = [players[j], players[i]];
+    // Add villagers to the roles array
+    for (let i = 0; i < numPlayers - 3; i++) {
+      roles.push('Villager');
     }
 
-    // Assign special roles
-    game.roles[players[0]] = 'Mafia';
-    game.roles[players[1]] = 'Doctor';
-    game.roles[players[2]] = 'Detective';
+    // Shuffle roles
+    for (let i = roles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [roles[i], roles[j]] = [roles[j], roles[i]];
+    }
 
-    // Assign villagers
-    for (let i = 3; i < players.length; i++) {
-      game.roles[players[i]] = 'Villager';
+    // Assign roles to players
+    for (let i = 0; i < numPlayers; i++) {
+      game.roles[players[i]] = roles[i];
     }
 
     console.log(`Roles assigned for game ${game.gameId}:`, game.roles);
@@ -716,23 +723,28 @@ class GameManager {
     }
     game.timerReady = false;
 
-    console.log(`Resolution phase setup complete for game ${gameId}: timerReady=${game.timerReady}, timeLeft=${game.timeLeft}, phase=${game.phase}`);
+    console.log(`✅ Resolution phase setup complete for game ${gameId}: timerReady=${game.timerReady}, timeLeft=${game.timeLeft}, phase=${game.phase}`);
 
-    // Start timer for resolution phase (same pattern as game start)
-    console.log(`About to start resolution timer for game ${gameId}`);
-    await this.startTimer(gameId, true);
-    console.log(`Resolution timer start attempted for game ${gameId}`);
-
-    console.log(`Night phase resolved for game ${gameId}, moved to resolution phase`);
-    
-    // Emit game state update to frontend
+    // Emit game state update to frontend FIRST
     if (this.socketManager) {
       try {
         this.socketManager.emitGameStateUpdate(gameId);
+        console.log(`📡 Emitted resolution phase state to frontend`);
       } catch (error) {
         console.error(`❌ Error emitting game state update after night phase resolution:`, error);
       }
     }
+
+    // Start timer for resolution phase (same pattern as game start)
+    console.log(`⏰ About to start resolution timer for game ${gameId}`);
+    try {
+      await this.startTimer(gameId, true);
+      console.log(`✅ Resolution timer started successfully for game ${gameId}`);
+    } catch (error) {
+      console.error(`❌ Error starting resolution timer for game ${gameId}:`, error);
+    }
+
+    console.log(`🌅 Night phase resolved for game ${gameId}, moved to resolution phase`);
   }
 
   // Resolve resolution phase
@@ -821,75 +833,53 @@ class GameManager {
     const game = this.games.get(gameId);
     if (!game) return;
 
-    // Safety check: only resolve if we're actually in voting phase
     if (game.phase !== 'voting') {
       console.log(`Skipping voting phase resolve - current phase is ${game.phase}`);
       return;
     }
 
     console.log(`🗳️ Resolving voting phase for game ${gameId}`);
-    console.log(`🗳️ Current votes:`, game.votes);
-    console.log(`🗳️ Active players:`, game.players.filter(p => !game.eliminated.includes(p)));
-
-    // Count votes
     const voteCounts = {};
-    for (const [voter, target] of Object.entries(game.votes)) {
+    for (const voter in game.votes) {
+      const target = game.votes[voter];
       if (!game.eliminated.includes(target)) {
         voteCounts[target] = (voteCounts[target] || 0) + 1;
       }
     }
 
-    console.log(`🗳️ Vote counts:`, voteCounts);
-
-    // Check if there are any votes at all
-    const totalVotes = Object.keys(game.votes).length;
-    if (totalVotes === 0) {
-      console.log(`🗳️ No votes submitted - villagers win by default (no elimination)`);
-      // According to ASUR Mafia rules: if no one is eliminated, villagers win
-      game.winners = game.players.filter(p => game.roles[p] !== 'Mafia');
-      console.log(`🗳️ Villagers win by default:`, game.winners);
-      await this.endGame(gameId);
-      return;
-    }
-
-    // Find player with most votes
     let maxVotes = 0;
-    let eliminated = null;
-    for (const [player, votes] of Object.entries(voteCounts)) {
-      if (votes > maxVotes) {
-        maxVotes = votes;
-        eliminated = player;
+    let eliminatedPlayers = [];
+    for (const player in voteCounts) {
+      if (voteCounts[player] > maxVotes) {
+        maxVotes = voteCounts[player];
+        eliminatedPlayers = [player];
+      } else if (voteCounts[player] === maxVotes) {
+        eliminatedPlayers.push(player);
       }
     }
 
-    console.log(`🗳️ Player with most votes: ${eliminated} (${maxVotes} votes)`);
-
-    // Eliminate player
-    if (eliminated) {
+    if (eliminatedPlayers.length === 1) {
+      const eliminated = eliminatedPlayers[0];
       game.eliminated.push(eliminated);
       console.log(`🗳️ Player ${eliminated} was eliminated by vote`);
     } else {
-      console.log(`🗳️ No player eliminated (tie or no votes)`);
+      console.log(`🗳️ No player eliminated due to a tie or no votes`);
     }
 
-    console.log(`🗳️ Current eliminated players:`, game.eliminated);
-
-    // Check win conditions
     if (this.checkWinConditions(game)) {
-      console.log(`🗳️ Game ended - win conditions met`);
       await this.endGame(gameId);
       return;
     }
 
-    // Always show resolution (same pattern as night resolution)
-    console.log(`🗳️ Keeping voting phase active to show resolution for game ${gameId}`);
-    game.timeLeft = 10; // Show resolution for 10 seconds
-    game.votingResolved = true; // Mark that voting has been resolved
-    
-    // Start timer for resolution display
-    this.startActualTimer(gameId);
-    
-    // Emit game state update
+    game.phase = 'night';
+    game.day++;
+    game.timeLeft = 30;
+    game.pendingActions = {};
+    game.votes = {};
+    game.votingResolved = false;
+
+    await this.startTimer(gameId, true);
+
     if (this.socketManager) {
       this.socketManager.emitGameStateUpdate(gameId);
     }
@@ -1135,6 +1125,14 @@ class GameManager {
       }
     } else {
       console.log(`💰 No staking required for game ${gameId}, skipping rewards`);
+    }
+
+    // Emit game state update to notify frontend that game has ended
+    if (this.socketManager) {
+      console.log(`📡 Emitting game state update for ended game ${gameId}`);
+      this.socketManager.emitGameStateUpdate(gameId);
+    } else {
+      console.log(`⚠️ No socketManager available to emit game ended event`);
     }
 
     return game;

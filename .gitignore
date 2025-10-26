@@ -61,3 +61,4 @@ yarn-error.log*
 # Documentation files (ignore all .md files)
 *.md
 !README.md
+!business_logic_analysis.md

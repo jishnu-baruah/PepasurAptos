@@ -47,7 +47,7 @@ export function useGame(gameId?: string): GameState & GameActions {
   // Generate random username without .pepasur.eth
   const generateUsername = useCallback((address: string): string => {
     // Use address as seed for consistent username generation
-    const seed = address.slice(2, 8) // Use first 6 chars of address as seed
+    const seed = address.toString().slice(2, 8) // Use first 6 chars of address as seed
     const seedNum = parseInt(seed, 16)
     
     // List of cool names for the username
@@ -436,6 +436,8 @@ export function useGame(gameId?: string): GameState & GameActions {
       
       // Also send via REST API as backup
       await apiService.submitVote(game.gameId, voteData)
+
+      soundService.playVote();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit vote'
       setError(errorMessage)

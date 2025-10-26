@@ -72,7 +72,7 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
               WAITING FOR PLAYERS...
             </div>
             <div className="text-xs sm:text-sm font-press-start pixel-text-3d-white">
-              {players.length}/{players.length} players joined
+              {players.length}/{game?.minPlayers || 4} players joined
             </div>
             {timeLeft > 0 && (
               <div className="text-xs sm:text-sm font-press-start pixel-text-3d-red">

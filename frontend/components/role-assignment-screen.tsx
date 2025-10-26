@@ -50,6 +50,7 @@ const roleConfig = {
 
 export default function RoleAssignmentScreen({ role, avatar, onAcknowledge }: RoleAssignmentScreenProps) {
   const [showRole, setShowRole] = useState(false)
+  const [countdown, setCountdown] = useState(5)
   const config = roleConfig[role]
 
   // Debug logging
@@ -61,6 +62,27 @@ export default function RoleAssignmentScreen({ role, avatar, onAcknowledge }: Ro
     const timer = setTimeout(() => setShowRole(true), 1000)
     return () => clearTimeout(timer)
   }, [])
+
+  // Countdown timer - starts after role is shown
+  useEffect(() => {
+    if (!showRole) return
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          // Use setTimeout to defer the state update to next tick
+          setTimeout(() => {
+            onAcknowledge()
+          }, 0)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [showRole, onAcknowledge])
 
   return (
     <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 md:p-6 gaming-bg scanlines">
@@ -103,14 +125,14 @@ export default function RoleAssignmentScreen({ role, avatar, onAcknowledge }: Ro
                 {config.description}
               </Card>
 
-              <Button
-                onClick={onAcknowledge}
-                variant="pixel"
-                size="pixelLarge"
-                className="w-full text-sm sm:text-base"
-              >
-                ✅ UNDERSTOOD
-              </Button>
+              <div className="text-center space-y-2 py-4">
+                <div className="text-base sm:text-lg font-press-start pixel-text-3d-white">
+                  STARTING IN
+                </div>
+                <div className="text-4xl sm:text-5xl md:text-6xl font-bold font-press-start pixel-text-3d-green animate-pulse">
+                  {countdown}
+                </div>
+              </div>
             </div>
           )}
         </div>

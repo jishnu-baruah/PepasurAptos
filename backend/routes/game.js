@@ -1,6 +1,6 @@
 const express = require('express');
 
-module.exports = (gameManager, flowService) => {
+module.exports = (gameManager, aptosService) => {
   const router = express.Router();
 
   // Create a new game
@@ -15,14 +15,14 @@ module.exports = (gameManager, flowService) => {
       // For staking games, create the contract game first
       if (stakeAmount) {
         console.log(`🎮 Creating game and contract for creator: ${creatorAddress}`);
-        console.log(`💰 Stake amount: ${stakeAmount} U2U`);
+        console.log(`💰 Stake amount: ${stakeAmount} APT`);
 
         // Step 1: Create the game on-chain
-        const createTxHash = await flowService.createGame(stakeAmount, minPlayers || 4);
+        const createTxHash = await aptosService.createGame(stakeAmount, minPlayers || 4);
         console.log(`✅ Game created, transaction: ${createTxHash}`);
 
         // Step 2: Extract gameId from the create transaction
-        const contractGameId = await flowService.extractGameIdFromTransaction(createTxHash);
+        const contractGameId = await aptosService.extractGameIdFromTransaction(createTxHash);
         console.log(`🎮 Extracted contract gameId: ${contractGameId}`);
 
         // Step 3: Create room in game manager with contract gameId
@@ -53,35 +53,32 @@ module.exports = (gameManager, flowService) => {
     }
   });
 
+
+
   // Create game and join it (for room creators)
   router.post('/create-and-join', async (req, res) => {
     try {
       const { creatorAddress, stakeAmount, minPlayers } = req.body;
-      
+
       if (!creatorAddress || !stakeAmount) {
         return res.status(400).json({ error: 'Creator address and stake amount are required' });
       }
 
       console.log(`🎮 Creating game and joining for creator: ${creatorAddress}`);
-      console.log(`💰 Stake amount: ${stakeAmount} U2U`);
+      console.log(`💰 Stake amount: ${stakeAmount} Octas (${stakeAmount / 100000000} APT)`);
 
-      // Step 1: Create the game (no payment required)
-      const createTxHash = await flowService.createGame(stakeAmount, minPlayers || 4);
-      console.log(`✅ Game created, transaction: ${createTxHash}`);
+      // Step 1: Create the game on-chain with custom stake amount
+      const contractGameId = await aptosService.createGame(stakeAmount, minPlayers || 4);
+      console.log(`✅ Game created on-chain, contract gameId: ${contractGameId}`);
 
-      // Step 2: Extract gameId from the create transaction
-      const gameId = await flowService.extractGameIdFromTransaction(createTxHash);
-      console.log(`🎮 Extracted gameId: ${gameId}`);
+      // Step 2: Create room in game manager (user will stake from frontend)
+      const { gameId: managerGameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers || 4, contractGameId);
 
-      // Step 3: Create room in game manager (user will stake from frontend)
-      const { gameId: managerGameId, roomCode } = await gameManager.createGame(creatorAddress, stakeAmount, minPlayers || 4, gameId);
-      
       res.json({
         success: true,
         gameId: managerGameId, // Use game manager's gameId for socket communication
-        contractGameId: gameId, // Keep contract gameId for reference
+        contractGameId: contractGameId, // Keep contract gameId for staking transaction
         roomCode,
-        createTxHash,
         message: 'Game created successfully. Creator can now stake to join.'
       });
     } catch (error) {
@@ -169,13 +166,23 @@ module.exports = (gameManager, flowService) => {
   router.post('/record-stake', async (req, res) => {
     try {
       const { gameId, playerAddress, transactionHash } = req.body;
-      
+
+      console.log('📥 record-stake request received:', {
+        gameId,
+        playerAddress,
+        playerAddressType: typeof playerAddress,
+        transactionHash
+      });
+
       if (!gameId || !playerAddress || !transactionHash) {
         return res.status(400).json({ error: 'Game ID, player address, and transaction hash are required' });
       }
 
       gameManager.recordPlayerStake(gameId, playerAddress, transactionHash);
-      
+
+      const game = gameManager.getGame(gameId);
+      console.log('✅ Stake recorded. Game now has players:', game?.players);
+
       res.json({
         success: true,
         message: 'Stake recorded successfully'

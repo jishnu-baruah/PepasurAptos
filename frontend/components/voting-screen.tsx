@@ -248,12 +248,12 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-center">
           <Button
             onClick={handleSubmitVote}
-            disabled={!selectedVote}
-            variant={selectedVote ? "pixelRed" : "secondary"}
+            disabled={!selectedVote || submitted || timeLeft === 0 || game?.phase !== 'voting'}
+            variant={selectedVote && timeLeft > 0 && !submitted ? "pixelRed" : "secondary"}
             size="pixelXl"
             className="text-xs sm:text-sm md:text-base lg:text-lg px-3 sm:px-4 md:px-6 lg:px-8"
           >
-            🗳️ SUBMIT VOTE
+            {submitted ? '✅ VOTE SUBMITTED' : timeLeft === 0 ? '⏰ TIME UP' : '🗳️ SUBMIT VOTE'}
           </Button>
 
           {/* Vote Summary */}

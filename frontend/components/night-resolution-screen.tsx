@@ -242,15 +242,19 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
                 </Card>
               )}
 
-              <div className="text-center">
+              <div className="text-center space-y-3">
+                <Card className="p-4 bg-[#FF8800]/20 border-2 border-[#FF8800]">
+                  <div className="text-base sm:text-lg font-press-start pixel-text-3d-white">
+                    <div className="text-[#FF8800] mb-2">⚔️ DAY PHASE STARTING ⚔️</div>
+                    <div className="text-sm">DISCUSS AND FIGURE OUT WHO TO VOTE</div>
+                  </div>
+                </Card>
+
                 <div className="text-sm sm:text-base font-press-start pixel-text-3d-white mb-2">
-                  Moving to task phase in:
+                  Discussion starting in:
                 </div>
-                <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red">
+                <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-green animate-pulse">
                   {timeLeft}s
-                </div>
-                <div className="text-xs text-blue-400 mt-1">
-                  Auto-transition in 15s if stuck
                 </div>
               </div>
             </div>

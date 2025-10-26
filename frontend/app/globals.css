@@ -143,6 +143,87 @@
   --color-gaming-white: var(--gaming-white);
 }
 
+
+/* Wallet Selector Green Theme - Override Ant Design blue */
+/* Using exact classes from Aptos wallet-adapter-ant-design documentation */
+/* CSS imported AFTER ant-design CSS to ensure override */
+
+/* Target all wallet button variants with maximum specificity */
+button.ant-btn.wallet-button,
+button.wallet-button,
+.wallet-button.ant-btn,
+.wallet-button,
+.wallet-connect-button.ant-btn,
+.wallet-connect-button,
+.ant-btn.wallet-button,
+button.ant-btn.ant-btn-default.wallet-button,
+button.ant-btn.ant-btn-color-default.wallet-button,
+button.ant-btn.ant-btn-variant-outlined.wallet-button {
+  background-color: #4A8C4A !important;
+  background: #4A8C4A !important;
+  border-color: #4A8C4A !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Hover state */
+button.ant-btn.wallet-button:hover,
+button.wallet-button:hover,
+.wallet-button.ant-btn:hover,
+.wallet-button:hover,
+.wallet-connect-button.ant-btn:hover,
+.wallet-connect-button:hover,
+.ant-btn.wallet-button:hover,
+button.ant-btn.ant-btn-default.wallet-button:hover,
+button.ant-btn.ant-btn-color-default.wallet-button:hover,
+button.ant-btn.ant-btn-variant-outlined.wallet-button:hover {
+  background-color: #3a7c3a !important;
+  background: #3a7c3a !important;
+  border-color: #3a7c3a !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(74, 140, 74, 0.5) !important;
+}
+
+/* Active/pressed state */
+button.ant-btn.wallet-button:active,
+button.wallet-button:active,
+.wallet-button.ant-btn:active,
+.wallet-button:active,
+.wallet-connect-button.ant-btn:active,
+.wallet-connect-button:active,
+.ant-btn.wallet-button:active,
+button.ant-btn.ant-btn-default.wallet-button:active,
+button.ant-btn.ant-btn-color-default.wallet-button:active,
+button.ant-btn.ant-btn-variant-outlined.wallet-button:active {
+  background-color: #2a6c2a !important;
+  background: #2a6c2a !important;
+  border-color: #2a6c2a !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Focus state */
+button.ant-btn.wallet-button:focus,
+button.wallet-button:focus,
+.wallet-button.ant-btn:focus,
+.wallet-button:focus {
+  background-color: #4A8C4A !important;
+  background: #4A8C4A !important;
+  border-color: #4A8C4A !important;
+  outline: 2px solid #3a7c3a !important;
+  outline-offset: 2px !important;
+}
+
+/* Additional support for .green-wallet-selector wrapper */
+.green-wallet-selector .wallet-button,
+.green-wallet-selector .ant-btn,
+.green-wallet-selector button {
+  background-color: #4A8C4A !important;
+  background: #4A8C4A !important;
+  border-color: #4A8C4A !important;
+  color: #ffffff !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
