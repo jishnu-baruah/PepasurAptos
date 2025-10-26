@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
 import { useWallet, type InputTransactionData } from "@aptos-labs/wallet-adapter-react"
-import { Aptos, AptosConfig, Network, AccountAddress } from "@aptos-labs/ts-sdk"
+import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk"
 
 // Initialize Aptos client
 const config = new AptosConfig({
@@ -83,13 +83,11 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
       try {
         setBalanceLoading(true)
 
-        // Parse the address properly for SDK v1.39+
-        const accountAddress = AccountAddress.from(account.address);
-
+        // SDK handles address parsing internally - just pass the string
         // Use getAccountAPTAmount - simpler and more reliable
         try {
           const balance = await aptos.getAccountAPTAmount({
-            accountAddress: accountAddress
+            accountAddress: account.address
           });
 
           const balanceInAPT = (Number(balance) / 100000000).toFixed(4);
@@ -106,7 +104,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
           // Fallback to getAccountResources
           console.log('⚠️ Trying getAccountResources fallback...');
           const resources = await aptos.getAccountResources({
-            accountAddress: accountAddress
+            accountAddress: account.address
           });
 
           const aptosCoinResource = resources.find(
