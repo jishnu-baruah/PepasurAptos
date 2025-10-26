@@ -15,10 +15,22 @@ const AptosService = require('./services/AptosService');
 const app = express();
 const server = http.createServer(app);
 
-// Enhanced CORS configuration for network access - Allow all origins
+// Enhanced CORS configuration for network access
+const allowedOrigins = [
+  'https://aptos.pepasur.xyz',
+  'http://localhost:3000',
+  'http://localhost:3001'
+];
+
 const corsOptions = {
-  origin: "*", // Allow all origins for network access
-  credentials: false, // Set to false when using wildcard origin
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length', 'X-Request-ID'],
@@ -29,10 +41,16 @@ const corsOptions = {
 
 const io = socketIo(server, {
   cors: {
-    origin: "*", // Allow all origins for Socket.IO
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-    credentials: false // Set to false when using wildcard origin
+    credentials: true
   },
   allowEIO3: true,
   transports: ['websocket', 'polling'],
