@@ -27,8 +27,16 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
 
   const { account, signAndSubmitTransaction } = useWallet()
 
+  // Normalize addresses for comparison (remove 0x prefix and convert to lowercase)
+  const normalizeAddress = (addr: string) => {
+    return addr.toLowerCase().replace(/^0x/, '')
+  }
+
+  const isCorrectWallet = account?.address &&
+    normalizeAddress(account.address) === normalizeAddress(playerAddress)
+
   const handleWithdraw = async () => {
-    if (!account?.address || account.address !== playerAddress) {
+    if (!account?.address || !isCorrectWallet) {
       alert("Please connect the correct wallet")
       return
     }
@@ -93,7 +101,7 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
         </div>
         <Button
           onClick={handleWithdraw}
-          disabled={isWithdrawing || !account || account.address !== playerAddress}
+          disabled={isWithdrawing || !isCorrectWallet}
           variant="pixel"
           size="pixelLarge"
           className="w-full"
@@ -112,7 +120,7 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
             Error: {error}
           </div>
         )}
-        {account && account.address !== playerAddress && (
+        {account && !isCorrectWallet && (
           <div className="text-yellow-400 text-sm">
             Please connect the wallet that played this game
           </div>
