@@ -12,7 +12,11 @@
       "Bash(node -e:*)",
       "Bash(node scripts/update-server-signer.js:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__aptos-mcp__get_aptos_build_applications",
+      "mcp__aptos-mcp__create_aptos_build_api_resource_application",
+      "mcp__aptos-mcp__create_aptos_build_api_key",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
