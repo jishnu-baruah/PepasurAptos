@@ -195,11 +195,21 @@ export function useGame(gameId?: string): GameState & GameActions {
       setError(data.message)
     }
 
+    const handleGameCancelled = (data: { gameId: string; reason: string }) => {
+      console.log('🚫 Game cancelled:', data)
+      setError(`Game cancelled: ${data.reason}`)
+      // Clear game state
+      setGame(null)
+      setPlayers([])
+      setCurrentGameId(null)
+    }
+
     socket.on('game_state', handleGameState)
     socket.on('game_update', handleGameUpdate)
     socket.on('task_update', handleTaskUpdate)
     socket.on('chat_message', handleChatMessage)
     socket.on('error', handleError)
+    socket.on('game_cancelled', handleGameCancelled)
 
     return () => {
       socket.off('game_state', handleGameState)
@@ -207,8 +217,19 @@ export function useGame(gameId?: string): GameState & GameActions {
       socket.off('task_update', handleTaskUpdate)
       socket.off('chat_message', handleChatMessage)
       socket.off('error', handleError)
+      socket.off('game_cancelled', handleGameCancelled)
     }
   }, [socket, currentGameId, convertPlayers, currentPlayer])
+
+  // Clear game state when currentGameId is set to null (player left game)
+  useEffect(() => {
+    if (currentGameId === null) {
+      console.log('🧹 Clearing game state after leaving game')
+      setGame(null)
+      setCurrentPlayer(null)
+      setPlayers([])
+    }
+  }, [currentGameId])
 
   // Auto-join game when gameId changes (with duplicate prevention)
   useEffect(() => {
@@ -520,6 +541,7 @@ export function useGame(gameId?: string): GameState & GameActions {
     isLoading,
     error,
     isConnected,
+    currentGameId,
     createGame,
     joinGame,
     joinGameByRoomCode,

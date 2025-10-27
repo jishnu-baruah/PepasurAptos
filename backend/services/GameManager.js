@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const AptosService = require('./AptosService');
 const StakingService = require('./StakingService');
+const Game = require('../models/Game');
 
 class GameManager {
   constructor(socketManager = null) {
@@ -31,10 +32,10 @@ class GameManager {
   }
 
   // Create a new game with staking requirement
-  async createGame(creatorAddress, stakeAmount, minPlayers, contractGameId = null) {
+  async createGame(creatorAddress, stakeAmount, minPlayers, contractGameId = null, isPublic = false) {
     const gameId = uuidv4();
     const roomCode = this.generateRoomCode();
-    
+
     const game = {
       gameId,
       roomCode,
@@ -51,13 +52,15 @@ class GameManager {
       pendingActions: {}, // address -> { commit, revealed }
       task: null,
       votes: {}, // address -> votedFor
+      votingResolved: false, // Track if voting results have been shown
       stakingRequired: true, // Require staking for this game
       stakingStatus: 'waiting', // waiting, ready, completed
       playerStakes: new Map(), // Track which players have staked
       eliminated: [],
       winners: [],
       roleCommit: null,
-      status: 'active'
+      status: 'lobby', // Fixed: should be 'lobby' not 'active'
+      isPublic: isPublic
     };
 
     if (contractGameId) {
@@ -66,25 +69,55 @@ class GameManager {
     } else if (game.stakingRequired) {
       try {
         console.log(`🎮 Creating game on-chain with stake: ${game.stakeAmount} APT`);
-        
+
         const aptosService = new AptosService();
         const onChainGameId = await aptosService.createGame(game.stakeAmount, game.minPlayers);
-        
+
         console.log(`✅ Game created on-chain with ID: ${onChainGameId}`);
         game.onChainGameId = onChainGameId;
-        
+
       } catch (error) {
         console.error('❌ Error creating game on-chain:', error);
       }
     }
 
+    // Save to in-memory for real-time operations
     this.games.set(gameId, game);
     this.roomCodes.set(roomCode, gameId);
-    
+
+    // Save to MongoDB for persistence and public lobby queries (with timeout)
+    try {
+      const dbGame = new Game({
+        gameId,
+        roomCode,
+        creator: creatorAddress,
+        isPublic,
+        stakeAmount: game.stakeAmount,
+        minPlayers: game.minPlayers,
+        maxPlayers: game.maxPlayers,
+        currentPlayers: [creatorAddress],
+        status: 'lobby',
+        phase: 'lobby',
+        onChainGameId: game.onChainGameId,
+        stakingRequired: game.stakingRequired
+      });
+
+      // Use Promise.race to add a timeout
+      await Promise.race([
+        dbGame.save(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Database save timeout')), 2000))
+      ]);
+      console.log(`💾 Game saved to database: ${gameId}`);
+    } catch (error) {
+      console.warn('⚠️ Could not save game to database:', error.message);
+      // Continue even if database save fails - game is already in memory
+    }
+
     console.log(`🎮 Game created: ${gameId} (Room: ${roomCode}) by ${creatorAddress}`);
     console.log(`💰 Staking required: ${game.stakingRequired ? 'YES' : 'NO'}`);
+    console.log(`🌐 Public: ${isPublic ? 'YES' : 'NO'}`);
 
-    
+
     return { gameId, roomCode, game };
   }
 
@@ -171,6 +204,11 @@ class GameManager {
     if (!game.players.includes(addressString)) {
       game.players.push(addressString);
       console.log(`✅ Added player ${addressString} to game ${gameId}`);
+
+      // Update MongoDB
+      this.syncPlayerToDatabase(gameId, addressString).catch(err => {
+        console.error('❌ Error syncing player to database:', err);
+      });
 
       // Notify all players in the game about the update
       if (this.socketManager) {
@@ -355,8 +393,92 @@ class GameManager {
     if (!gameId) {
       return null;
     }
-    
+
     return this.games.get(gameId);
+  }
+
+  // Leave a game (only allowed in lobby phase)
+  async leaveGame(gameId, playerAddress) {
+    const game = this.games.get(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    if (game.phase !== 'lobby') {
+      throw new Error('Cannot leave game after it has started');
+    }
+
+    const playerIndex = game.players.indexOf(playerAddress);
+    if (playerIndex === -1) {
+      throw new Error('Player not in this game');
+    }
+
+    // Remove player from in-memory game
+    game.players.splice(playerIndex, 1);
+
+    // Remove player's stake tracking
+    if (game.playerStakes && game.playerStakes.has(playerAddress)) {
+      game.playerStakes.delete(playerAddress);
+    }
+
+    console.log(`👋 Player ${playerAddress} left game ${gameId}. Remaining players: ${game.players.length}`);
+
+    // If creator left or no players remain, cancel the game
+    if (game.players.length === 0 || game.creator === playerAddress) {
+      console.log(`🚫 Game ${gameId} cancelled - ${game.players.length === 0 ? 'no players remain' : 'creator left'}`);
+
+      // Remove from in-memory
+      this.games.delete(gameId);
+      this.roomCodes.delete(game.roomCode);
+
+      // Update database status
+      try {
+        const dbGame = await Game.findOne({ gameId });
+        if (dbGame) {
+          dbGame.status = 'cancelled';
+          await dbGame.save();
+          console.log(`💾 Game ${gameId} marked as cancelled in database`);
+        }
+      } catch (error) {
+        console.error('❌ Error updating game status in database:', error);
+      }
+
+      // Emit game cancelled event
+      if (this.socketManager) {
+        this.socketManager.io.to(gameId).emit('game_cancelled', {
+          gameId,
+          reason: game.creator === playerAddress ? 'Creator left the game' : 'All players left'
+        });
+      }
+
+      return { cancelled: true, remainingPlayers: [] };
+    }
+
+    // Sync to database
+    try {
+      const dbGame = await Game.findOne({ gameId });
+      if (dbGame) {
+        const playerIdx = dbGame.currentPlayers.indexOf(playerAddress);
+        if (playerIdx !== -1) {
+          dbGame.currentPlayers.splice(playerIdx, 1);
+          await dbGame.save();
+          console.log(`💾 Removed player ${playerAddress} from database for game ${gameId}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error syncing player removal to database:', error);
+    }
+
+    // Emit game state update
+    if (this.socketManager) {
+      try {
+        this.socketManager.emitGameStateUpdate(gameId);
+      } catch (error) {
+        console.error(`❌ Error emitting game state update after player left:`, error);
+      }
+    }
+
+    return { cancelled: false, remainingPlayers: game.players };
   }
 
   // Start the game
@@ -377,16 +499,20 @@ class GameManager {
 
     // Assign roles randomly
     this.assignRoles(game);
-    
+
     // Generate role commit hash
     game.roleCommit = this.generateRoleCommit(game);
-    
+
     // Start first night phase
     game.phase = 'night';
+    game.status = 'active'; // Mark as active to prevent TTL expiration
     game.startedAt = Date.now();
     game.timeLeft = parseInt(process.env.GAME_TIMEOUT_SECONDS) || 30;
 
     console.log(`🎯 Game ${gameId} starting night phase with ${game.timeLeft}s timer`);
+
+    // Update status in database to prevent 15-minute TTL deletion
+    await this.updateGameStatus(gameId, 'active');
 
     // Start timer countdown
     await this.startTimer(gameId);
@@ -866,23 +992,39 @@ class GameManager {
       console.log(`🗳️ No player eliminated due to a tie or no votes`);
     }
 
-    if (this.checkWinConditions(game)) {
-      await this.endGame(gameId);
-      return;
-    }
+    // Set votingResolved to true so frontend can show results
+    game.votingResolved = true;
+    console.log(`✅ Voting resolved - displaying results to players`);
 
-    game.phase = 'night';
-    game.day++;
-    game.timeLeft = 30;
-    game.pendingActions = {};
-    game.votes = {};
-    game.votingResolved = false;
+    // Give players time to see the voting results (5 seconds)
+    game.timeLeft = 5;
 
-    await this.startTimer(gameId, true);
-
+    // Emit state update so players can see voting resolution
     if (this.socketManager) {
       this.socketManager.emitGameStateUpdate(gameId);
     }
+
+    // Wait for display time, then check win conditions and transition
+    setTimeout(async () => {
+      if (this.checkWinConditions(game)) {
+        await this.endGame(gameId);
+        return;
+      }
+
+      // Transition to night phase
+      game.phase = 'night';
+      game.day++;
+      game.timeLeft = 30;
+      game.pendingActions = {};
+      game.votes = {};
+      game.votingResolved = false; // Reset for next voting round
+
+      await this.startTimer(gameId, true);
+
+      if (this.socketManager) {
+        this.socketManager.emitGameStateUpdate(gameId);
+      }
+    }, 5000); // 5 second delay to show results
   }
 
   // Process detective action
@@ -1083,6 +1225,9 @@ class GameManager {
 
     console.log(`Game ${gameId} ended. Winners:`, game.winners);
 
+    // Update status in database to trigger 24-hour TTL cleanup
+    await this.updateGameStatus(gameId, 'completed');
+
     // Handle reward distribution if staking was required
     if (game.stakingRequired) {
       try {
@@ -1177,22 +1322,42 @@ class GameManager {
     if (!game) return null;
 
     const gameState = { ...game };
-    
-    // Include only the current player's role
-    if (game.roles && game.roles[playerAddress]) {
-      gameState.roles = {
-        [playerAddress]: game.roles[playerAddress]
-      };
-    } else {
-      gameState.roles = {};
+
+    // If game has ended, reveal ALL roles to ALL players
+    if (game.phase === 'ended') {
+      gameState.roles = { ...game.roles };
+      console.log(`🔍 Game ended - revealing all roles to all players`);
     }
-    
     // For eliminated ASUR players, show all roles (so they can see who was ASUR)
-    if (game.eliminated && game.eliminated.includes(playerAddress) && game.roles[playerAddress] === 'ASUR') {
+    else if (game.eliminated && game.eliminated.includes(playerAddress) && game.roles[playerAddress] === 'ASUR') {
       gameState.roles = { ...game.roles };
       console.log(`🔍 Showing all roles to eliminated ASUR player: ${playerAddress}`);
     }
-    
+    // During game, include only the current player's role
+    else {
+      if (game.roles && game.roles[playerAddress]) {
+        gameState.roles = {
+          [playerAddress]: game.roles[playerAddress]
+        };
+
+        // If player is Detective and has submitted an investigation, include target's role
+        if (game.roles[playerAddress] === 'Detective' &&
+            game.phase === 'night' &&
+            game.pendingActions &&
+            game.pendingActions[playerAddress]) {
+          const action = game.pendingActions[playerAddress];
+          if (action.action && action.action.target) {
+            const targetAddress = action.action.target;
+            const targetRole = game.roles[targetAddress];
+            gameState.roles[targetAddress] = targetRole;
+            console.log(`🔍 Detective ${playerAddress} investigated ${targetAddress}, revealing role: ${targetRole}`);
+          }
+        }
+      } else {
+        gameState.roles = {};
+      }
+    }
+
     // Remove other sensitive information
     delete gameState.roleSalt;
     delete gameState.pendingActions;
@@ -1224,6 +1389,147 @@ class GameManager {
   // Get detective reveals
   getDetectiveReveals(gameId) {
     return this.detectiveReveals.get(gameId) || [];
+  }
+
+  // MongoDB sync helper - add player to database
+  async syncPlayerToDatabase(gameId, playerAddress) {
+    try {
+      const dbGame = await Promise.race([
+        Game.findOne({ gameId }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 2000))
+      ]);
+
+      if (dbGame && !dbGame.currentPlayers.includes(playerAddress)) {
+        dbGame.currentPlayers.push(playerAddress);
+        await Promise.race([
+          dbGame.save(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 2000))
+        ]);
+        console.log(`💾 Synced player ${playerAddress} to database for game ${gameId}`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not sync player to database:', error.message);
+      // Continue - player is already in memory
+    }
+  }
+
+  // Toggle game visibility (public/private)
+  async toggleGameVisibility(gameId, creatorAddress) {
+    try {
+      // Update in-memory game
+      const game = this.games.get(gameId);
+      if (!game) {
+        throw new Error('Game not found');
+      }
+
+      // Normalize addresses for comparison (case-insensitive)
+      const normalizeAddress = (addr) => {
+        if (!addr) return '';
+        return addr.toLowerCase().replace(/^0x/, '');
+      };
+
+      if (normalizeAddress(game.creator) !== normalizeAddress(creatorAddress)) {
+        console.error(`❌ Creator mismatch: game.creator=${game.creator}, creatorAddress=${creatorAddress}`);
+        throw new Error('Only the creator can change visibility');
+      }
+
+      if (game.phase !== 'lobby') {
+        throw new Error('Cannot change visibility after game has started');
+      }
+
+      game.isPublic = !game.isPublic;
+
+      // Update database (if available)
+      try {
+        const dbGame = await Promise.race([
+          Game.findOne({ gameId }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 2000))
+        ]);
+
+        if (dbGame) {
+          dbGame.isPublic = game.isPublic;
+          await Promise.race([
+            dbGame.save(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 2000))
+          ]);
+          console.log(`💾 Toggled visibility for game ${gameId} to ${game.isPublic ? 'PUBLIC' : 'PRIVATE'}`);
+        }
+      } catch (dbError) {
+        console.warn(`⚠️ Could not update database, but in-memory game updated:`, dbError.message);
+        // Continue even if database update fails
+      }
+
+      // Broadcast update to all browsing clients
+      if (this.socketManager) {
+        this.socketManager.io.emit('lobby_visibility_changed', {
+          gameId,
+          roomCode: game.roomCode,
+          isPublic: game.isPublic
+        });
+      }
+
+      return { success: true, isPublic: game.isPublic };
+    } catch (error) {
+      console.error('❌ Error toggling game visibility:', error);
+      throw error;
+    }
+  }
+
+  // Get all public lobbies from database or in-memory
+  async getPublicLobbies() {
+    try {
+      // Try to get from database first (with 2-second timeout)
+      const dbLobbies = await Promise.race([
+        Game.getPublicLobbies(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 2000))
+      ]);
+      return dbLobbies;
+    } catch (error) {
+      console.warn('⚠️ Database not available, fetching from in-memory games:', error.message);
+
+      // Fallback to in-memory games
+      const publicLobbies = [];
+      for (const [gameId, game] of this.games.entries()) {
+        if (game.isPublic && game.phase === 'lobby' && game.players.length < game.minPlayers) {
+          publicLobbies.push({
+            gameId: game.gameId,
+            roomCode: game.roomCode,
+            creator: game.creator,
+            stakeAmount: game.stakeAmount,
+            minPlayers: game.minPlayers,
+            maxPlayers: game.maxPlayers,
+            currentPlayers: game.players,
+            playerCount: game.players.length,
+            createdAt: game.startedAt || Date.now()
+          });
+        }
+      }
+
+      console.log(`🌐 Found ${publicLobbies.length} public lobbies in memory`);
+      return publicLobbies;
+    }
+  }
+
+  // Update game status in database
+  async updateGameStatus(gameId, status) {
+    try {
+      const dbGame = await Promise.race([
+        Game.findOne({ gameId }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 2000))
+      ]);
+
+      if (dbGame) {
+        dbGame.status = status;
+        await Promise.race([
+          dbGame.save(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 2000))
+        ]);
+        console.log(`💾 Updated game ${gameId} status to ${status} in database`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not update game status in database:', error.message);
+      // Continue - status is already tracked in memory
+    }
   }
 }
 

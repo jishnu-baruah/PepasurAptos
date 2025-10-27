@@ -28,11 +28,12 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
   const { account, signAndSubmitTransaction } = useWallet()
 
   // Normalize addresses for comparison (remove 0x prefix and convert to lowercase)
-  const normalizeAddress = (addr: string) => {
+  const normalizeAddress = (addr: string | undefined | null): string => {
+    if (!addr || typeof addr !== 'string') return ''
     return addr.toLowerCase().replace(/^0x/, '')
   }
 
-  const isCorrectWallet = account?.address &&
+  const isCorrectWallet = account?.address && playerAddress &&
     normalizeAddress(account.address) === normalizeAddress(playerAddress)
 
   const handleWithdraw = async () => {

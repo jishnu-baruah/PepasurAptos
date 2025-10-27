@@ -33,15 +33,18 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
     )
   }
 
-  // Determine winners and losers
+  // Use authoritative winners from backend (don't calculate locally)
+  // This ensures all players see the same result
+  const winnerAddresses = game.winners || []
+  const winners = players.filter(p => winnerAddresses.includes(p.address))
+  const losers = players.filter(p => !winnerAddresses.includes(p.address))
   const eliminatedPlayers = players.filter(p => game.eliminated?.includes(p.address))
-  const activePlayers = players.filter(p => !game.eliminated?.includes(p.address))
-  const mafiaPlayers = activePlayers.filter(p => p.role === 'ASUR')
-  const villagerPlayers = activePlayers.filter(p => p.role !== 'ASUR')
-  
-  const mafiaWon = mafiaPlayers.length >= villagerPlayers.length
-  const winners = mafiaWon ? mafiaPlayers : villagerPlayers
-  const losers = mafiaWon ? villagerPlayers : mafiaPlayers
+
+  // Determine if Mafia won by checking if any winner has ASUR role
+  // (role info from rewards or by checking if ASUR is in winners)
+  const mafiaWon = game.rewards?.distributions?.some((d: any) =>
+    winnerAddresses.includes(d.playerAddress) && d.role === 'ASUR'
+  ) || false
 
   const getResultMessage = () => {
     if (mafiaWon) {
@@ -101,27 +104,34 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
                 🏆 WINNERS
               </h3>
               <div className="space-y-3">
-                {winners.map((player, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-green-800/30 rounded-lg border border-green-500/30">
-                    <div className="flex items-center space-x-4">
-                      {player.avatar && player.avatar.startsWith('http') ? (
-                        <img 
-                          src={player.avatar} 
-                          alt={`${player.name} avatar`}
-                          className="w-12 h-12 object-cover rounded-none"
-                          style={{ imageRendering: 'pixelated' }}
-                        />
-                      ) : (
-                        <span className="text-3xl">{player.avatar}</span>
-                      )}
-                      <div className="text-left">
-                        <div className="font-bold text-lg">{player.name}</div>
-                        <div className="text-sm text-green-300">{player.role}</div>
+                {winners.map((player, index) => {
+                  // Get role from multiple sources
+                  const playerRole = player.role ||
+                                    (game.roles && game.roles[player.address]) ||
+                                    (game.rewards?.distributions?.find((d: any) => d.playerAddress === player.address)?.role);
+
+                  return (
+                    <div key={index} className="flex items-center justify-between p-4 bg-green-800/30 rounded-lg border border-green-500/30">
+                      <div className="flex items-center space-x-4">
+                        {player.avatar && player.avatar.startsWith('http') ? (
+                          <img
+                            src={player.avatar}
+                            alt={`${player.name} avatar`}
+                            className="w-12 h-12 object-cover rounded-none"
+                            style={{ imageRendering: 'pixelated' }}
+                          />
+                        ) : (
+                          <span className="text-3xl">{player.avatar}</span>
+                        )}
+                        <div className="text-left">
+                          <div className="font-bold text-lg">{player.name}</div>
+                          <div className="text-sm text-green-300">{playerRole || 'Unknown'}</div>
+                        </div>
                       </div>
+                      <div className="text-green-400 text-2xl font-bold">✓</div>
                     </div>
-                    <div className="text-green-400 text-2xl font-bold">✓</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
 
@@ -131,27 +141,34 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
                 💀 ELIMINATED
               </h3>
               <div className="space-y-3">
-                {eliminatedPlayers.length > 0 ? eliminatedPlayers.map((player, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-red-800/30 rounded-lg border border-red-500/30">
-                    <div className="flex items-center space-x-4">
-                      {player.avatar && player.avatar.startsWith('http') ? (
-                        <img 
-                          src={player.avatar} 
-                          alt={`${player.name} avatar`}
-                          className="w-12 h-12 object-cover rounded-none"
-                          style={{ imageRendering: 'pixelated' }}
-                        />
-                      ) : (
-                        <span className="text-3xl">{player.avatar}</span>
-                      )}
-                      <div className="text-left">
-                        <div className="font-bold text-lg">{player.name}</div>
-                        <div className="text-sm text-red-300">{player.role}</div>
+                {eliminatedPlayers.length > 0 ? eliminatedPlayers.map((player, index) => {
+                  // Get role from multiple sources
+                  const playerRole = player.role ||
+                                    (game.roles && game.roles[player.address]) ||
+                                    (game.rewards?.distributions?.find((d: any) => d.playerAddress === player.address)?.role);
+
+                  return (
+                    <div key={index} className="flex items-center justify-between p-4 bg-red-800/30 rounded-lg border border-red-500/30">
+                      <div className="flex items-center space-x-4">
+                        {player.avatar && player.avatar.startsWith('http') ? (
+                          <img
+                            src={player.avatar}
+                            alt={`${player.name} avatar`}
+                            className="w-12 h-12 object-cover rounded-none"
+                            style={{ imageRendering: 'pixelated' }}
+                          />
+                        ) : (
+                          <span className="text-3xl">{player.avatar}</span>
+                        )}
+                        <div className="text-left">
+                          <div className="font-bold text-lg">{player.name}</div>
+                          <div className="text-sm text-red-300">{playerRole || 'Unknown'}</div>
+                        </div>
                       </div>
+                      <div className="text-red-400 text-2xl font-bold">✗</div>
                     </div>
-                    <div className="text-red-400 text-2xl font-bold">✗</div>
-                  </div>
-                )) : (
+                  );
+                }) : (
                   <div className="text-center text-gray-400 py-4">
                     No players were eliminated
                   </div>
@@ -159,38 +176,6 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
               </div>
             </Card>
           </div>
-
-          {/* All Roles Revealed */}
-          {/* <Card className="p-6 bg-purple-900/50 border-purple-500/50 backdrop-blur-sm">
-            <h3 className="text-2xl font-bold text-purple-400 mb-6 flex items-center justify-center gap-2">
-              🎭 ALL ROLES REVEALED
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {players.map((player, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-purple-800/30 rounded-lg border border-purple-500/30">
-                  <div className="flex items-center space-x-4">
-                    {player.avatar && player.avatar.startsWith('http') ? (
-                      <img 
-                        src={player.avatar} 
-                        alt={`${player.name} avatar`}
-                        className="w-12 h-12 object-cover rounded-none"
-                        style={{ imageRendering: 'pixelated' }}
-                      />
-                    ) : (
-                      <span className="text-3xl">{player.avatar}</span>
-                    )}
-                    <div className="text-left">
-                      <div className="font-bold text-lg text-white">{player.name}</div>
-                      <div className="text-sm text-purple-300">{player.role}</div>
-                    </div>
-                  </div>
-                  <div className={`text-2xl font-bold ${player.isAlive ? 'text-green-400' : 'text-red-400'}`}>
-                    {player.isAlive ? '✓' : '✗'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card> */}
 
           {/* Game Summary */}
           {/* <Card className="p-6 bg-gray-900/50 border-gray-500/50 backdrop-blur-sm">
@@ -283,22 +268,38 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
                 
                 {/* Withdraw Component for Current Player Only */}
                 {(() => {
-                  // Get current player's reward
+                  // Normalize addresses for comparison (case-insensitive)
+                  const normalizeAddress = (addr: string) => addr?.toLowerCase().replace(/^0x/, '') || '';
+
+                  // Get current player's reward with normalized address comparison
                   const currentPlayerReward = currentPlayer && game.rewards.distributions?.find(
-                    (reward: any) => reward.playerAddress === currentPlayer.address
+                    (reward: any) => normalizeAddress(reward.playerAddress) === normalizeAddress(currentPlayer.address)
                   );
-                  
+
+                  console.log('Withdraw Rewards Debug:', {
+                    currentPlayerAddress: currentPlayer?.address,
+                    normalizedCurrentAddress: normalizeAddress(currentPlayer?.address || ''),
+                    distributions: game.rewards.distributions?.map((d: any) => ({
+                      address: d.playerAddress,
+                      normalized: normalizeAddress(d.playerAddress),
+                      rewardInAPT: d.rewardInAPT
+                    })),
+                    foundReward: currentPlayerReward
+                  });
+
                   if (currentPlayerReward) {
                     return (
                       <WithdrawRewards
                         key={currentPlayerReward.playerAddress}
-                        gameId={game.gameId}
+                        gameId={game.rewards.gameId || game.gameId}
                         playerAddress={currentPlayerReward.playerAddress}
                         rewardAmount={currentPlayerReward.rewardAmount}
                         rewardInAPT={currentPlayerReward.rewardInAPT}
                       />
                     );
                   }
+
+                  console.log('⚠️ No reward found for current player');
                   return null;
                 })()}
               </div>

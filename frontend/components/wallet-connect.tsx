@@ -75,11 +75,11 @@ export default function WalletConnect({ onAddressChange, onJoinGame, onCreateLob
                   {onCreateLobby && (
                     <Button
                       onClick={onCreateLobby}
-                      variant="pixel"
+                      variant="pixelRed"
                       size="pixelLarge"
                       className="w-full text-sm sm:text-base"
                     >
-                      CREATE PRIVATE LOBBY
+                      Create Lobby
                     </Button>
                   )}
 

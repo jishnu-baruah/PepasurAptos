@@ -22,6 +22,8 @@ interface StakingScreenProps {
   onStakeSuccess: (gameId?: string, roomCode?: string) => void
   onCancel: () => void
   mode: 'create' | 'join' // New prop to distinguish between creating and joining
+  onBrowsePublicLobbies?: () => void // Optional handler to browse public lobbies
+  initialRoomCode?: string // Pre-fill room code (e.g., from public lobbies)
 }
 
 interface StakingInfo {
@@ -42,8 +44,8 @@ interface BalanceInfo {
   sufficient: boolean
 }
 
-export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, onCancel, mode }: StakingScreenProps) {
-  const [roomCode, setRoomCode] = useState('')
+export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, onCancel, mode, onBrowsePublicLobbies, initialRoomCode }: StakingScreenProps) {
+  const [roomCode, setRoomCode] = useState(initialRoomCode || '')
   const [stakingInfo, setStakingInfo] = useState<StakingInfo | null>(null)
   const [isStaking, setIsStaking] = useState(false)
   const [error, setError] = useState('')
@@ -56,6 +58,14 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   const [balanceLoading, setBalanceLoading] = useState(true)
 
   const [stakeAmountInput, setStakeAmountInput] = useState('0.001');
+  const [isPublic, setIsPublic] = useState(false);
+
+  // Update room code when initialRoomCode changes (e.g., from public lobbies)
+  useEffect(() => {
+    if (initialRoomCode) {
+      setRoomCode(initialRoomCode)
+    }
+  }, [initialRoomCode])
 
   // Validate and convert stake amount to Octas (1 APT = 100,000,000 Octas)
   const getValidatedStakeAmount = () => {
@@ -257,7 +267,8 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
             body: JSON.stringify({
               creatorAddress: playerAddress,
               stakeAmount: stakeAmount, // Use the state variable here
-              minPlayers: 4
+              minPlayers: 4,
+              isPublic: isPublic
             }),
           })
 
@@ -421,7 +432,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
 
   return (
     <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 gaming-bg scanlines">
-      <Card className="w-full max-w-md p-3 sm:p-4 lg:p-6 bg-[#111111]/80 border border-[#2a2a2a]">
+      <Card className="w-[90vw] max-w-[480px] p-3 sm:p-4 lg:p-6 bg-[#111111]/80 border border-[#2a2a2a]">
         <div className="space-y-3 sm:space-y-4 lg:space-y-6">
           {/* Header */}
           <div className="text-center space-y-1 sm:space-y-2">
@@ -434,35 +445,62 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
 
           </div>
 
-          {/* Balance Info */}
-          {balanceInfo && (
-            <Card className="p-2 sm:p-3 lg:p-4 bg-[#1a1a1a]/50 border border-[#333333]">
+          {/* Balance and Network Info */}
+          <div className="flex gap-4">
+            {/* Balance Info */}
+            {balanceInfo && (
+              <div className="flex-1 p-2 sm:p-3 lg:p-4">
+                <div className="space-y-1 sm:space-y-2">
+                  <div className="text-xs sm:text-sm font-press-start text-gray-300">YOUR BALANCE</div>
+                  <div className="text-base sm:text-lg font-bold text-white">
+                    {balanceInfo.balanceInAPT} APT
+                  </div>
+                  <div className={`text-xs sm:text-sm font-press-start ${balanceInfo.sufficient ? 'text-green-400' : 'text-red-400'}`}>
+                    {balanceInfo.sufficient ? '✅ SUFFICIENT' : '❌ INSUFFICIENT'}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Network Info */}
+            <div className="flex-1 p-2 sm:p-3 lg:p-4">
               <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm font-press-start text-gray-300">YOUR BALANCE</div>
+                <div className="text-xs sm:text-sm font-press-start text-gray-300">NETWORK</div>
                 <div className="text-base sm:text-lg font-bold text-white">
-                  {balanceInfo.balanceInAPT} APT
+                  {connected ? '✅ Aptos Devnet' : '❌ Not Connected'}
                 </div>
-                <div className={`text-xs sm:text-sm font-press-start ${balanceInfo.sufficient ? 'text-green-400' : 'text-red-400'}`}>
-                  {balanceInfo.sufficient ? '✅ SUFFICIENT' : '❌ INSUFFICIENT'}
+                {!connected && (
+                  <div className="text-xs sm:text-sm text-yellow-400">
+                    Please connect your Aptos wallet
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border my-4"></div>
+
+          {/* Public/Private Toggle - Only show for create mode */}
+          {mode === 'create' && (
+            <Card className="p-2 sm:p-3 bg-[#1a1a1a]/50 border border-[#333333]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs sm:text-sm font-press-start text-gray-300">ROOM VISIBILITY</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {isPublic ? 'Anyone can see and join' : 'Only with room code'}
+                  </div>
                 </div>
+                <Button
+                  onClick={() => setIsPublic(!isPublic)}
+                  variant={isPublic ? 'pixel' : 'outline'}
+                  size="pixel"
+                  className="text-xs"
+                >
+                  {isPublic ? '🌐 PUBLIC' : '🔒 PRIVATE'}
+                </Button>
               </div>
             </Card>
           )}
-
-          {/* Network Info */}
-          <Card className="p-2 sm:p-3 lg:p-4 bg-[#1a1a1a]/50 border border-[#333333]">
-            <div className="space-y-1 sm:space-y-2">
-              <div className="text-xs sm:text-sm font-press-start text-gray-300">NETWORK</div>
-              <div className="text-base sm:text-lg font-bold text-white">
-                {connected ? '✅ Aptos Devnet' : '❌ Not Connected'}
-              </div>
-              {!connected && (
-                <div className="text-xs sm:text-sm text-yellow-400">
-                  Please connect your Aptos wallet
-                </div>
-              )}
-            </div>
-          </Card>
 
           {/* Stake Amount Input - Only show for create mode */}
           {mode === 'create' && (
@@ -505,22 +543,59 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
             </div>
           )}
 
-          {/* Room Code Input - Only show for join mode */}
+          {/* Join mode UI */}
           {mode === 'join' && (
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="roomCode" className="text-xs sm:text-sm font-press-start text-gray-300">
-                ROOM CODE
-              </Label>
-              <Input
-                id="roomCode"
-                type="text"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                placeholder="Enter 6-character room code"
-                maxLength={6}
-                className="font-press-start text-center text-sm sm:text-lg tracking-widest"
-              />
-            </div>
+            <>
+              {/* Group 1: Join with Room Code */}
+              <div className="space-y-2 p-4 border border-border rounded-lg">
+                <Input
+                  id="roomCode"
+                  type="text"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  placeholder="Enter 6-char room code"
+                  maxLength={6}
+                  className="w-full font-press-start text-left text-lg tracking-widest p-4 bg-black/50 border-2 border-border focus:border-primary focus:ring-primary"
+                />
+                <Button
+                  onClick={handleStake}
+                  disabled={isStaking || !connected || !balanceInfo?.sufficient || roomCode.length !== 6}
+                  variant="pixel"
+                  size="pixelLarge"
+                  className="w-full"
+                >
+                  {isStaking ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <GifLoader size="sm" />
+                      <span>STAKING...</span>
+                    </div>
+                  ) : (
+                    `💰 Stake to join `
+                  )}
+                </Button>
+              </div>
+
+              {/* Separator */}
+              <div className="flex items-center">
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink mx-4 text-xs text-gray-500">OR</span>
+                <div className="flex-grow border-t border-border"></div>
+              </div>
+
+              {/* Group 2: Browse Public Lobbies */}
+              {onBrowsePublicLobbies && (
+                <div>
+                  <Button
+                    onClick={onBrowsePublicLobbies}
+                    variant="outline"
+                    size="pixelLarge"
+                    className="w-full"
+                  >
+                    🌐 BROWSE PUBLIC LOBBIES
+                  </Button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Error Message */}
@@ -552,22 +627,24 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
 
           {/* Action Buttons */}
           <div className="space-y-2 sm:space-y-3">
-            <Button
-              onClick={handleStake}
-              disabled={isStaking || !connected || !balanceInfo?.sufficient || (mode === 'join' && !roomCode.trim())}
-              variant="pixel"
-              size="pixelLarge"
-              className="w-full"
-            >
-              {isStaking ? (
-                <div className="flex items-center justify-center gap-2">
-                  <GifLoader size="sm" />
-                  <span>STAKING...</span>
-                </div>
-              ) : (
-                mode === 'create' ? `🎮 STAKE ${stakeAmountInAPT} APT` : `💰 STAKE TO JOIN`
-              )}
-            </Button>
+            {mode === 'create' && (
+              <Button
+                onClick={handleStake}
+                disabled={isStaking || !connected || !balanceInfo?.sufficient}
+                variant="pixel"
+                size="pixelLarge"
+                className="w-full"
+              >
+                {isStaking ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <GifLoader size="sm" />
+                    <span>STAKING...</span>
+                  </div>
+                ) : (
+                  `🎮 STAKE ${stakeAmountInAPT} APT`
+                )}
+              </Button>
+            )}
 
             <Button
               onClick={onCancel}

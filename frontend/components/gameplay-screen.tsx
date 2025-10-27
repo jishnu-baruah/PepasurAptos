@@ -23,6 +23,8 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
   const [timeLeft, setTimeLeft] = useState(0)
   const [showTimeUp, setShowTimeUp] = useState(false)
   const [lastShownElimination, setLastShownElimination] = useState<string | null>(null)
+  const [announcementShown, setAnnouncementShown] = useState(false)
+  const [investigationResult, setInvestigationResult] = useState<{player: string, role: string, color: string, emoji: string} | null>(null)
 
   // Debug game state
   useEffect(() => {
@@ -113,13 +115,21 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
   useEffect(() => {
     if (game?.phase && game.phase !== 'night') {
       setLastShownElimination(null)
+      // Don't reset announcementShown here - keep it to prevent re-showing
+    }
+  }, [game?.phase])
+
+  // Reset announcement flag only when entering night phase for a new round
+  useEffect(() => {
+    if (game?.phase === 'night') {
+      setAnnouncementShown(false)
     }
   }, [game?.phase])
 
   // Handle player eliminations - only during night phase
   useEffect(() => {
-    // Only show death announcement during night phase
-    if (game?.phase !== 'night') {
+    // Only show death announcement during night phase and if not already shown
+    if (game?.phase !== 'night' || announcementShown) {
       return
     }
 
@@ -134,6 +144,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
           setKilledPlayer(eliminatedPlayer)
           setShowDeathAnnouncement(true)
           setLastShownElimination(lastEliminated)
+          setAnnouncementShown(true) // Mark that we've shown the announcement
 
           setTimeout(() => {
             setShowDeathAnnouncement(false)
@@ -142,7 +153,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         }
       }
     }
-  }, [game?.eliminated, game?.phase, players, onComplete, lastShownElimination])
+  }, [game?.eliminated, game?.phase, players, onComplete, lastShownElimination, announcementShown])
 
   const handlePlayerSelect = async (playerId: string) => {
     console.log('🎯 handlePlayerSelect called:', {
@@ -153,26 +164,26 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
       currentPlayerRole: currentPlayer?.role,
       currentPlayerAddress: currentPlayer?.address
     })
-    
+
     if (timeLeft > 0 && !actionTaken && game?.phase === 'night') {
       setSelectedPlayer(playerId)
       setActionTaken(true)
-      
+
       try {
         // Map frontend roles to backend roles
         const roleMapping: Record<string, string> = {
           'ASUR': 'Mafia',
-          'DEVA': 'Doctor', 
+          'DEVA': 'Doctor',
           'RISHI': 'Detective',
           'MANAV': 'Villager'
         }
-        
+
         const backendRole = roleMapping[currentPlayer.role || '']
         if (!backendRole) {
           console.error('Unknown role:', currentPlayer.role)
           return
         }
-        
+
         console.log(`🎯 Submitting action: ${backendRole} targeting ${playerId}`)
         console.log(`📊 Game state before action:`, {
           gamePhase: game?.phase,
@@ -180,14 +191,54 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
           timerReady: game?.timerReady,
           gameId: game?.gameId
         })
-        
+
         // Submit action to backend
         await submitNightAction({
           type: backendRole.toLowerCase(),
           target: playerId
         })
-        
+
         console.log(`✅ Action submitted successfully: ${backendRole} targeting ${playerId}`)
+
+        // If detective, immediately fetch investigation result
+        if (currentPlayer.role === 'RISHI' && game?.gameId) {
+          console.log('🔍 Detective investigation - fetching result')
+
+          // Wait a moment for backend to process, then fetch game state
+          setTimeout(async () => {
+            try {
+              const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/game/${game.gameId}?playerAddress=${currentPlayer.address}`)
+              const data = await response.json()
+
+              if (data.success && data.game?.roles) {
+                const targetPlayer = players.find(p => p.id === playerId)
+                const targetRole = data.game.roles[playerId]
+
+                console.log('🔍 Investigation result:', { targetPlayer: targetPlayer?.name, targetRole })
+
+                // Map backend role to frontend display
+                const roleInfo: Record<string, { name: string, emoji: string, color: string }> = {
+                  'Mafia': { name: 'ASUR', emoji: '🔴', color: '#FF4444' },
+                  'Doctor': { name: 'DEVA', emoji: '🛡️', color: '#44AA44' },
+                  'Detective': { name: 'RISHI', emoji: '🔍', color: '#4444FF' },
+                  'Villager': { name: 'MANAV', emoji: '👤', color: '#AAAAAA' }
+                }
+
+                const info = roleInfo[targetRole] || { name: 'UNKNOWN', emoji: '❓', color: '#AAAAAA' }
+
+                setInvestigationResult({
+                  player: targetPlayer?.name || 'Unknown',
+                  role: info.name,
+                  color: info.color,
+                  emoji: info.emoji
+                })
+              }
+            } catch (err) {
+              console.error('❌ Failed to fetch investigation result:', err)
+            }
+          }, 500)
+        }
+
         console.log(`📊 Game state after action:`, {
           gamePhase: game?.phase,
           timeLeft: game?.timeLeft,
@@ -277,7 +328,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         {/* Players Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2 lg:gap-3">
           {players
-            .filter((p) => p.id !== currentPlayer.id)
+            .filter((p) => p.id !== currentPlayer.id && p.isAlive)
             .map((player) => {
               const isSelected = selectedPlayer === player.id
               const cardColor = isSelected ? getActionColor() : "transparent"
@@ -345,39 +396,34 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         </div>
       )}
 
-      {/* Death Announcement Popup */}
-          {showDeathAnnouncement && killedPlayer && (
-            <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
-              <Card className="w-full max-w-2xl p-6 sm:p-8 bg-card border-4 border-destructive text-center">
-                <div className="space-y-8">
-                  <div className="text-4xl sm:text-5xl">💀</div>
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">PLAYER KILLED!</div>
-                  
-                  {/* Killed Player Avatar - Responsive */}
-                  <div className="flex justify-center">
-                    {killedPlayer.avatar && killedPlayer.avatar.startsWith('http') ? (
-                      <img 
-                        src={killedPlayer.avatar} 
-                        alt={killedPlayer.name}
-                        className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#666666] shadow-lg"
-                        style={{ imageRendering: 'pixelated' }}
-                      />
-                    ) : (
-                      <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-[#333333] border-2 border-[#666666] flex items-center justify-center shadow-lg">
-                        <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">💀</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-xl sm:text-2xl md:text-3xl font-press-start pixel-text-3d-white">{killedPlayer.name}</div>
-                    <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">Role: {killedPlayer.role}</div>
-                  </div>
-                  <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">The village must discuss and vote!</div>
-                </div>
-              </Card>
+      {/* Detective Investigation Result */}
+      {investigationResult && currentPlayer.role === 'RISHI' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md p-6 bg-[#111111]/95 border-4 border-[#4444FF] text-center space-y-4">
+            <div className="text-4xl">{investigationResult.emoji}</div>
+            <div className="text-xl font-bold font-press-start text-[#4444FF] pixel-text-3d-glow">
+              🔍 INVESTIGATION RESULT
             </div>
-          )}
+            <div className="text-lg font-press-start pixel-text-3d-white">
+              <span className="text-gray-300">{investigationResult.player}</span>
+              <br />
+              <span className="text-sm">is</span>
+              <br />
+              <span style={{ color: investigationResult.color }} className="text-2xl font-bold">
+                {investigationResult.role}
+              </span>
+            </div>
+            <div className="pt-4 border-t border-[#2a2a2a]">
+              <button
+                onClick={() => setInvestigationResult(null)}
+                className="px-6 py-2 bg-[#4444FF] hover:bg-[#3333DD] text-white font-press-start text-sm rounded"
+              >
+                ✓ UNDERSTOOD
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
 
     </div>
   )

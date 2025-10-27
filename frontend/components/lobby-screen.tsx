@@ -3,21 +3,37 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
 import { Player } from "@/hooks/useGame"
 import { Game } from "@/services/api"
+import { clearGameSession } from "@/utils/sessionPersistence"
 
 interface LobbyScreenProps {
   players: Player[]
   game: Game | null
   isConnected: boolean
   onStartGame: () => void
+  playerAddress?: string
+  onLeaveGame?: () => void
 }
 
-export default function LobbyScreen({ players, game, isConnected, onStartGame }: LobbyScreenProps) {
+export default function LobbyScreen({ players, game, isConnected, onStartGame, playerAddress, onLeaveGame }: LobbyScreenProps) {
   const [chatEnabled, setChatEnabled] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
+  const [isPublic, setIsPublic] = useState(false)
+  const [isTogglingVisibility, setIsTogglingVisibility] = useState(false)
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false)
+  const [isLeavingGame, setIsLeavingGame] = useState(false)
+  const [copied, setCopied] = useState(false)
   
   // Debug player updates
   useEffect(() => {
@@ -34,6 +50,108 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
       setTimeLeft(game.timeLeft)
     }
   }, [game?.timeLeft])
+
+  // Initialize isPublic from game data
+  useEffect(() => {
+    if (game) {
+      setIsPublic(game.isPublic || false)
+    }
+  }, [game])
+
+  // Check if current player is the creator
+  const isCreator = playerAddress && game?.creator === playerAddress
+
+  // Toggle room visibility
+  const handleToggleVisibility = async () => {
+    if (!game?.gameId || !playerAddress || !isCreator) return
+
+    try {
+      setIsTogglingVisibility(true)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/game/${game.gameId}/visibility`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorAddress: playerAddress })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setIsPublic(data.isPublic)
+      }
+    } catch (error) {
+      console.error('Error toggling visibility:', error)
+    } finally {
+      setIsTogglingVisibility(false)
+    }
+  }
+
+  // Copy room code to clipboard
+  const copyRoomCode = async () => {
+    if (!game?.roomCode) {
+      console.error('No room code available to copy')
+      return
+    }
+
+    try {
+      // Clean the room code to ensure only the actual code is copied
+      const cleanRoomCode = game.roomCode.trim().replace(/\s+/g, '')
+      console.log('Copying room code:', cleanRoomCode)
+
+      await navigator.clipboard.writeText(cleanRoomCode)
+
+      console.log('✅ Room code copied successfully')
+      setCopied(true)
+
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopied(false)
+      }, 2000)
+    } catch (error) {
+      console.error('❌ Failed to copy room code:', error)
+      alert('Failed to copy room code. Please copy manually: ' + game.roomCode)
+    }
+  }
+
+  // Handle leave game
+  const handleLeaveGame = async () => {
+    if (!game?.gameId || !playerAddress) return
+
+    try {
+      setIsLeavingGame(true)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/game/leave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: game.gameId,
+          playerAddress
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        console.log('✅ Successfully left game')
+
+        // Clear session
+        clearGameSession()
+
+        // Close dialog
+        setShowLeaveDialog(false)
+
+        // Call parent callback if provided
+        if (onLeaveGame) {
+          onLeaveGame()
+        }
+      } else {
+        console.error('❌ Failed to leave game:', data.error)
+        alert(`Failed to leave game: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('❌ Error leaving game:', error)
+      alert('An error occurred while leaving the game')
+    } finally {
+      setIsLeavingGame(false)
+    }
+  }
 
   const getPlayerDisplayName = (player: Player, index: number) => {
     if (player.isCurrentPlayer) {
@@ -64,6 +182,61 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
             <div className="text-xs text-yellow-400 mt-1 font-press-start">⚠️ DISCONNECTED</div>
           )}
         </div>
+
+        {/* Room Code Card */}
+        <Card className="p-2 sm:p-3 lg:p-4 bg-card border-2 border-border">
+          <div className="space-y-2">
+            {/* Room Code Display */}
+            <div className="text-center space-y-2">
+              <div className="text-xs sm:text-sm font-press-start text-white pixel-text-3d-glow">
+                ROOM CODE
+              </div>
+
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-press-start text-blue-400 pixel-text-3d-glow tracking-widest">
+                {game?.roomCode || 'LOADING...'}
+              </div>
+
+              <Button
+                onClick={copyRoomCode}
+                variant={copied ? "pixel" : "pixelOutline"}
+                size="sm"
+                className="text-xs"
+                disabled={!game?.roomCode}
+              >
+                {copied ? '✅ COPIED!' : '📋 COPY CODE'}
+              </Button>
+
+              <div className="text-xs text-gray-400 font-press-start">
+                SHARE WITH FRIENDS
+              </div>
+            </div>
+
+            {/* Visibility Toggle - Only for Creator */}
+            {isCreator && (
+              <div className="flex items-center justify-center gap-2 pt-2 border-t border-[#2a2a2a]">
+                <span className="text-xs font-press-start text-gray-300">VISIBILITY:</span>
+                <Button
+                  onClick={handleToggleVisibility}
+                  variant={isPublic ? 'pixel' : 'outline'}
+                  size="pixel"
+                  className="text-xs"
+                  disabled={isTogglingVisibility}
+                >
+                  {isTogglingVisibility ? '...' : isPublic ? '🌐 PUBLIC' : '🔒 PRIVATE'}
+                </Button>
+              </div>
+            )}
+
+            {/* Visibility Status - For Non-Creators */}
+            {!isCreator && (
+              <div className="text-center pt-2 border-t border-[#2a2a2a]">
+                <span className="text-xs font-press-start text-gray-400">
+                  {isPublic ? '🌐 PUBLIC LOBBY' : '🔒 PRIVATE LOBBY'}
+                </span>
+              </div>
+            )}
+          </div>
+        </Card>
 
         {/* Game Status */}
         <Card className="p-2 sm:p-3 lg:p-4 bg-card border-2 border-border text-center">
@@ -143,8 +316,8 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
           </div>
         )}
 
-        {/* Chat Toggle */}
-        <div className="text-center">
+        {/* Chat Toggle & Leave Game (Creator Only) */}
+        <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
           <Button
             onClick={() => setChatEnabled(!chatEnabled)}
             variant="pixel"
@@ -153,7 +326,56 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame }:
           >
             {chatEnabled ? "💬 CHAT ENABLED" : "💬 ENABLE CHAT"}
           </Button>
+          {isCreator && (
+            <Button
+              onClick={() => setShowLeaveDialog(true)}
+              variant="outline"
+              size="pixel"
+              className="text-xs sm:text-sm border-red-500/50 text-red-400 hover:bg-red-900/20"
+            >
+              🚪 LEAVE GAME
+            </Button>
+          )}
         </div>
+
+        {/* Leave Game Confirmation Dialog */}
+        <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+          <DialogContent className="bg-card border-2 border-border">
+            <DialogHeader>
+              <DialogTitle className="font-press-start text-lg pixel-text-3d-white text-center">
+                ⚠️ LEAVE GAME?
+              </DialogTitle>
+            </DialogHeader>
+            <div className="text-center space-y-2 pt-4">
+              <div className="text-base font-press-start text-red-400">
+                YOUR STAKE WILL BE LOST!
+              </div>
+              <div className="text-sm text-gray-300">
+                Are you sure you want to leave the lobby? Your staked APT will not be returned.
+              </div>
+            </div>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => setShowLeaveDialog(false)}
+                variant="pixel"
+                size="pixel"
+                disabled={isLeavingGame}
+                className="w-full sm:w-auto"
+              >
+                ↩️ STAY
+              </Button>
+              <Button
+                onClick={handleLeaveGame}
+                variant="outline"
+                size="pixel"
+                disabled={isLeavingGame}
+                className="w-full sm:w-auto border-red-500 text-red-400 hover:bg-red-900/50"
+              >
+                {isLeavingGame ? '⏳ LEAVING...' : '🚪 LEAVE & LOSE STAKE'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Instructions */}
         <Card className="p-3 sm:p-4 bg-[#111111]/50 border border-[#2a2a2a]">

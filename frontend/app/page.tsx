@@ -13,10 +13,12 @@ import NightResolutionScreen from "@/components/night-resolution-screen"
 import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
 import StakingScreen from "@/components/staking-screen"
+import PublicLobbiesScreen from "@/components/public-lobbies-screen"
 import { useGame, Player } from "@/hooks/useGame"
 import { soundService } from "@/services/SoundService"
+import { saveGameSession, getGameSession, clearGameSession, isSessionValid } from "@/utils/sessionPersistence"
 
-export type GameState = "loader" | "wallet" | "room-code-input" | "staking" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting" | "ended"
+export type GameState = "loader" | "wallet" | "room-code-input" | "staking" | "public-lobbies" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting" | "ended"
 export type Role = "ASUR" | "DEVA" | "RISHI" | "MANAV"
 
 export default function Home() {
@@ -24,6 +26,7 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null)
   const [stakingMode, setStakingMode] = useState<'create' | 'join'>('create')
+  const [isLoadingGame, setIsLoadingGame] = useState(false)
   
   const {
     game,
@@ -32,6 +35,7 @@ export default function Home() {
     isLoading,
     error,
     isConnected,
+    currentGameId,
     joinGame,
     joinGameByRoomCode,
     setCurrentGameId,
@@ -65,7 +69,49 @@ export default function Home() {
     }
   }, [isConnected, gameState])
 
+  // Save session when entering lobby or during active game
   useEffect(() => {
+    if (game?.gameId && currentRoomCode && walletAddress && game.phase !== 'ended') {
+      saveGameSession(game.gameId, currentRoomCode, walletAddress)
+    }
+  }, [game?.gameId, currentRoomCode, walletAddress, game?.phase])
+
+  // Clear session when game ends
+  useEffect(() => {
+    if (game?.phase === 'ended') {
+      console.log('🎮 Game ended, clearing session')
+      clearGameSession()
+    }
+  }, [game?.phase])
+
+  // Set loading flag when game data arrives
+  useEffect(() => {
+    if (game && currentGameId) {
+      setIsLoadingGame(false)
+    }
+  }, [game, currentGameId])
+
+  // Handle game cancellation (when game becomes null while in lobby)
+  // But don't cancel immediately - give socket time to deliver game state
+  useEffect(() => {
+    if (!game && gameState === 'lobby' && currentGameId && !isLoadingGame) {
+      // Add a small delay to distinguish between "loading" and "cancelled"
+      const cancelTimer = setTimeout(() => {
+        console.log('🚫 Game was cancelled, returning to staking screen')
+        clearGameSession()
+        setCurrentGameId(null)
+        setCurrentRoomCode(null)
+        setIsLoadingGame(false)
+        setGameState('staking')
+        setHasSeenRole(false)
+      }, 2000) // Wait 2 seconds before considering it cancelled
+
+      return () => clearTimeout(cancelTimer)
+    }
+  }, [game, gameState, currentGameId, setCurrentGameId, isLoadingGame])
+
+  useEffect(() => {
+    // Sync game phase to UI state
     if (game && currentPlayer) {
       if (game.phase !== gameState) {
         soundService.playPhaseChange();
@@ -95,6 +141,20 @@ export default function Home() {
     setWalletAddress(address)
     if (address) {
       setCurrentPlayerFromAddress(address)
+
+      // Check for saved game session
+      const savedSession = getGameSession()
+      if (savedSession && isSessionValid(address)) {
+        console.log('🔄 Restoring previous game session:', savedSession)
+
+        // Restore game state
+        setCurrentGameId(savedSession.gameId)
+        setCurrentRoomCode(savedSession.roomCode)
+
+        // Attempt to rejoin the game
+        // The game hook will automatically fetch the game state
+        setGameState('lobby')
+      }
     }
   }
 
@@ -161,27 +221,52 @@ export default function Home() {
           gameId={game?.gameId}
           playerAddress={walletAddress}
           mode={stakingMode}
+          initialRoomCode={currentRoomCode || undefined}
           onStakeSuccess={(gameId, roomCode) => {
+            console.log('🎯 onStakeSuccess - transitioning to lobby')
+            setIsLoadingGame(true) // Expect game state to arrive soon
             if (gameId) setCurrentGameId(gameId)
             if (roomCode) setCurrentRoomCode(roomCode)
             setGameState("lobby")
           }}
-          onCancel={() => setGameState("wallet")}
+          onCancel={() => {
+            setCurrentRoomCode(null)
+            setGameState("wallet")
+          }}
+          onBrowsePublicLobbies={() => setGameState("public-lobbies")}
+        />
+      )}
+      {gameState === "public-lobbies" && walletAddress && (
+        <PublicLobbiesScreen
+          playerAddress={walletAddress}
+          onJoinLobby={(gameId, roomCode) => {
+            console.log('🎯 onJoinLobby - transitioning to lobby')
+            setIsLoadingGame(true) // Expect game state to arrive soon
+            setCurrentGameId(gameId)
+            setCurrentRoomCode(roomCode)
+            setGameState("lobby")
+          }}
+          onBack={() => setGameState("staking")}
         />
       )}
       {gameState === "lobby" && currentPlayer && (
         <>
-          <LobbyScreen 
-            players={getPublicPlayerData(players, currentPlayer.id)} 
+          <LobbyScreen
+            players={getPublicPlayerData(players, currentPlayer.id)}
             game={game}
             isConnected={isConnected}
             onStartGame={() => {}}
+            playerAddress={currentPlayer.address}
+            onLeaveGame={() => {
+              console.log('🚪 Creator leaving game - returning to home')
+              clearGameSession()
+              setCurrentGameId(null)
+              setCurrentRoomCode(null)
+              setIsLoadingGame(false)
+              setGameState('wallet')
+              setHasSeenRole(false)
+            }}
           />
-          {currentRoomCode && (
-            <div className="fixed top-4 right-4 z-50">
-              <RoomCodeDisplay roomCode={currentRoomCode} />
-            </div>
-          )}
         </>
       )}
       {gameState === "role-assignment" && currentPlayer?.role && currentPlayer?.avatar && (
@@ -230,11 +315,14 @@ export default function Home() {
         />
       )}
       {game?.phase === 'ended' && (
-        <GameResultsScreen 
+        <GameResultsScreen
           game={game}
           players={players}
           currentPlayer={currentPlayer}
           onNewGame={() => {
+            clearGameSession()
+            setCurrentGameId(null)
+            setCurrentRoomCode(null)
             setGameState('wallet')
             setHasSeenRole(false)
           }}

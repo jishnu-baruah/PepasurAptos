@@ -231,6 +231,7 @@ button.wallet-button:focus,
   html {
     overflow-x: hidden;
     overflow-y: auto;
+    font-size: 80%;
   }
   body {
     @apply bg-background text-foreground;

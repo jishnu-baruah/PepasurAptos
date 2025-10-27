@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
 
+const connectDB = require('./config/database');
 const gameRoutes = require('./routes/game');
 const detectiveRoutes = require('./routes/detective');
 const stakingRoutes = require('./routes/staking');
@@ -132,10 +133,13 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces
 
+// Connect to MongoDB
+connectDB();
+
 server.listen(PORT, HOST, () => {
   console.log(`🚀 ASUR Backend server running on ${HOST}:${PORT}`);
   console.log(`📡 Socket.IO server ready for connections`);
-  
+
   console.log(`🌐 CORS enabled for origins:`, corsOptions.origin);
 });
 
