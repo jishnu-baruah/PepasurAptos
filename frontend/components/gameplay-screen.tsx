@@ -192,6 +192,13 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
           gameId: game?.gameId
         })
 
+        // Double-check phase hasn't changed (race condition protection)
+        if (game?.phase !== 'night') {
+          console.log('⚠️ Game phase changed, action cancelled')
+          setActionTaken(false)
+          return
+        }
+
         // Submit action to backend
         await submitNightAction({
           type: backendRole.toLowerCase(),
@@ -245,7 +252,15 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
           timerReady: game?.timerReady
         })
       } catch (error) {
-        console.error('❌ Failed to submit action:', error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+
+        // Check if it's a phase-related error (game ended/transitioned)
+        if (errorMessage.includes('phase') || errorMessage.includes('ended')) {
+          console.log('⚠️ Game phase changed during action submission:', errorMessage)
+        } else {
+          console.error('❌ Failed to submit action:', error)
+        }
+
         setActionTaken(false)
         setSelectedPlayer(null)
       }

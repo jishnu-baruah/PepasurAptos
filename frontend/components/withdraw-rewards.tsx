@@ -28,13 +28,24 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
   const { account, signAndSubmitTransaction } = useWallet()
 
   // Normalize addresses for comparison (remove 0x prefix and convert to lowercase)
-  const normalizeAddress = (addr: string | undefined | null): string => {
-    if (!addr || typeof addr !== 'string') return ''
-    return addr.toLowerCase().replace(/^0x/, '')
+  const normalizeAddress = (addr: string | undefined | null | any): string => {
+    if (!addr) return ''
+    // Convert to string if it's an AccountAddress object
+    const addrStr = typeof addr === 'string' ? addr : addr.toString()
+    return addrStr.toLowerCase().replace(/^0x/, '')
   }
 
   const isCorrectWallet = account?.address && playerAddress &&
     normalizeAddress(account.address) === normalizeAddress(playerAddress)
+
+  console.log('Withdraw wallet check:', {
+    accountAddress: account?.address,
+    accountAddressString: account?.address?.toString(),
+    playerAddress,
+    normalizedAccount: normalizeAddress(account?.address),
+    normalizedPlayer: normalizeAddress(playerAddress),
+    isCorrectWallet
+  })
 
   const handleWithdraw = async () => {
     if (!account?.address || !isCorrectWallet) {
@@ -121,9 +132,14 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
             Error: {error}
           </div>
         )}
-        {account && !isCorrectWallet && (
+        {account && account.address && playerAddress && !isCorrectWallet && (
           <div className="text-yellow-400 text-sm">
             Please connect the wallet that played this game
+            <div className="text-xs text-gray-400 mt-1">
+              Connected: {normalizeAddress(account.address).slice(0, 8)}...
+              <br />
+              Expected: {normalizeAddress(playerAddress).slice(0, 8)}...
+            </div>
           </div>
         )}
       </div>

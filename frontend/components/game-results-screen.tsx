@@ -14,6 +14,63 @@ interface GameResultsScreenProps {
   onNewGame?: () => void
 }
 
+const PlayerResultRow = ({ player, isWinner, isEliminated, reward, game }: {
+  player: Player
+  isWinner: boolean
+  isEliminated: boolean
+  reward: any
+  game: any
+}) => {
+  // Map backend roles to frontend display names
+  const roleMapping: Record<string, string> = {
+    'Mafia': 'ASUR',
+    'Doctor': 'DEVA',
+    'Detective': 'RISHI',
+    'Villager': 'MANAV'
+  }
+
+  // Get role from player object, game.roles (backend format), or reward
+  let playerRole = player.role || (reward?.role)
+  if (!playerRole && game.roles && game.roles[player.address]) {
+    // Map backend role to frontend format
+    playerRole = roleMapping[game.roles[player.address]] || game.roles[player.address]
+  }
+
+  return (
+    <div className={`p-4 rounded-lg border ${isWinner ? 'bg-green-800/30 border-green-500/30' : 'bg-red-800/30 border-red-500/30'}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          {player?.avatar && player.avatar.startsWith('http') ? (
+            <img
+              src={player.avatar}
+              alt={player?.name || 'Player'}
+              className="w-8 h-8 rounded object-cover"
+            />
+          ) : (
+            <span className="text-2xl">
+              {player?.avatar || '👤'}
+            </span>
+          )}
+          <div>
+            <div className="font-bold text-lg">{player?.name || 'Unknown'} ({playerRole})</div>
+            <div className={`text-sm ${isWinner ? 'text-green-300' : 'text-red-300'}`}>
+              {isWinner ? 'WINNER' : 'LOSER'}
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-bold text-yellow-400">
+            +{parseFloat(reward?.rewardInAPT || 0).toFixed(4)} APT
+          </div>
+          <div className="text-sm text-gray-400">
+            {isEliminated ? 'Eliminated' : 'Survived'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function GameResultsScreen({ game, players, currentPlayer, onNewGame }: GameResultsScreenProps) {
   const [showResults, setShowResults] = useState(false)
 
@@ -36,15 +93,25 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
   // Use authoritative winners from backend (don't calculate locally)
   // This ensures all players see the same result
   const winnerAddresses = game.winners || []
-  const winners = players.filter(p => winnerAddresses.includes(p.address))
-  const losers = players.filter(p => !winnerAddresses.includes(p.address))
   const eliminatedPlayers = players.filter(p => game.eliminated?.includes(p.address))
 
-  // Determine if Mafia won by checking if any winner has ASUR role
-  // (role info from rewards or by checking if ASUR is in winners)
-  const mafiaWon = game.rewards?.distributions?.some((d: any) =>
-    winnerAddresses.includes(d.playerAddress) && d.role === 'ASUR'
-  ) || false
+  // Determine if Mafia won by checking the winners' roles
+  // First check game.roles (always available), then fall back to rewards distributions
+  const mafiaWon = winnerAddresses.some((winnerAddr: string) => {
+    // Check game.roles first (backend format: 'Mafia')
+    if (game.roles && game.roles[winnerAddr] === 'Mafia') {
+      return true
+    }
+    // Fall back to checking player objects
+    const winnerPlayer = players.find(p => p.address === winnerAddr)
+    if (winnerPlayer?.role === 'ASUR') {
+      return true
+    }
+    // Finally check rewards if available
+    return game.rewards?.distributions?.some((d: any) =>
+      d.playerAddress === winnerAddr && d.role === 'ASUR'
+    )
+  })
 
   const getResultMessage = () => {
     if (mafiaWon) {
@@ -96,227 +163,78 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
             </p>
           </div>
 
-          {/* Game Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-            {/* Winners */}
-            <Card className="p-3 sm:p-4 lg:p-6 bg-green-900/50 border-green-500/50 backdrop-blur-sm">
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400 mb-3 sm:mb-4 lg:mb-6 flex items-center justify-center gap-2">
-                🏆 WINNERS
-              </h3>
-              <div className="space-y-3">
-                {winners.map((player, index) => {
-                  // Get role from multiple sources
-                  const playerRole = player.role ||
-                                    (game.roles && game.roles[player.address]) ||
-                                    (game.rewards?.distributions?.find((d: any) => d.playerAddress === player.address)?.role);
-
-                  return (
-                    <div key={index} className="flex items-center justify-between p-4 bg-green-800/30 rounded-lg border border-green-500/30">
-                      <div className="flex items-center space-x-4">
-                        {player.avatar && player.avatar.startsWith('http') ? (
-                          <img
-                            src={player.avatar}
-                            alt={`${player.name} avatar`}
-                            className="w-12 h-12 object-cover rounded-none"
-                            style={{ imageRendering: 'pixelated' }}
-                          />
-                        ) : (
-                          <span className="text-3xl">{player.avatar}</span>
-                        )}
-                        <div className="text-left">
-                          <div className="font-bold text-lg">{player.name}</div>
-                          <div className="text-sm text-green-300">{playerRole || 'Unknown'}</div>
-                        </div>
-                      </div>
-                      <div className="text-green-400 text-2xl font-bold">✓</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-
-            {/* Eliminated */}
-            <Card className="p-3 sm:p-4 lg:p-6 bg-red-900/50 border-red-500/50 backdrop-blur-sm">
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-red-400 mb-3 sm:mb-4 lg:mb-6 flex items-center justify-center gap-2">
-                💀 ELIMINATED
-              </h3>
-              <div className="space-y-3">
-                {eliminatedPlayers.length > 0 ? eliminatedPlayers.map((player, index) => {
-                  // Get role from multiple sources
-                  const playerRole = player.role ||
-                                    (game.roles && game.roles[player.address]) ||
-                                    (game.rewards?.distributions?.find((d: any) => d.playerAddress === player.address)?.role);
-
-                  return (
-                    <div key={index} className="flex items-center justify-between p-4 bg-red-800/30 rounded-lg border border-red-500/30">
-                      <div className="flex items-center space-x-4">
-                        {player.avatar && player.avatar.startsWith('http') ? (
-                          <img
-                            src={player.avatar}
-                            alt={`${player.name} avatar`}
-                            className="w-12 h-12 object-cover rounded-none"
-                            style={{ imageRendering: 'pixelated' }}
-                          />
-                        ) : (
-                          <span className="text-3xl">{player.avatar}</span>
-                        )}
-                        <div className="text-left">
-                          <div className="font-bold text-lg">{player.name}</div>
-                          <div className="text-sm text-red-300">{playerRole || 'Unknown'}</div>
-                        </div>
-                      </div>
-                      <div className="text-red-400 text-2xl font-bold">✗</div>
-                    </div>
-                  );
-                }) : (
-                  <div className="text-center text-gray-400 py-4">
-                    No players were eliminated
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* Game Summary */}
-          {/* <Card className="p-6 bg-gray-900/50 border-gray-500/50 backdrop-blur-sm">
-            <h3 className="text-2xl font-bold text-gray-300 mb-6 flex items-center justify-center gap-2">
-              📊 GAME SUMMARY
+          {/* Player Results - Show for all games (staked and non-staked) */}
+          <Card className="p-3 sm:p-4 lg:p-6 bg-gray-900/50 border-gray-500/50 backdrop-blur-sm">
+            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-300 mb-3 sm:mb-4 lg:mb-6 flex items-center justify-center gap-2">
+              📊 PLAYER RESULTS
             </h3>
-            <div className="grid grid-cols-2 gap-4 text-lg">
-              <div className="text-gray-300">
-                <strong className="text-white">Total Players:</strong> {players.length}
-              </div>
-              <div className="text-gray-300">
-                <strong className="text-white">Game Duration:</strong> Day {game.day || 1}
-              </div>
-              <div className="text-gray-300">
-                <strong className="text-white">Eliminated:</strong> {game.eliminated?.length || 0} players
-              </div>
-              <div className="text-gray-300">
-                <strong className="text-white">Final Result:</strong> {mafiaWon ? 'ASUR Victory' : 'Villager Victory'}
-              </div>
+            <div className="space-y-4">
+              {players.map((player, index) => {
+                const reward = game.rewards?.distributions?.find((d: any) => d.playerAddress === player.address);
+                const isWinner = winnerAddresses.includes(player.address);
+                const isEliminated = eliminatedPlayers.some(p => p.address === player.address);
+
+                return (
+                  <PlayerResultRow
+                    key={index}
+                    player={player}
+                    isWinner={isWinner}
+                    isEliminated={isEliminated}
+                    reward={reward}
+                    game={game}
+                  />
+                );
+              })}
             </div>
-          </Card> */}
+          </Card>
 
-          {/* Rewards Section */}
-          {game.rewards ? (
-            <Card className="p-3 sm:p-4 lg:p-6 bg-yellow-900/50 border-yellow-500/50 backdrop-blur-sm">
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-400 mb-3 sm:mb-4 lg:mb-6 flex items-center justify-center gap-2">
-                💰 REWARDS DISTRIBUTED
-              </h3>
-              <div className="space-y-4">
-                <div className="text-center text-yellow-300 mb-4">
-                  <p className="text-lg">Settlement Transaction:</p>
-                  <p className="font-mono text-sm break-all bg-black/50 p-2 rounded">
-                    {game.rewards.settlementTxHash}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {game.rewards.distributions?.map((reward: any, index: number) => {
-                    const player = players.find(p => p.address === reward.playerAddress);
-                    const isWinner = winners.some(w => w.address === reward.playerAddress);
-                    
-                    return (
-                      <div key={index} className={`p-4 rounded-lg border ${
-                        isWinner 
-                          ? 'bg-green-800/30 border-green-500/30' 
-                          : 'bg-red-800/30 border-red-500/30'
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {player?.avatar && player.avatar.startsWith('http') ? (
-                              <img 
-                                src={player.avatar} 
-                                alt={player?.name || 'Player'} 
-                                className="w-8 h-8 rounded object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  e.currentTarget.nextSibling.style.display = 'inline';
-                                }}
-                              />
-                            ) : null}
-                            <span className="text-2xl" style={{ display: player?.avatar && player.avatar.startsWith('http') ? 'none' : 'inline' }}>
-                              {player?.avatar || '👤'}
-                            </span>
-                            <div>
-                              <div className="font-bold text-lg">{player?.name || 'Unknown'}</div>
-                              <div className={`text-sm ${isWinner ? 'text-green-300' : 'text-red-300'}`}>
-                                {reward.role} - {isWinner ? 'Winner' : 'Loser'}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-yellow-400">
-                              {parseFloat(reward.totalReceivedInAPT).toFixed(4)} APT
-                            </div>
-                            <div className="text-sm text-gray-400">
-                              +{parseFloat(reward.rewardInAPT).toFixed(4)} APT reward
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                <div className="text-center text-yellow-300 mt-4">
-                  <p className="text-sm">
-                    Rewards have been queued in the contract. Players can withdraw them anytime.
-                  </p>
-                </div>
-                
-                {/* Withdraw Component for Current Player Only */}
-                {(() => {
-                  // Normalize addresses for comparison (case-insensitive)
-                  const normalizeAddress = (addr: string) => addr?.toLowerCase().replace(/^0x/, '') || '';
 
-                  // Get current player's reward with normalized address comparison
-                  const currentPlayerReward = currentPlayer && game.rewards.distributions?.find(
-                    (reward: any) => normalizeAddress(reward.playerAddress) === normalizeAddress(currentPlayer.address)
-                  );
+          {/* Settlement Transaction */}
+          {game.rewards?.settlementTxHash && (
+            <div className="text-center text-yellow-300 mt-4">
+              <p className="text-lg">Settlement Transaction:</p>
+              <p className="font-mono text-sm break-all bg-black/50 p-2 rounded">
+                {game.rewards.settlementTxHash}
+              </p>
+            </div>
+          )}
 
-                  console.log('Withdraw Rewards Debug:', {
-                    currentPlayerAddress: currentPlayer?.address,
-                    normalizedCurrentAddress: normalizeAddress(currentPlayer?.address || ''),
-                    distributions: game.rewards.distributions?.map((d: any) => ({
-                      address: d.playerAddress,
-                      normalized: normalizeAddress(d.playerAddress),
-                      rewardInAPT: d.rewardInAPT
-                    })),
-                    foundReward: currentPlayerReward
-                  });
+          {/* Withdraw Component for Current Player Only */}
+          {(() => {
+            // Normalize addresses for comparison (case-insensitive)
+            const normalizeAddress = (addr: string) => addr?.toLowerCase().replace(/^0x/, '') || '';
 
-                  if (currentPlayerReward) {
-                    return (
-                      <WithdrawRewards
-                        key={currentPlayerReward.playerAddress}
-                        gameId={game.rewards.gameId || game.gameId}
-                        playerAddress={currentPlayerReward.playerAddress}
-                        rewardAmount={currentPlayerReward.rewardAmount}
-                        rewardInAPT={currentPlayerReward.rewardInAPT}
-                      />
-                    );
-                  }
+            // Get current player's reward with normalized address comparison
+            const currentPlayerReward = currentPlayer?.address && game.rewards?.distributions?.find(
+              (reward: any) => normalizeAddress(reward.playerAddress) === normalizeAddress(currentPlayer.address!)
+            );
 
-                  console.log('⚠️ No reward found for current player');
-                  return null;
-                })()}
-              </div>
-            </Card>
-          ) : game.stakingRequired ? (
-            <Card className="p-6 bg-orange-900/50 border-orange-500/50 backdrop-blur-sm">
-              <h3 className="text-2xl font-bold text-orange-400 mb-6 flex items-center justify-center gap-2">
-                ⏳ REWARDS PROCESSING
-              </h3>
-              <div className="text-center text-orange-300">
-                <p className="text-lg mb-4">Rewards are being processed...</p>
-                <p className="text-sm text-gray-400">
-                  This was a staked game. Rewards will be distributed shortly.
-                </p>
-              </div>
-            </Card>
-          ) : null}
+            console.log('Withdraw Rewards Debug:', {
+              currentPlayerAddress: currentPlayer?.address,
+              normalizedCurrentAddress: normalizeAddress(currentPlayer?.address || ''),
+              distributions: game.rewards?.distributions?.map((d: any) => ({
+                address: d.playerAddress,
+                normalized: normalizeAddress(d.playerAddress),
+                rewardInAPT: d.rewardInAPT
+              })),
+              foundReward: currentPlayerReward
+            });
+
+            if (currentPlayerReward && parseFloat(currentPlayerReward.rewardInAPT) > 0) {
+              return (
+                <WithdrawRewards
+                  key={currentPlayerReward.playerAddress}
+                  gameId={game.rewards.gameId || game.gameId}
+                  playerAddress={currentPlayerReward.playerAddress}
+                  rewardAmount={currentPlayerReward.rewardAmount}
+                  rewardInAPT={currentPlayerReward.rewardInAPT}
+                />
+              );
+            }
+
+            console.log('⚠️ No reward found for current player');
+            return null;
+          })()}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-6 justify-center pt-2 sm:pt-3 lg:pt-4">

@@ -937,6 +937,7 @@ class GameManager {
     game.phase = 'voting';
     game.timeLeft = 10; // 10 seconds for voting
     game.votes = {};
+    game.votingResult = null;
 
     // Start timer for voting phase (same pattern as game start)
     console.log(`Starting voting phase timer for game ${gameId}`);
@@ -988,9 +989,18 @@ class GameManager {
       const eliminated = eliminatedPlayers[0];
       game.eliminated.push(eliminated);
       console.log(`🗳️ Player ${eliminated} was eliminated by vote`);
+      if (game.roles[eliminated] === 'Mafia') {
+        game.votingResult = 'ASUR_ELIMINATED';
+      } else {
+        game.votingResult = 'INNOCENT_ELIMINATED';
+      }
     } else {
       console.log(`🗳️ No player eliminated due to a tie or no votes`);
+      game.votingResult = 'TIE';
     }
+
+    // Check if the game is over
+    game.isGameOver = this.checkWinConditions(game);
 
     // Set votingResolved to true so frontend can show results
     game.votingResolved = true;
@@ -1006,7 +1016,7 @@ class GameManager {
 
     // Wait for display time, then check win conditions and transition
     setTimeout(async () => {
-      if (this.checkWinConditions(game)) {
+      if (game.isGameOver) {
         await this.endGame(gameId);
         return;
       }
@@ -1018,6 +1028,7 @@ class GameManager {
       game.pendingActions = {};
       game.votes = {};
       game.votingResolved = false; // Reset for next voting round
+      game.votingResult = null; // Reset for next voting round
 
       await this.startTimer(gameId, true);
 
@@ -1177,21 +1188,29 @@ class GameManager {
     const mafiaCount = activePlayers.filter(p => game.roles[p] === 'Mafia').length;
     const villagerCount = activePlayers.length - mafiaCount;
 
-    console.log(`🎯 Checking win conditions: ${mafiaCount} Mafia, ${villagerCount} Villagers`);
+    console.log(`🎯 Checking win conditions for game ${game.gameId}:`);
+    console.log(`   Total players: ${game.players.length}`);
+    console.log(`   Eliminated: ${game.eliminated.length} - [${game.eliminated.join(', ')}]`);
+    console.log(`   Active players: ${activePlayers.length} - [${activePlayers.join(', ')}]`);
+    console.log(`   Mafia count: ${mafiaCount}`);
+    console.log(`   Villager count: ${villagerCount}`);
+    console.log(`   All roles:`, game.roles);
 
     if (mafiaCount === 0) {
       // Villagers win - all Mafia eliminated
       game.winners = activePlayers.filter(p => game.roles[p] !== 'Mafia');
-      console.log(`🎯 Villagers win - Mafia eliminated:`, game.winners);
+      console.log(`🎯 ✅ VILLAGERS WIN - All Mafia eliminated`);
+      console.log(`   Winners:`, game.winners);
       return true;
     } else if (mafiaCount >= villagerCount) {
-      // Mafia wins - Mafia outnumbers villagers
+      // Mafia wins - Mafia equals or outnumbers villagers
       game.winners = activePlayers.filter(p => game.roles[p] === 'Mafia');
-      console.log(`🎯 Mafia wins - outnumbers villagers:`, game.winners);
+      console.log(`🎯 ✅ MAFIA WINS - Mafia has parity or majority (${mafiaCount} >= ${villagerCount})`);
+      console.log(`   Winners:`, game.winners);
       return true;
     }
 
-    console.log(`🎯 No win conditions met - game continues`);
+    console.log(`🎯 ❌ No win conditions met - game continues`);
     return false;
   }
 

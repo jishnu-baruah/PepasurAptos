@@ -159,10 +159,8 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
   }
 
   if (showResult) {
-    // Check if someone was eliminated
-    const wasInnocent = eliminatedPlayer && eliminatedPlayer.role !== "ASUR"
+    const votingResult = game?.votingResult;
 
-    // Check if there were any votes cast
     const totalVotes = game?.votes ? Object.keys(game.votes).length : 0
     const noVotesCast = totalVotes === 0
 
@@ -170,31 +168,17 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl p-6 sm:p-8 bg-card border-4 border-destructive text-center">
           <div className="space-y-8">
-            {/* Main Avatar Section - BIG FOCUS */}
-            <div className="space-y-6">
-              {eliminatedPlayer ? (
-                <>
-                  <div className="text-4xl sm:text-5xl">⚰️</div>
-                  <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">PLAYER ELIMINATED</div>
-                </>
-              ) : noVotesCast ? (
-                <>
-                  <div className="text-4xl sm:text-5xl">🗳️</div>
-                  <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-yellow pixel-text-3d-float">NO VOTES CAST</div>
-                </>
-              ) : (
-                <>
-                  <div className="text-4xl sm:text-5xl">🤝</div>
-                  <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-blue pixel-text-3d-float">VOTING TIE</div>
-                </>
-              )}
-              
-              {/* Eliminated Player Avatar - Only show if someone was eliminated */}
-              {eliminatedPlayer && (
+            {/* Main Avatar Section - Only show if someone was eliminated */}
+            {eliminatedPlayer && (
+              <div className="space-y-6">
+                <div className="text-4xl sm:text-5xl">⚰️</div>
+                <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">PLAYER ELIMINATED</div>
+
+                {/* Eliminated Player Avatar */}
                 <div className="flex justify-center">
                   {eliminatedPlayerAvatar && eliminatedPlayerAvatar.startsWith('http') ? (
-                    <img 
-                      src={eliminatedPlayerAvatar} 
+                    <img
+                      src={eliminatedPlayerAvatar}
                       alt={eliminatedPlayer.name}
                       className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#666666] shadow-lg"
                       style={{ imageRendering: 'pixelated' }}
@@ -208,77 +192,77 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
                     <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">💀</span>
                   </div>
                 </div>
-              )}
-              
-              {/* Player Info - Only show if someone was eliminated */}
-              {eliminatedPlayer && (
+
+                {/* Player Info */}
                 <div className="space-y-2">
                   <div className="text-xl sm:text-2xl md:text-3xl font-press-start pixel-text-3d-white">{eliminatedPlayer.name}</div>
                   {eliminatedPlayer.role && (
                     <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">Role: {eliminatedPlayer.role}</div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             
-            {/* Show appropriate message based on elimination result */}
-            {eliminatedPlayer ? (
-              wasInnocent ? (
+            {/* Context-aware message based on voting result */}
+            <div className="space-y-6">
+              {votingResult === 'INNOCENT_ELIMINATED' ? (
                 // Innocent eliminated - ASUR winning
-                <div className="space-y-6">
+                <>
                   <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">
-                    ASUR IS WINNING
+                    {game.isGameOver ? 'ASUR WON' : 'ASUR IS WINNING'}
                   </div>
-                  
+
                   {/* Swaggy Avatar - Responsive */}
                   <div className="flex justify-center">
-                    <img 
-                      src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674" 
+                    <img
+                      src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/swaggy.png?updatedAt=1758922659674"
                       alt="ASUR is winning"
                       className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#FF0000] shadow-lg animate-pulse"
                       style={{ imageRendering: 'pixelated' }}
                     />
                   </div>
-                </div>
-              ) : (
+                </>
+              ) : votingResult === 'ASUR_ELIMINATED' ? (
                 // ASUR eliminated - Villagers winning
-                <div className="space-y-6">
+                <>
                   <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-green pixel-text-3d-float">
-                    VILLAGERS ARE WINNING
+                    {game.isGameOver ? 'VILLAGERS WON' : 'VILLAGERS ARE WINNING'}
                   </div>
-                  
+
                   {/* Villager Avatar - Responsive */}
                   <div className="flex justify-center">
-                    <img 
-                      src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560" 
+                    <img
+                      src="https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560"
                       alt="Villagers are winning"
                       className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 object-cover rounded-none border-2 border-[#00FF00] shadow-lg animate-pulse"
                       style={{ imageRendering: 'pixelated' }}
                     />
                   </div>
-                </div>
-              )
-            ) : noVotesCast ? (
-              // No votes cast
-              <div className="space-y-6">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold font-press-start pixel-text-3d-yellow pixel-text-3d-float">
-                  NO ONE VOTED
-                </div>
-                <div className="text-base sm:text-lg md:text-xl font-press-start text-gray-400">
-                  All players remain alive
-                </div>
-              </div>
-            ) : (
-              // Voting tie
-              <div className="space-y-6">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold font-press-start pixel-text-3d-blue pixel-text-3d-float">
-                  NO MAJORITY REACHED
-                </div>
-                <div className="text-base sm:text-lg md:text-xl font-press-start text-gray-400">
-                  All players remain alive
-                </div>
-              </div>
-            )}
+                </>
+              ) : noVotesCast ? (
+                // No votes cast
+                <>
+                  <div className="text-4xl sm:text-5xl">🗳️</div>
+                  <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-yellow pixel-text-3d-float">
+                    NO VOTES CAST
+                  </div>
+                  <div className="text-base sm:text-lg md:text-xl font-press-start text-gray-400">
+                    All players remain alive
+                  </div>
+                </>
+              ) : (
+                // Voting tie
+                <>
+                  <div className="text-4xl sm:text-5xl">🤝</div>
+                  <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-blue pixel-text-3d-float">
+                    VOTING TIE
+                  </div>
+                  <div className="text-base sm:text-lg md:text-xl font-press-start text-gray-400">
+                    All players remain alive
+                  </div>
+                </>
+              )}
+            </div>
             
             <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">
               {timeLeft > 0 ? `Continuing in ${timeLeft}s...` : 'The game continues...'}

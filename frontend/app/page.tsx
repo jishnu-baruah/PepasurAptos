@@ -131,7 +131,7 @@ export default function Home() {
         setGameState('task')
       } else if (game.phase === 'voting' && gameState !== 'voting') {
         setGameState('voting')
-      } else if (game.phase === 'ended' && gameState !== 'ended') {
+      } else if (game.phase === 'ended' && gameState !== 'ended' && gameState !== 'wallet') {
         setGameState('ended')
       }
     }
