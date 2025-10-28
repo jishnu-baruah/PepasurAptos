@@ -3,11 +3,17 @@
 import { useEffect, useState } from "react"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
+import { soundService } from "@/services/SoundService"
 
 export default function LoaderScreen() {
   const [dots, setDots] = useState("")
   const [messageIndex, setMessageIndex] = useState(0)
   const [tipIndex, setTipIndex] = useState(0)
+
+  // Play loading sound when component mounts
+  useEffect(() => {
+    soundService.playLoading()
+  }, [])
 
   const loadingMessages = [
     "WAKING THE ASURS",

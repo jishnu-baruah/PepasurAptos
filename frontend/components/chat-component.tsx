@@ -118,26 +118,43 @@ export default function ChatComponent({ gameId, currentPlayerAddress, players }:
         {messages.length === 0 ? (
           <div className="text-gray-400 text-sm text-center">No messages yet</div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`text-sm ${
-                message.playerAddress === currentPlayerAddress 
-                  ? 'text-blue-300' 
-                  : 'text-gray-300'
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <span className="font-press-start text-xs">
-                  {message.playerAddress === currentPlayerAddress ? 'You' : message.playerName}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {formatTime(message.timestamp)}
-                </span>
+          messages.map((message) => {
+            const messagePlayer = players.find(p => p.address === message.playerAddress)
+            const isCurrentPlayer = message.playerAddress === currentPlayerAddress
+            return (
+              <div
+                key={message.id}
+                className={`text-sm ${
+                  isCurrentPlayer
+                    ? 'text-blue-300'
+                    : 'text-gray-300'
+                }`}
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex items-center gap-2">
+                    {/* Player avatar - should always be available */}
+                    {messagePlayer?.avatar && messagePlayer.avatar.startsWith('http') ? (
+                      <img
+                        src={messagePlayer.avatar}
+                        alt={messagePlayer.name}
+                        className="w-5 h-5 sm:w-6 sm:h-6 rounded-none object-cover flex-shrink-0"
+                        style={{ imageRendering: 'pixelated' }}
+                      />
+                    ) : (
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gray-700 flex items-center justify-center text-xs flex-shrink-0">?</div>
+                    )}
+                    <span className="font-press-start text-xs">
+                      {isCurrentPlayer ? 'You' : message.playerName}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500 flex-shrink-0">
+                    {formatTime(message.timestamp)}
+                  </span>
+                </div>
+                <div className="mt-1 break-words ml-7">{message.message}</div>
               </div>
-              <div className="mt-1 break-words">{message.message}</div>
-            </div>
-          ))
+            )
+          })
         )}
         <div ref={messagesEndRef} />
       </div>

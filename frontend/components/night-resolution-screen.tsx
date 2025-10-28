@@ -22,245 +22,101 @@ interface NightResolutionScreenProps {
 }
 
 export default function NightResolutionScreen({ resolution, onContinue, game, currentPlayer }: NightResolutionScreenProps) {
-  const [showResults, setShowResults] = useState(false)
-  const [hasTransitioned, setHasTransitioned] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(0)
+  const [showResults, setShowResults] = useState(false);
+  const [hasTransitioned, setHasTransitioned] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(game?.timeLeft || 8);
+  const [outcome, setOutcome] = useState<'peaceful' | 'kill' | 'save'>('peaceful');
 
-  // Primary mechanism: Check if backend has moved to task phase
+  // Determine outcome
+  useEffect(() => {
+    const { killedPlayer, savedPlayer } = resolution;
+    if (killedPlayer && savedPlayer && killedPlayer.address === savedPlayer.address) {
+      setOutcome('save');
+    } else if (killedPlayer) {
+      setOutcome('kill');
+    } else {
+      setOutcome('peaceful');
+    }
+  }, [resolution]);
+
+  // Transition logic
   useEffect(() => {
     if (game?.phase === 'task' && !hasTransitioned) {
-      console.log('Backend moved to task phase, transitioning to task')
-      setHasTransitioned(true)
-      onContinue()
+      setHasTransitioned(true);
+      onContinue();
     }
-  }, [game?.phase, onContinue, hasTransitioned])
+  }, [game?.phase, onContinue, hasTransitioned]);
 
-  // Show results after a brief delay
+  // Show results after a delay
   useEffect(() => {
-    const showTimer = setTimeout(() => setShowResults(true), 1000)
-    return () => clearTimeout(showTimer)
-  }, [])
+    const showTimer = setTimeout(() => setShowResults(true), 1000);
+    return () => clearTimeout(showTimer);
+  }, []);
 
-  // Real-time timer sync with backend
+  // Countdown timer
   useEffect(() => {
-    if (game?.timeLeft !== undefined) {
-      setTimeLeft(game.timeLeft)
-      
-      // Start local countdown to match backend
-      if (game.timeLeft > 0) {
-        const timer = setTimeout(() => {
-          setTimeLeft(prev => Math.max(0, prev - 1))
-        }, 1000)
-        return () => clearTimeout(timer)
-      }
+    if (showResults && timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
     }
-  }, [game?.timeLeft])
+  }, [showResults, timeLeft]);
 
-  // Backend timer is now working correctly, no fallback needed
+  const { killedPlayer } = resolution;
 
-  // Debug logging
-  useEffect(() => {
-    console.log('NightResolutionScreen state:', {
-      showResults,
-      gamePhase: game?.phase,
-      timeLeft: timeLeft,
-      hasTransitioned
-    })
-  }, [showResults, game?.phase, timeLeft, hasTransitioned])
+  const headerText = {
+    peaceful: 'PEACEFUL NIGHT',
+    kill: `${killedPlayer?.name?.toUpperCase() || 'A PLAYER'} WAS ELIMINATED!`,
+    save: 'A PLAYER WAS SAVED!',
+  };
 
-  const getResolutionMessage = () => {
-    const { killedPlayer, savedPlayer, investigatedPlayer, investigationResult, mafiaTarget, doctorTarget, detectiveTarget } = resolution
+  const flavorText = {
+    peaceful: 'Everyone survived the night... for now.',
+    kill: 'The ASURs have drawn first blood. Find them!',
+    save: 'The DEVA has protected the town!',
+  };
 
-    // Check if current player was eliminated
-    const isCurrentPlayerEliminated = currentPlayer && killedPlayer && currentPlayer.address === killedPlayer.address
-
-    // Case 1: Someone was killed but saved by doctor
-    if (killedPlayer && savedPlayer && killedPlayer.address === savedPlayer.address) {
-      return {
-        title: "DOCTOR SAVED THE DAY!",
-        message: isCurrentPlayerEliminated ? 
-          "You were targeted by the mafia but saved by the doctor!" :
-          `${killedPlayer.name} was targeted by the mafia but saved by the doctor!`,
-        color: "#4A8C4A",
-        emoji: "🛡️",
-        details: [
-          `🎯 Mafia targeted: ${mafiaTarget?.name || "Unknown"}`,
-          `🛡️ Doctor saved: ${doctorTarget?.name || "Unknown"}`,
-          `✅ Result: No one was eliminated`
-        ]
-      }
-    }
-
-    // Case 2: Someone was killed
-    if (killedPlayer) {
-      return {
-        title: isCurrentPlayerEliminated ? "YOU WERE ELIMINATED" : "PLAYER ELIMINATED",
-        message: isCurrentPlayerEliminated ? 
-          "You were eliminated during the night!" :
-          `${killedPlayer.name} was eliminated during the night!`,
-        color: "#8B0000",
-        emoji: "💀",
-        details: [
-          `🎯 Mafia targeted: ${mafiaTarget?.name || "Unknown"}`,
-          `🛡️ Doctor target: ${doctorTarget?.name || "No save"}`,
-          `❌ Result: ${isCurrentPlayerEliminated ? "You eliminated" : killedPlayer.name + " eliminated"}`
-        ]
-      }
-    }
-
-    // Case 3: Peaceful night
-    return {
-      title: "PEACEFUL NIGHT",
-      message: "No one was eliminated this night.",
-      color: "#4A8C4A",
-      emoji: "🌙",
-      details: [
-        `🎯 Mafia target: ${mafiaTarget?.name || "No target"}`,
-        `🛡️ Doctor target: ${doctorTarget?.name || "No save"}`,
-        `✅ Result: Everyone survived`
-      ]
-    }
-  }
-
-  const getInvestigationMessage = () => {
-    const { investigatedPlayer, investigationResult } = resolution
-    
-    if (!investigatedPlayer || !investigationResult) return null
-
-    // Map backend role names to frontend role names and emojis
-    const roleMapping = {
-      'Mafia': { name: 'ASUR', emoji: '🔴', color: '#FF4444' },
-      'Doctor': { name: 'DEVA', emoji: '🛡️', color: '#44AA44' },
-      'Detective': { name: 'RISHI', emoji: '🔍', color: '#4444FF' },
-      'Villager': { name: 'MANAV', emoji: '👤', color: '#AAAAAA' }
-    }
-
-    const roleInfo = roleMapping[investigationResult] || { 
-      name: investigationResult, 
-      emoji: '❓', 
-      color: '#AAAAAA' 
-    }
-
-    return {
-      player: investigatedPlayer.name,
-      result: roleInfo.name,
-      emoji: roleInfo.emoji,
-      color: roleInfo.color
-    }
-  }
-
-  const result = getResolutionMessage()
-  const investigation = getInvestigationMessage()
+  const headerColor = {
+    peaceful: 'pixel-text-3d-green',
+    kill: 'pixel-text-3d-red',
+    save: 'pixel-text-3d-green',
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 gaming-bg scanlines">
-      <Card className="w-full max-w-2xl p-3 sm:p-4 lg:p-6 bg-[#111111]/90 border-2 border-[#2a2a2a]">
-        <div className="text-center space-y-2 sm:space-y-3 lg:space-y-4">
-          {!showResults ? (
-            <div className="space-y-2 sm:space-y-3">
-              <div className="text-sm sm:text-base lg:text-lg font-press-start pixel-text-3d-white">
-                PROCESSING NIGHT ACTIONS...
+    <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
+      <Card className="w-full max-w-2xl p-8 bg-black/80 border-2 border-gray-700 text-center">
+        {!showResults ? (
+          <div className="space-y-4">
+            <div className="text-2xl font-press-start pixel-text-3d-white">
+              PROCESSING NIGHT ACTIONS...
+            </div>
+            <div className="flex justify-center">
+              <div className="animate-spin text-5xl">🌙</div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Dynamic Header */}
+            <h1 className={`text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-float ${headerColor[outcome]}`}>
+              {headerText[outcome]}
+            </h1>
+
+            {/* Flavor Text */}
+            <p className="text-lg md:text-xl text-gray-300">
+              {flavorText[outcome]}
+            </p>
+
+            {/* Countdown Timer */}
+            <div className="space-y-2">
+              <div className="text-6xl md:text-8xl font-bold text-white pixel-text-3d-orange">
+                {timeLeft}
               </div>
-              <div className="flex justify-center">
-                <div className="animate-spin text-2xl sm:text-3xl lg:text-4xl">🌙</div>
+              <div className="text-lg text-gray-400">
+                DAY PHASE BEGINS
               </div>
             </div>
-          ) : (
-            <div className="space-y-2 sm:space-y-3 lg:space-y-4">
-              <RetroAnimation type="bounce">
-                <div className="text-2xl sm:text-3xl lg:text-4xl">
-                  {result.emoji}
-                </div>
-              </RetroAnimation>
-
-              <div className="space-y-1 sm:space-y-2">
-                <div className="text-sm sm:text-base lg:text-lg font-bold font-press-start pixel-text-3d-white">
-                  NIGHT PHASE RESULTS
-                </div>
-                <div 
-                  className="text-base sm:text-lg lg:text-xl font-bold font-press-start pixel-text-3d-float"
-                  style={{ color: result.color }}
-                >
-                  {result.title}
-                </div>
-              </div>
-
-              <Card className="text-xs sm:text-sm lg:text-base font-press-start pixel-text-3d-white bg-[#111111]/50 p-2 sm:p-3 border border-[#2a2a2a]">
-                {result.message}
-              </Card>
-
-              {/* Action Details */}
-              <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm font-press-start pixel-text-3d-green mb-1">
-                  NIGHT ACTIONS SUMMARY:
-                </div>
-                {result.details.map((detail, index) => (
-                  <div key={index} className="text-xs font-press-start pixel-text-3d-white bg-[#1A1A1A]/50 p-1 sm:p-2 border border-[#2a2a2a]">
-                    {detail}
-                  </div>
-                ))}
-              </div>
-
-               {/* Investigation Results */}
-               {investigation && (
-                 <Card className="p-3 sm:p-4 bg-[#2A2A2A]/50 border border-[#4A8C4A]">
-                   <div className="text-sm sm:text-base font-press-start pixel-text-3d-white">
-                     <div className="text-[#4A8C4A] mb-2">DETECTIVE INVESTIGATION:</div>
-                     <div className="flex items-center space-x-2">
-                       <span className="text-xl">{investigation.emoji}</span>
-                       <span style={{ color: investigation.color }}>
-                         {investigation.player} is {investigation.result}
-                       </span>
-                     </div>
-                   </div>
-                 </Card>
-               )}
-
-              {/* Eliminated Player */}
-              {result.title === "PLAYER ELIMINATED" && (
-                <Card className="p-3 sm:p-4 bg-[#8B0000]/20 border border-[#8B0000]">
-                  <div className="text-sm sm:text-base font-press-start pixel-text-3d-white">
-                    <div className="text-[#8B0000] mb-2">ELIMINATED PLAYER:</div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xl">💀</span>
-                      <span>{resolution.killedPlayer?.name}</span>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              {/* Saved Player */}
-              {result.title === "DOCTOR SAVED THE DAY!" && (
-                <Card className="p-3 sm:p-4 bg-[#4A8C4A]/20 border border-[#4A8C4A]">
-                  <div className="text-sm sm:text-base font-press-start pixel-text-3d-white">
-                    <div className="text-[#4A8C4A] mb-2">SAVED BY DOCTOR:</div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xl">🛡️</span>
-                      <span>{resolution.savedPlayer?.name}</span>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              <div className="text-center space-y-3">
-                <Card className="p-4 bg-[#FF8800]/20 border-2 border-[#FF8800]">
-                  <div className="text-base sm:text-lg font-press-start pixel-text-3d-white">
-                    <div className="text-[#FF8800] mb-2">⚔️ DAY PHASE STARTING ⚔️</div>
-                    <div className="text-sm">DISCUSS AND FIGURE OUT WHO TO VOTE</div>
-                  </div>
-                </Card>
-
-                <div className="text-sm sm:text-base font-press-start pixel-text-3d-white mb-2">
-                  Discussion starting in:
-                </div>
-                <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-green animate-pulse">
-                  {timeLeft}s
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </Card>
     </div>
-  )
+  );
 }

@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSocket } from '@/contexts/SocketContext'
 import { apiService, Game, GameAction, TaskSubmission, VoteSubmission } from '@/services/api'
+import { soundService } from '@/services/SoundService'
 
 export interface Player {
   id: string
   name: string
-  avatar: string | undefined
+  avatar: string  // Always defined - colored shirt or role avatar
   role?: string
   isAlive: boolean
   isCurrentPlayer?: boolean
@@ -44,30 +45,28 @@ export function useGame(gameId?: string): GameState & GameActions {
   const [error, setError] = useState<string | null>(null)
   const [currentGameId, setCurrentGameId] = useState<string | undefined>(gameId)
 
-  // Generate random username without .pepasur.eth
-  const generateUsername = useCallback((address: string): string => {
-    // Use address as seed for consistent username generation
-    const seed = address.toString().slice(2, 8) // Use first 6 chars of address as seed
-    const seedNum = parseInt(seed, 16)
-    
-    // List of cool names for the username
-    const names = [
-      'mouli', 'alex', 'crypto', 'block', 'chain', 'defi', 'nft', 'web3', 'dao', 'meta',
-      'alpha', 'beta', 'gamma', 'delta', 'omega', 'zeta', 'theta', 'lambda', 'sigma', 'phi',
-      'nova', 'stellar', 'cosmic', 'quantum', 'neon', 'cyber', 'digital', 'virtual', 'matrix', 'nexus',
-      'phoenix', 'dragon', 'tiger', 'wolf', 'eagle', 'falcon', 'hawk', 'raven', 'crow', 'owl',
-      'shadow', 'storm', 'thunder', 'lightning', 'fire', 'ice', 'wind', 'earth', 'water', 'spirit',
-      'mystic', 'arcane', 'magic', 'wizard', 'mage', 'sorcerer', 'warlock', 'druid', 'shaman', 'priest',
-      'knight', 'warrior', 'rogue', 'archer', 'hunter', 'ranger', 'paladin', 'monk', 'bard', 'cleric',
-      'ninja', 'samurai', 'viking', 'pirate', 'cowboy', 'sheriff', 'outlaw', 'gunslinger', 'marshal', 'deputy'
-    ]
-    
-    // Generate consistent username based on address
-    const nameIndex = seedNum % names.length
-    const selectedName = names[nameIndex]
-    
-    return selectedName
-  }, [])
+  // Color alias and avatar mapping (must stay in sync)
+  const colorAliases = [
+    { name: '0xRed', avatar: 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/redShirt.png?updatedAt=1761611647221' },
+    { name: '0xBlue', avatar: 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560' },
+    { name: '0xPurple', avatar: 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/purpleShirt.png?updatedAt=1761611647804' },
+    { name: '0xYellow', avatar: 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/yellowShirt.png?updatedAt=1761611647228' }
+  ];
+
+  // Generate username based on player index in game (ensures uniqueness)
+  const generateUsername = useCallback((playerIndex: number): string => {
+    // Use player's position in game to ensure unique aliases
+    const colorAlias = colorAliases[playerIndex % colorAliases.length];
+    console.log(`👤 Assigned alias ${colorAlias.name} to player at index ${playerIndex}`);
+    return colorAlias.name;
+  }, []);
+
+  // Generate avatar based on player index (matches username)
+  const generateAvatar = useCallback((playerIndex: number): string => {
+    const colorAlias = colorAliases[playerIndex % colorAliases.length];
+    console.log(`🎨 Assigned avatar ${colorAlias.avatar.split('/').pop()?.split('?')[0]} to player at index ${playerIndex}`);
+    return colorAlias.avatar;
+  }, []);
 
   // Convert backend players to frontend format
   const convertPlayers = useCallback((game: Game, currentPlayerAddress?: string): Player[] => {
@@ -78,41 +77,50 @@ export function useGame(gameId?: string): GameState & GameActions {
       roles: game.roles,
       currentPlayerAddress
     })
-    
+
     // Role mapping from backend to frontend
     const roleMapping: Record<string, string> = {
       'Mafia': 'ASUR',
-      'Doctor': 'DEVA', 
+      'Doctor': 'DEVA',
       'Detective': 'RISHI',
       'Villager': 'MANAV'
     }
-    
+
     return game.players.map((address, index) => {
       const backendRole = game.roles?.[address] || ''
       const frontendRole = roleMapping[backendRole] || backendRole
-      
+
       console.log(`Player ${index + 1} (${address}): ${backendRole} -> ${frontendRole}`)
-      
-      // Assign role-specific avatars
-      let avatar = '👤' // Default avatar
-      if (frontendRole === 'DEVA') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/dev.png?updatedAt=1758923141278'
-        console.log(`🎭 DEVA avatar assigned: ${avatar}`)
-      } else if (frontendRole === 'ASUR') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/asur.png?updatedAt=1758922659571'
-        console.log(`🎭 ASUR avatar assigned: ${avatar}`)
-      } else if (frontendRole === 'RISHI') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/sage.png?updatedAt=1758922659655'
-        console.log(`🎭 RISHI avatar assigned: ${avatar}`)
-      } else if (frontendRole === 'MANAV') {
-        avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/blueShirt.png?updatedAt=1758922659560'
-        console.log(`🎭 MANAV avatar assigned: ${avatar}`)
+
+      // Generate username and public avatar based on player index (ensures uniqueness)
+      const username = generateUsername(index)
+      const publicAvatar = generateAvatar(index) // This is the colored shirt matching the username
+
+      // Determine which avatar to show
+      let avatar = publicAvatar // Default: always show colored shirt
+
+      const isCurrentPlayer = address === currentPlayerAddress
+      const isEliminated = game.eliminated.includes(address)
+
+      // Show role avatar ONLY in these cases:
+      // 1. Current player sees their own role avatar (except in lobby)
+      // 2. Eliminated players show their role avatar (revealed)
+      if (frontendRole && ((isCurrentPlayer && game.phase !== 'lobby') || isEliminated)) {
+        if (frontendRole === 'DEVA') {
+          avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/dev.png?updatedAt=1758923141278'
+        } else if (frontendRole === 'ASUR') {
+          avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/asur.png?updatedAt=1758922659571'
+        } else if (frontendRole === 'RISHI') {
+          avatar = 'https://ik.imagekit.io/3rdfd9oed/pepAsur%20Assets/sage.png?updatedAt=1758922659655'
+        }
+        // MANAV keeps the colored shirt even when revealed
+
+        console.log(`🎭 ${frontendRole} role avatar shown for ${username}: ${avatar}`)
+      } else {
+        console.log(`👕 Public colored shirt shown for ${username}: ${avatar}`)
       }
-      
-      // Generate username for this player
-      const username = generateUsername(address)
-      
-      return {
+
+      const player = {
         id: address,
         name: username,
         avatar: avatar,
@@ -121,8 +129,11 @@ export function useGame(gameId?: string): GameState & GameActions {
         isCurrentPlayer: address === currentPlayerAddress,
         address
       }
+
+      console.log(`👤 Created player: ${username}, avatar: ${avatar ? 'assigned' : 'MISSING'}`)
+      return player
     })
-  }, [generateUsername])
+  }, [generateUsername, generateAvatar])
 
   // Socket event handlers
   useEffect(() => {
@@ -155,10 +166,11 @@ export function useGame(gameId?: string): GameState & GameActions {
           setCurrentPlayer(prev => prev ? {
             ...prev,
             role: currentPlayerFromConverted.role,
-            avatar: currentPlayerFromConverted.avatar
+            avatar: currentPlayerFromConverted.avatar,
+            name: currentPlayerFromConverted.name // Update name too
           } : {
             id: currentPlayerFromConverted.id,
-            name: generateUsername(currentPlayerFromConverted.address),
+            name: currentPlayerFromConverted.name, // Use name from convertedPlayers
             avatar: currentPlayerFromConverted.avatar,
             isAlive: true,
             isCurrentPlayer: true,
@@ -258,11 +270,12 @@ export function useGame(gameId?: string): GameState & GameActions {
         // Set the game ID for tracking
         setCurrentGameId(response.gameId)
         
-        // Set current player as creator
+        // Set current player as creator (index 0 since creator is first player)
+        // Will be updated with correct name/avatar when game state arrives via socket
         setCurrentPlayer({
           id: creatorAddress,
-          name: generateUsername(creatorAddress),
-          avatar: '👑',
+          name: generateUsername(0), // Creator is first player (index 0)
+          avatar: generateAvatar(0), // Creator gets first color alias
           isAlive: true,
           isCurrentPlayer: true,
           address: creatorAddress
@@ -303,31 +316,35 @@ export function useGame(gameId?: string): GameState & GameActions {
         const convertedPlayers = convertPlayers(response.game, playerAddress)
         setPlayers(convertedPlayers)
         
-        // Set current player with role from converted players
+        // Set current player with name/avatar/role from converted players
         const currentPlayerFromConverted = convertedPlayers.find(p => p.address === playerAddress)
         console.log('🔍 joinGameByRoomCode - currentPlayerFromConverted:', currentPlayerFromConverted)
         console.log('🔍 joinGameByRoomCode - game roles:', response.game.roles)
-        
-        setCurrentPlayer({
-          id: playerAddress,
-          name: generateUsername(playerAddress),
-          avatar: '👤',
-          isAlive: true,
-          isCurrentPlayer: true,
-          address: playerAddress,
-          role: currentPlayerFromConverted?.role
-        })
-        
-        console.log('🔍 joinGameByRoomCode - Final state:', {
-          game: response.game,
-          currentPlayer: {
+
+        if (currentPlayerFromConverted) {
+          setCurrentPlayer({
             id: playerAddress,
-            name: generateUsername(playerAddress),
+            name: currentPlayerFromConverted.name, // Use name from convertedPlayers (based on index)
+            avatar: currentPlayerFromConverted.avatar, // Use avatar from convertedPlayers
+            isAlive: true,
+            isCurrentPlayer: true,
             address: playerAddress,
-            role: currentPlayerFromConverted?.role
-          },
-          players: convertedPlayers
-        })
+            role: currentPlayerFromConverted.role
+          })
+
+          console.log('🔍 joinGameByRoomCode - Final state:', {
+            game: response.game,
+            currentPlayer: {
+              id: playerAddress,
+              name: currentPlayerFromConverted.name,
+              address: playerAddress,
+              role: currentPlayerFromConverted.role
+            },
+            players: convertedPlayers
+          })
+        } else {
+          console.error('❌ Could not find current player in converted players')
+        }
       } else {
         throw new Error('Failed to join game')
       }
@@ -353,18 +370,22 @@ export function useGame(gameId?: string): GameState & GameActions {
         // Convert players first
         const convertedPlayers = convertPlayers(response.game, playerAddress)
         setPlayers(convertedPlayers)
-        
-        // Set current player with role from converted players
+
+        // Set current player with name/avatar/role from converted players
         const currentPlayerFromConverted = convertedPlayers.find(p => p.address === playerAddress)
-        setCurrentPlayer({
-          id: playerAddress,
-          name: generateUsername(playerAddress),
-          avatar: '👤',
-          isAlive: true,
-          isCurrentPlayer: true,
-          address: playerAddress,
-          role: currentPlayerFromConverted?.role
-        })
+        if (currentPlayerFromConverted) {
+          setCurrentPlayer({
+            id: playerAddress,
+            name: currentPlayerFromConverted.name, // Use name from convertedPlayers (based on index)
+            avatar: currentPlayerFromConverted.avatar, // Use avatar from convertedPlayers
+            isAlive: true,
+            isCurrentPlayer: true,
+            address: playerAddress,
+            role: currentPlayerFromConverted.role
+          })
+        } else {
+          console.error('❌ Could not find current player in converted players')
+        }
       } else {
         throw new Error('Failed to join game')
       }
@@ -481,17 +502,19 @@ export function useGame(gameId?: string): GameState & GameActions {
   }, [game])
 
   const setCurrentPlayerFromAddress = useCallback((address: string) => {
+    // Use temporary placeholder values - will be updated when game state arrives
+    // This is only called on initial wallet connection before joining a game
     const player: Player = {
       id: address,
-      name: generateUsername(address),
-      avatar: '👤',
+      name: 'Loading...', // Placeholder - will be updated from game state
+      avatar: generateAvatar(0), // Temporary avatar - will be updated from game state
       isAlive: true,
       isCurrentPlayer: true,
       address: address
     }
     setCurrentPlayer(player)
-    console.log('🔧 setCurrentPlayerFromAddress:', player)
-  }, [generateUsername])
+    console.log('🔧 setCurrentPlayerFromAddress (temp):', player)
+  }, [])
 
   const refreshGame = useCallback(async (): Promise<void> => {
     if (!currentGameId) return
@@ -517,10 +540,12 @@ export function useGame(gameId?: string): GameState & GameActions {
           console.log('🔄 refreshGame - currentPlayerFromConverted:', currentPlayerFromConverted)
           
           if (currentPlayerFromConverted && currentPlayerFromConverted.role) {
-            console.log(`[refreshGame] Updating current player role: ${currentPlayerFromConverted.role}`)
+            console.log(`[refreshGame] Updating current player: ${currentPlayerFromConverted.name} (${currentPlayerFromConverted.role})`)
             setCurrentPlayer(prev => prev ? {
               ...prev,
-              role: currentPlayerFromConverted.role
+              role: currentPlayerFromConverted.role,
+              name: currentPlayerFromConverted.name, // Update name from game state
+              avatar: currentPlayerFromConverted.avatar // Update avatar from game state
             } : null)
           } else {
             console.log('🔄 refreshGame - No role found for current player:', currentPlayerFromConverted)

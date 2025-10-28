@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Player } from "@/hooks/useGame"
 import { Game } from "@/services/api"
+import { soundService } from "@/services/SoundService"
 
 interface VotingScreenProps {
   players: Player[]
@@ -84,6 +85,8 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
             console.log('🎯 Player eliminated:', eliminated.name)
             setEliminatedPlayer(eliminated)
             setEliminatedPlayerAvatar(eliminated.avatar) // Cache the avatar to prevent alternation
+            // Play elimination sound
+            soundService.playElimination()
           }
         } else {
           // No one was eliminated
@@ -274,113 +277,84 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
   }
 
   return (
-    <div className="min-h-screen p-2 sm:p-4 gaming-bg">
-      <div className="max-w-7xl mx-auto space-y-2 sm:space-y-3 lg:space-y-4">
-        {/* Header */}
-        <div className="text-center space-y-1">
-          <h1 className="text-base sm:text-lg lg:text-xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">VOTING PHASE</h1>
-          <div className="text-xs sm:text-sm font-press-start pixel-text-3d-white">Click to select • Click again to confirm your vote</div>
+    <div className="min-h-screen flex flex-col items-center justify-between p-4 gaming-bg text-white font-press-start">
+      {/* Top Section: Title, Timer, and Instruction Bar */}
+      <div className="w-full max-w-7xl text-center">
+        <h1 className="text-4xl md:text-5xl font-bold pixel-text-3d-white pixel-text-3d-float-long">VOTING PHASE</h1>
+        <div className="text-5xl md:text-7xl font-bold pixel-text-3d-blue my-4">{timeLeft}</div>
+        <div className={`w-full bg-black/50 border-2 p-3 text-lg md:text-xl ${selectedVote && !submitted ? 'border-yellow-400 text-yellow-400 animate-pulse' : 'border-gray-500 text-gray-300'}`}>
+          {submitted
+            ? "Vote confirmed. Waiting for others..."
+            : selectedVote
+            ? `You selected ${players.find(p => p.id === selectedVote)?.name}. Click again to confirm.`
+            : "Click a player to cast your vote."
+          }
         </div>
+      </div>
 
-        {/* Players Grid - Compact layout */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2 lg:gap-3">
-          {players.filter((player) => player.isAlive).map((player) => {
-            const isSelected = selectedVote === player.id && !submitted
+      {/* Main Content Area - This will now be centered by space-between */}
+      <div className="flex-grow flex items-center justify-center w-full max-w-7xl">
+        {/* Player Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-12">
+          {players.filter(player => player.isAlive).map(player => {
+            const isSelected = selectedVote === player.id;
+            const isConfirmed = isSelected && submitted;
 
             return (
               <Card
                 key={player.id}
-                className={`p-1 sm:p-2 lg:p-3 border-2 text-center transition-all ${
-                  submitted
-                    ? "cursor-not-allowed opacity-50"
+                className={`p-6 bg-black/20 text-center transition-all duration-200 ease-in-out transform hover:-translate-y-1 outline-4 outline-offset-[-4px] ${
+                  isConfirmed
+                    ? 'outline-white bg-black/50' // Locked-in vote
                     : isSelected
-                      ? "border-4 border-yellow-500 bg-yellow-500/20 cursor-pointer hover:scale-105 animate-pulse"
-                      : "border-border hover:border-primary cursor-pointer hover:scale-105"
+                    ? 'outline-yellow-400 bg-yellow-400/20 animate-pulse' // Selected, not yet confirmed
+                    : submitted
+                    ? 'opacity-50 cursor-not-allowed' // Vote submitted, this player wasn't chosen
+                    : 'outline-transparent hover:outline-yellow-400 cursor-pointer' // Default state
                 }`}
                 onClick={() => handleVote(player.id)}
               >
-                <div className="text-lg sm:text-xl lg:text-2xl mb-1">
-                  {/* Hide other players' avatars - show generic silhouette */}
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-[#333333] border-2 border-[#666666] mx-auto flex items-center justify-center">
-                    <span className="text-xs sm:text-sm lg:text-base">👤</span>
-                  </div>
+                <div className="relative">
+                  {player.avatar && player.avatar.startsWith('http') ? (
+                    <img
+                      src={player.avatar}
+                      alt={player.name}
+                      className="w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 rounded-none object-cover mx-auto"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  ) : (
+                    <div className="w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 bg-[#333] border-2 border-[#666] mx-auto flex items-center justify-center">
+                      <span className="text-4xl">?</span>
+                    </div>
+                  )}
                 </div>
-                <div className="font-press-start text-xs pixel-text-3d-white">{player.name}</div>
-                {isSelected && !submitted && (
-                  <div className="mt-1 space-y-1">
-                    <div className="text-xs font-press-start font-bold text-yellow-400">SELECTED</div>
-                    <div className="text-[10px] font-press-start text-yellow-300">CLICK AGAIN</div>
-                  </div>
-                )}
-                {submitted && selectedVote === player.id && (
-                  <div className="mt-1 text-xs font-press-start font-bold text-green-400">✅ LOCKED</div>
-                )}
+                <div className="mt-2 text-sm md:text-base pixel-text-3d-white">
+                  {player.name}
+                  {player.id === currentPlayer?.id && <span className="text-yellow-400"> (You)</span>}
+                </div>
               </Card>
-            )
+            );
           })}
         </div>
+      </div>
 
-        {/* Voting Status and Instructions */}
-        <div className="flex justify-center">
-          <Card className="p-3 sm:p-4 md:p-5 bg-muted/20 border-2 border-dashed border-muted text-center max-w-2xl">
-            {submitted ? (
-              <div className="space-y-2">
-                <div className="text-base sm:text-lg md:text-xl font-press-start text-green-400 pixel-text-3d-glow">
-                  ✅ VOTE LOCKED IN
-                </div>
-                <div className="text-xs sm:text-sm font-press-start pixel-text-3d-white">
-                  You voted to eliminate: <span className="text-yellow-400">{players.find((p) => p.id === selectedVote)?.name}</span>
-                </div>
-              </div>
-            ) : selectedVote ? (
-              <div className="space-y-2">
-                <div className="text-base sm:text-lg md:text-xl font-press-start text-yellow-400 pixel-text-3d-glow animate-pulse">
-                  👆 CLICK AGAIN TO CONFIRM
-                </div>
-                <div className="text-xs sm:text-sm font-press-start text-gray-400">
-                  Selected: <span className="text-yellow-400">{players.find((p) => p.id === selectedVote)?.name}</span>
-                </div>
-              </div>
-            ) : timeLeft === 0 ? (
-              <div className="text-base sm:text-lg md:text-xl font-press-start text-red-400 pixel-text-3d-glow">
-                ⏰ TIME'S UP!
-              </div>
-            ) : (
-              <div className="text-xs sm:text-sm md:text-base font-press-start pixel-text-3d-white">
-                👆 Click a player to select • Click again to confirm
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* Additional Game Info */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-          <Card className="p-2 sm:p-3 md:p-4 bg-[#111111]/50 border border-[#2a2a2a] text-center">
-            <div className="text-xs sm:text-sm font-press-start pixel-text-3d-green">👥 ALIVE PLAYERS</div>
-            <div className="text-base sm:text-lg md:text-xl font-bold font-press-start pixel-text-3d-white">
-              {players.filter(p => p.isAlive).length}/{players.length}
+      {/* Info Bar at the bottom */}
+      <div className="w-full max-w-7xl pb-4">
+        <div className="bg-black/50 border-2 border-gray-700 p-4 md:p-5 rounded-none text-center">
+          {/* Stats */}
+          <div className="flex items-center justify-center space-x-6 md:space-x-8 text-base md:text-lg">
+            <div className="flex items-center space-x-3">
+              <span className="pixel-text-3d-green">ALIVE:</span>
+              <span className="font-bold">{players.filter(p => p.isAlive).length}/{players.length}</span>
             </div>
-          </Card>
-          <Card className="p-2 sm:p-3 md:p-4 bg-[#111111]/50 border border-[#2a2a2a] text-center">
-            <div className="text-xs sm:text-sm font-press-start pixel-text-3d-yellow">🎯 VOTES NEEDED</div>
-            <div className="text-base sm:text-lg md:text-xl font-bold font-press-start pixel-text-3d-white">
-              {Math.ceil(players.filter(p => p.isAlive).length / 2)}
+            <div className="w-px h-8 bg-gray-600"></div> {/* Separator */}
+            <div className="flex items-center space-x-3">
+              <span className="pixel-text-3d-yellow">VOTES NEEDED:</span>
+              <span className="font-bold">{Math.ceil(players.filter(p => p.isAlive).length / 2)}</span>
             </div>
-          </Card>
-          <Card className="p-2 sm:p-3 md:p-4 bg-[#111111]/50 border border-[#2a2a2a] text-center">
-            <div className="text-xs sm:text-sm font-press-start pixel-text-3d-blue">⏰ TIME LEFT</div>
-            <div className="text-base sm:text-lg md:text-xl font-bold font-press-start pixel-text-3d-white">
-              {timeLeft}s
-            </div>
-          </Card>
-          <Card className="p-2 sm:p-3 md:p-4 bg-[#111111]/50 border border-[#2a2a2a] text-center">
-            <div className="text-xs sm:text-sm font-press-start pixel-text-3d-purple">🎮 PHASE</div>
-            <div className="text-base sm:text-lg md:text-xl font-bold font-press-start pixel-text-3d-white">
-              VOTING
-            </div>
-          </Card>
+          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

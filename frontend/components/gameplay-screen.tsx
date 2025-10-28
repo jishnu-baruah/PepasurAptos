@@ -307,99 +307,213 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
 
   const canSelectPlayers = currentPlayer.role === "ASUR" || currentPlayer.role === "DEVA" || currentPlayer.role === "RISHI"
 
+  // Get role-specific instruction and color
+  const getRoleInstruction = () => {
+    switch (currentPlayer.role) {
+      case "ASUR":
+        return { text: "ASUR: CHOOSE YOUR TARGET", color: "#FF0000", bgColor: "bg-red-900/30", borderColor: "border-red-600" }
+      case "DEVA":
+        return { text: "DEVA: CHOOSE A PLAYER TO SAVE", color: "#00FF00", bgColor: "bg-green-900/30", borderColor: "border-green-600" }
+      case "RISHI":
+        return { text: "RISHI: CHOOSE A PLAYER TO INVESTIGATE", color: "#FFA500", bgColor: "bg-orange-900/30", borderColor: "border-orange-600" }
+      case "MANAV":
+        return { text: "MANAV: OBSERVE AND WAIT", color: "#888888", bgColor: "bg-gray-900/30", borderColor: "border-gray-600" }
+      default:
+        return { text: "WAITING...", color: "#888888", bgColor: "bg-gray-900/30", borderColor: "border-gray-600" }
+    }
+  }
+
+  const roleInstruction = getRoleInstruction()
+
+  // Get pixel-art style hover border color for interactive sprites
+  const getHoverBorderColor = () => {
+    switch (currentPlayer.role) {
+      case "ASUR":
+        return "#FF0000" // Solid red
+      case "DEVA":
+        return "#00FF00" // Solid green
+      case "RISHI":
+        return "#FFAA00" // Solid orange/yellow
+      default:
+        return "transparent"
+    }
+  }
+
+  const hoverBorderColor = getHoverBorderColor()
+
   return (
-    <div className="min-h-screen p-2 sm:p-4">
-      <div className="max-w-7xl mx-auto space-y-2 sm:space-y-3 lg:space-y-4">
-        {/* Header */}
+    <div className="min-h-screen p-4 flex flex-col">
+      <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col space-y-6">
+        {/* Debug Refresh Button (top right) */}
+        {!isConnected && (
+          <div className="absolute top-4 right-4 text-xs text-yellow-400">⚠️ DISCONNECTED</div>
+        )}
+        <button
+          onClick={() => refreshGame()}
+          className="absolute top-4 left-4 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded z-10"
+        >
+          🔄 Refresh
+        </button>
+
+        {/* Phase Title */}
         <div className="text-center">
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">
-            {game?.phase === 'night' ? 'NIGHT PHASE' : 
-             game?.phase === 'task' ? 'TASK PHASE' : 
-             game?.phase === 'voting' ? 'VOTING PHASE' : 'GAMEPLAY'}
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">
+            NIGHT PHASE
           </h1>
-          <div className="text-xs sm:text-sm font-press-start pixel-text-3d-white">
-            {getActionText()}
-          </div>
-          {!isConnected && (
-            <div className="text-xs text-yellow-400 mt-1">⚠️ DISCONNECTED</div>
-          )}
-          {/* Manual refresh button */}
-          <button 
-            onClick={() => refreshGame()} 
-            className="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
-          >
-            🔄 Refresh Game State
-          </button>
+          <div className="text-xs sm:text-sm text-gray-400 mt-1">OBSERVE AND WAIT</div>
         </div>
 
-        {/* Timer */}
-        <Card className="p-3 sm:p-4 md:p-6 bg-card border-2 border-border text-center">
-          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-press-start pixel-text-3d-white mb-2">TIME REMAINING</div>
-          <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">
+        {/* Role-Specific Instruction Bar */}
+        <Card className={`p-4 ${roleInstruction.bgColor} border-2 ${roleInstruction.borderColor}`}>
+          <div
+            className="text-center text-lg sm:text-xl lg:text-2xl font-bold font-press-start"
+            style={{ color: roleInstruction.color, textShadow: `0 0 10px ${roleInstruction.color}` }}
+          >
+            {roleInstruction.text}
+          </div>
+        </Card>
+
+        {/* Timer - Centered and Prominent */}
+        <div className="text-center">
+          <div className="text-sm sm:text-base font-press-start text-gray-400 mb-2">TIME REMAINING</div>
+          <div className="text-5xl sm:text-6xl lg:text-7xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">
             {timeLeft}s
           </div>
-        </Card>
-
-        {/* Players Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2 lg:gap-3">
-          {players
-            .filter((p) => p.id !== currentPlayer.id && p.isAlive)
-            .map((player) => {
-              const isSelected = selectedPlayer === player.id
-              const cardColor = isSelected ? getActionColor() : "transparent"
-
-              return (
-                <Card
-                  key={player.id}
-                  className={`p-1 sm:p-2 lg:p-3 border-2 text-center cursor-pointer transition-all ${
-                    canSelectPlayers && timeLeft > 0 && !actionTaken
-                      ? "hover:scale-105 hover:border-primary"
-                      : "cursor-not-allowed opacity-50"
-                  } ${isSelected ? "border-4" : "border-border"}`}
-                  style={{
-                    backgroundColor: isSelected ? `${cardColor}20` : "var(--color-card)",
-                    borderColor: isSelected ? cardColor : "var(--color-border)",
-                  }}
-                  onClick={() => handlePlayerSelect(player.id)}
-                >
-                  <div className="text-lg sm:text-xl lg:text-2xl mb-1">
-                    {/* Hide other players' avatars - show generic silhouette */}
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-[#333333] border-2 border-[#666666] mx-auto flex items-center justify-center">
-                      <span className="text-xs sm:text-sm lg:text-base">👤</span>
-                    </div>
-                  </div>
-                  <div className="font-press-start text-xs sm:text-sm pixel-text-3d-white">{player.name}</div>
-                  {isSelected && (
-                    <div className="mt-1 sm:mt-2 text-xs font-press-start font-bold pixel-text-3d-red">
-                      {currentPlayer.role === "ASUR" ? "TARGETED" : 
-                       currentPlayer.role === "DEVA" ? "PROTECTED" : 
-                       currentPlayer.role === "RISHI" ? "INVESTIGATED" : "SELECTED"}
-                    </div>
-                  )}
-                </Card>
-              )
-            })}
         </div>
 
-        {/* Current Player Card */}
-        <Card className="p-3 sm:p-4 md:p-6 bg-muted/20 border-2 border-dashed border-muted text-center">
-          <div className="text-3xl sm:text-4xl md:text-5xl mb-2">
-            {currentPlayer.avatar.startsWith('http') ? (
-              <img 
-                src={currentPlayer.avatar} 
-                alt={currentPlayer.name}
-                className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-cover rounded-none mx-auto"
-                style={{ imageRendering: 'pixelated' }}
-              />
-            ) : (
-              currentPlayer.avatar
-            )}
+        {/* Players Grid - Large and Centered */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 max-w-4xl mx-auto">
+            {players
+              .filter((p) => p.isAlive)
+              .map((player) => {
+                const isCurrentPlayer = player.id === currentPlayer.id
+                const isSelected = selectedPlayer === player.id
+                const cardColor = isSelected ? getActionColor() : "transparent"
+
+                // Determine if this player can be selected based on role
+                const canSelectThisPlayer = (() => {
+                  if (!canSelectPlayers || timeLeft <= 0 || actionTaken) return false
+
+                  // ASUR and RISHI cannot target themselves
+                  if ((currentPlayer.role === "ASUR" || currentPlayer.role === "RISHI") && isCurrentPlayer) {
+                    return false
+                  }
+
+                  // DEVA can save anyone including themselves
+                  if (currentPlayer.role === "DEVA") {
+                    return true
+                  }
+
+                  return !isCurrentPlayer
+                })()
+
+                const isDisabled = !canSelectThisPlayer && canSelectPlayers
+
+                // Border logic: No border for MANAV, hover-only border for action roles
+                const getBorderClass = () => {
+                  if (!canSelectPlayers) {
+                    // MANAV - no border at all
+                    return "border-0"
+                  }
+                  // Action roles - show border only on hover or selection
+                  if (isSelected) {
+                    return "border-4"
+                  }
+                  return "border-0"
+                }
+
+                return (
+                  <div
+                    key={player.id}
+                    className={`
+                      relative p-4 ${getBorderClass()} rounded-none text-center transition-none
+                      ${canSelectThisPlayer ? "cursor-pointer hover:scale-105" : ""}
+                      ${isDisabled ? "cursor-not-allowed opacity-40" : ""}
+                      ${!canSelectPlayers ? "opacity-100" : ""}
+                      ${isSelected ? "scale-110" : ""}
+                      group
+                    `}
+                    style={{
+                      backgroundColor: isSelected ? `${cardColor}20` : "rgba(17, 17, 17, 0.8)",
+                      borderColor: isSelected ? cardColor : "transparent",
+                      borderWidth: isSelected ? "3px" : "0px",
+                      borderStyle: "solid",
+                    }}
+                    onClick={() => canSelectThisPlayer && handlePlayerSelect(player.id)}
+                  >
+                    {/* Pixel-art hover border overlay */}
+                    {canSelectThisPlayer && (
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none"
+                        style={{
+                          border: `3px solid ${hoverBorderColor}`,
+                          boxShadow: `inset 0 0 0 1px ${hoverBorderColor}`,
+                        }}
+                      />
+                    )}
+                    {/* Player Avatar - Scaled Up */}
+                    <div className="mb-3">
+                      {player.avatar && player.avatar.startsWith('http') ? (
+                        <img
+                          src={player.avatar}
+                          alt={player.name}
+                          className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-none object-cover mx-auto"
+                          style={{ imageRendering: 'pixelated' }}
+                          onError={(e) => {
+                            console.error('Failed to load avatar for player:', player.name);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 bg-[#333333] border-2 border-[#666666] mx-auto flex items-center justify-center">
+                          <span className="text-xs text-red-500">⚠️</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Player Name - Clear White Font */}
+                    <div className="font-press-start text-sm sm:text-base lg:text-lg text-white mb-1">
+                      {player.name}
+                    </div>
+
+                    {/* Current Player Indicator + Role */}
+                    {isCurrentPlayer && (
+                      <div className="space-y-1">
+                        <div className="font-press-start text-xs sm:text-sm text-[#4A8C4A]">
+                          (YOU)
+                        </div>
+                        <div
+                          className="font-press-start text-xs sm:text-sm font-bold"
+                          style={{ color: roleInstruction.color, textShadow: `0 0 5px ${roleInstruction.color}` }}
+                        >
+                          {currentPlayer.role}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Selection Indicator */}
+                    {isSelected && !isCurrentPlayer && (
+                      <div
+                        className="mt-2 text-xs sm:text-sm font-press-start font-bold"
+                        style={{ color: cardColor }}
+                      >
+                        {currentPlayer.role === "ASUR" ? "⚔️ TARGETED" :
+                         currentPlayer.role === "DEVA" ? "🛡️ PROTECTED" :
+                         currentPlayer.role === "RISHI" ? "🔍 INVESTIGATING" : "✓ SELECTED"}
+                      </div>
+                    )}
+
+                    {/* Disabled Indicator */}
+                    {isDisabled && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-none">
+                        <span className="text-2xl">🚫</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
           </div>
-          <div className="font-press-start text-sm sm:text-base md:text-lg pixel-text-3d-white">{currentPlayer.name} (YOU)</div>
-          <div className="text-sm sm:text-base font-press-start mt-1 pixel-text-3d-green">
-            {currentPlayer.role}
-          </div>
-        </Card>
+        </div>
       </div>
 
       {/* Time Up Popup */}

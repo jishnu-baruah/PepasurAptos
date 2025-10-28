@@ -14,6 +14,7 @@ import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
 import StakingScreen from "@/components/staking-screen"
 import PublicLobbiesScreen from "@/components/public-lobbies-screen"
+import SoundToggle from "@/components/sound-toggle"
 import { useGame, Player } from "@/hooks/useGame"
 import { soundService } from "@/services/SoundService"
 import { saveGameSession, getGameSession, clearGameSession, isSessionValid } from "@/utils/sessionPersistence"
@@ -114,13 +115,32 @@ export default function Home() {
     // Sync game phase to UI state
     if (game && currentPlayer) {
       if (game.phase !== gameState) {
-        soundService.playPhaseChange();
+        // Play appropriate sound for phase change
+        if (game.phase === 'lobby') {
+          soundService.playGameStart();
+        } else if (game.phase === 'night') {
+          soundService.playKilling();
+        } else if (game.phase === 'task') {
+          soundService.playClick();
+        } else if (game.phase === 'voting') {
+          soundService.playClick();
+        } else if (game.phase === 'ended') {
+          soundService.playPepasurLaugh();
+        }
       }
 
       if (game.phase === 'lobby' && gameState !== 'lobby') {
         setGameState('lobby')
         setHasSeenRole(false)
       } else if (game.phase === 'night' && currentPlayer.role && !hasSeenRole) {
+        // Play role-specific sound when showing role assignment
+        if (currentPlayer.role === 'ASUR') {
+          soundService.playPepasurLaugh();
+        } else if (currentPlayer.role === 'DEVA') {
+          soundService.playAngelic();
+        } else if (currentPlayer.role === 'RISHI') {
+          soundService.playDetective();
+        }
         setGameState('role-assignment')
       } else if (game.phase === 'night' && gameState !== 'night' && hasSeenRole) {
         console.log('🌙 Transitioning to night phase, hasSeenRole:', hasSeenRole)
@@ -135,7 +155,7 @@ export default function Home() {
         setGameState('ended')
       }
     }
-  }, [game?.phase, gameState, currentPlayer?.id, hasSeenRole, refreshGame])
+  }, [game?.phase, gameState, currentPlayer?.id, currentPlayer?.role, hasSeenRole, refreshGame])
 
   const handleWalletAddressChange = (address: string | null) => {
     setWalletAddress(address)
@@ -172,19 +192,24 @@ export default function Home() {
     return players.map(player => ({
       ...player,
       role: player.id === currentPlayerId ? player.role : undefined,
-      avatar: (player.id === currentPlayerId || (showEliminatedAvatars && !player.isAlive)) ? player.avatar : undefined,
+      // Always show public avatars (colored shirts) for everyone
+      // Role avatars are already handled in convertPlayers
+      avatar: player.avatar,
       isCurrentPlayer: player.id === currentPlayerId
     }))
   }
 
   return (
     <main className="min-h-screen gaming-bg relative overflow-hidden w-full">
+      {/* Sound Toggle Button */}
+      {/* <SoundToggle /> */}
+
       {error && (
         <div className="fixed top-4 right-4 z-50 bg-red-900/90 text-red-100 p-4 rounded border border-red-500">
           <div className="font-press-start text-sm">ERROR:</div>
           <div className="text-sm">{error}</div>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="mt-2 px-2 py-1 bg-red-700 hover:bg-red-600 rounded text-xs"
           >
             Retry
@@ -302,6 +327,7 @@ export default function Home() {
           gameId={game?.gameId}
           currentPlayerAddress={currentPlayer?.address}
           submitTaskAnswer={submitTaskAnswer}
+          players={players}
         />
       )}
       {gameState === "voting" && currentPlayer && (
@@ -328,13 +354,13 @@ export default function Home() {
           }}
         />
       )}
-      {currentPlayer?.address && game?.gameId && (gameState === "lobby" || gameState === "night" || gameState === "task" || gameState === "voting") && (
+      {/* {currentPlayer?.address && game?.gameId && (gameState === "lobby" || gameState === "night" || gameState === "task" || gameState === "voting") && (
         <ChatComponent 
           gameId={game.gameId} 
           currentPlayerAddress={currentPlayer.address}
           players={players}
         />
-      )}
+      )} */}
     </main>
   )
 }

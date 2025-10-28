@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { PixelInput } from "@/components/ui/pixel-input"
 import { useSocket } from "@/contexts/SocketContext"
+import { Player } from "@/hooks/useGame" // Add this line
 import TaskComponent from "./task-component"
 
 interface DiscussionPhaseScreenProps {
@@ -13,6 +14,7 @@ interface DiscussionPhaseScreenProps {
   gameId?: string // Add gameId for chat
   currentPlayerAddress?: string // Add current player address
   submitTaskAnswer?: (answer: any) => Promise<void> // Add task submission function
+  players?: Player[] // Add players prop
 }
 
 interface Task {
@@ -24,7 +26,7 @@ interface Task {
   reward: string
 }
 
-export default function DiscussionPhaseScreen({ onComplete, game, gameId, currentPlayerAddress, submitTaskAnswer }: DiscussionPhaseScreenProps) {
+export default function DiscussionPhaseScreen({ onComplete, game, gameId, currentPlayerAddress, submitTaskAnswer, players }: DiscussionPhaseScreenProps) {
   const [timeLeft, setTimeLeft] = useState(30) // 30 seconds for discussion
   const [message, setMessage] = useState("")
   const [activeTab, setActiveTab] = useState<'chat' | 'tasks'>('chat')
@@ -192,19 +194,34 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
                     No messages yet. Start the discussion!
                   </div>
                 ) : (
-                  messages.map((msg) => (
-                    <div key={msg.id} className="font-press-start text-xs sm:text-sm md:text-base pixel-text-3d-white bg-[#1A1A1A]/80 p-2 sm:p-3 md:p-4 border border-[#2A2A2A] chat-message-glow chat-message-enter">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[#4A8C4A]">
-                          {msg.playerAddress === currentPlayerAddress ? '🎮 You' : '👤 Player'}
-                        </span>
-                        <span className="text-gray-400 text-xs">
-                          {new Date(msg.timestamp).toLocaleTimeString()}
-                        </span>
+                  messages.map((msg) => {
+                    const messagePlayer = players?.find(p => p.address === msg.playerAddress)
+                    const isCurrentPlayer = msg.playerAddress === currentPlayerAddress
+                    return (
+                      <div key={msg.id} className="font-press-start text-xs sm:text-sm md:text-base pixel-text-3d-white bg-[#1A1A1A]/80 p-2 sm:p-3 md:p-4 border border-[#2A2A2A] chat-message-glow chat-message-enter">
+                        <div className="flex items-center space-x-2">
+                          {/* Player avatar - should always be available */}
+                          {messagePlayer?.avatar && messagePlayer.avatar.startsWith('http') ? (
+                            <img
+                              src={messagePlayer.avatar}
+                              alt={messagePlayer.name}
+                              className="w-6 h-6 sm:w-8 sm:h-8 rounded-none object-cover"
+                              style={{ imageRendering: 'pixelated' }}
+                            />
+                          ) : (
+                            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-700 flex items-center justify-center text-xs">?</div>
+                          )}
+                          <span className="text-[#4A8C4A]">
+                            {isCurrentPlayer ? 'You' : messagePlayer?.name || 'Player'}
+                          </span>
+                          <span className="text-gray-400 text-xs">
+                            {new Date(msg.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <div className="mt-1">{msg.message}</div>
                       </div>
-                      <div className="mt-1">{msg.message}</div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </>

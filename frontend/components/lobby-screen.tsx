@@ -161,10 +161,9 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
   }
 
   const getPlayerAvatar = (player: Player) => {
-    if (player.isCurrentPlayer) {
-      return "👑"
-    }
-    return player.avatar || "👤"
+    // Always return the player's avatar (colored shirt)
+    // Should never be undefined for actual players since we generate avatars
+    return player.avatar
   }
 
   return (
@@ -276,20 +275,19 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
                       <div className="text-gray-500">👤</div>
                     ) : (
                       <RetroAnimation type="pulse">
-                        {getPlayerAvatar(player) && getPlayerAvatar(player).startsWith('http') ? (
-                          <img 
-                            src={getPlayerAvatar(player)} 
+                        {getPlayerAvatar(player) && getPlayerAvatar(player)!.startsWith('http') ? (
+                          <img
+                            src={getPlayerAvatar(player)!}
                             alt={`${player.name} avatar`}
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded object-cover"
+                            className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-none object-cover mx-auto"
+                            style={{ imageRendering: 'pixelated' }}
                             onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextSibling.style.display = 'inline';
+                              console.error('Failed to load avatar image for player:', player.name);
                             }}
                           />
-                        ) : null}
-                        <span style={{ display: getPlayerAvatar(player) && getPlayerAvatar(player).startsWith('http') ? 'none' : 'inline' }}>
-                          {getPlayerAvatar(player)}
-                        </span>
+                        ) : (
+                          <div className="text-red-500 text-xs">⚠️ No Avatar</div>
+                        )}
                       </RetroAnimation>
                     )}
                   </div>
