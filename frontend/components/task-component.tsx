@@ -17,7 +17,10 @@ export default function TaskComponent({ gameId, currentPlayerAddress, game, subm
   const [answer, setAnswer] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<"correct" | "incorrect" | null>(null)
-  
+  const [showMemoryContent, setShowMemoryContent] = useState(false)
+  const [memoryPhase, setMemoryPhase] = useState<'reveal' | 'showing' | 'input'>('reveal')
+  const [countdown, setCountdown] = useState(0)
+
   // Get timeLeft from game prop
   const timeLeft = game?.timeLeft || 0
 
@@ -42,64 +45,146 @@ export default function TaskComponent({ gameId, currentPlayerAddress, game, subm
     }
   }
 
+  // Handle memory tasks reveal/show/input phases
+  const handleRevealMemory = () => {
+    setMemoryPhase('showing')
+    setShowMemoryContent(true)
+    setCountdown(2)
+
+    // Countdown from 2 to 0
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          setShowMemoryContent(false)
+          setMemoryPhase('input')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
   const renderTaskContent = () => {
     if (!game?.task) return null
 
     switch (game.task.type) {
-      case 'sequence':
+      case 'memory_words':
         return (
           <div className="space-y-4">
             <div className="text-center">
-              <h3 className="font-press-start text-white mb-2">SEQUENCE TASK</h3>
-              <p className="text-gray-300 text-sm">Arrange the numbers in the correct order:</p>
+              <h3 className="font-press-start text-white mb-2 pixel-text-3d-blue">🧠 MEMORY WORDS</h3>
+              <p className="text-gray-300 text-sm">Remember 3 random words in order</p>
             </div>
-            <div className="flex justify-center gap-2">
-              {game.task.data.shuffled.map((num: number, index: number) => (
-                <div key={index} className="w-12 h-12 bg-[#333] border border-[#666] flex items-center justify-center text-white font-press-start">
-                  {num}
-                </div>
-              ))}
-            </div>
-            <div className="text-center text-gray-400 text-xs">
-              Enter your answer as comma-separated numbers (e.g., 1,2,3,4)
-            </div>
-          </div>
-        )
 
-      case 'memory':
-        return (
-          <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="font-press-start text-white mb-2">MEMORY TASK</h3>
-              <p className="text-gray-300 text-sm">Remember the order of these items:</p>
-            </div>
-            <div className="flex justify-center gap-2">
-              {game.task.data.shuffled.map((item: string, index: number) => (
-                <div key={index} className="px-3 py-2 bg-[#333] border border-[#666] text-white font-press-start text-sm">
-                  {item}
-                </div>
-              ))}
-            </div>
-            <div className="text-center text-gray-400 text-xs">
-              Enter your answer as comma-separated items (e.g., apple,banana,cherry)
-            </div>
-          </div>
-        )
-
-      case 'hash':
-        return (
-          <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="font-press-start text-white mb-2">HASH TASK</h3>
-              <p className="text-gray-300 text-sm">Complete this hash fragment:</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-mono text-white bg-[#333] p-4 border border-[#666]">
-                {game.task.data.fragment}...
+            {memoryPhase === 'reveal' && (
+              <div className="text-center">
+                <button
+                  onClick={handleRevealMemory}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-press-start rounded-none border-2 border-blue-400"
+                >
+                  🔍 REVEAL WORDS
+                </button>
+                <p className="text-yellow-400 text-xs mt-2">Click to see words for 2 seconds!</p>
               </div>
+            )}
+
+            {memoryPhase === 'showing' && showMemoryContent && (
+              <div className="text-center">
+                <div className="text-6xl font-bold text-red-400 mb-4">{countdown}</div>
+                <div className="flex justify-center gap-4">
+                  {game.task.data.words.map((word: string, index: number) => (
+                    <div key={index} className="px-4 py-3 bg-yellow-600 border-2 border-yellow-400 text-black font-press-start text-lg">
+                      {word}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {memoryPhase === 'input' && (
+              <div className="text-center">
+                <p className="text-green-400 text-sm mb-4">Now type the words in order (space-separated):</p>
+                <div className="text-gray-400 text-xs">Example: apple banana cherry</div>
+              </div>
+            )}
+          </div>
+        )
+
+      case 'memory_number':
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="font-press-start text-white mb-2 pixel-text-3d-orange">🔢 NUMBER MEMORY</h3>
+              <p className="text-gray-300 text-sm">Remember the 5-digit number</p>
             </div>
-            <div className="text-center text-gray-400 text-xs">
-              Enter the complete hash
+
+            {memoryPhase === 'reveal' && (
+              <div className="text-center">
+                <button
+                  onClick={handleRevealMemory}
+                  className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-press-start rounded-none border-2 border-orange-400"
+                >
+                  🔍 REVEAL NUMBER
+                </button>
+                <p className="text-yellow-400 text-xs mt-2">Click to see number for 2 seconds!</p>
+              </div>
+            )}
+
+            {memoryPhase === 'showing' && showMemoryContent && (
+              <div className="text-center">
+                <div className="text-6xl font-bold text-red-400 mb-4">{countdown}</div>
+                <div className="text-8xl font-mono text-green-400 bg-black p-6 border-4 border-green-400 inline-block">
+                  {game.task.data.number}
+                </div>
+              </div>
+            )}
+
+            {memoryPhase === 'input' && (
+              <div className="text-center">
+                <p className="text-green-400 text-sm mb-4">Now type the 5-digit number:</p>
+                <div className="text-gray-400 text-xs">Enter exactly as shown</div>
+              </div>
+            )}
+          </div>
+        )
+
+      case 'captcha':
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="font-press-start text-white mb-2 pixel-text-3d-red">🤖 CAPTCHA CHALLENGE</h3>
+              <p className="text-gray-300 text-sm">Prove you're human!</p>
+            </div>
+            <div className="text-center">
+              <div className="inline-block bg-gray-800 p-6 border-4 border-gray-600 rounded-none">
+                <div className="text-4xl font-mono text-white bg-gray-700 p-4 border-2 border-gray-500 select-none"
+                  style={{
+                    fontFamily: 'monospace',
+                    letterSpacing: '8px',
+                    transform: 'skew(-5deg)',
+                    textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                  }}>
+                  {game.task.data.captcha}
+                </div>
+              </div>
+              <p className="text-yellow-400 text-xs mt-2">Type the characters you see above</p>
+            </div>
+          </div>
+        )
+
+      case 'math':
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="font-press-start text-white mb-2 pixel-text-3d-purple">🧮 QUICK MATH</h3>
+              <p className="text-gray-300 text-sm">Solve this equation</p>
+            </div>
+            <div className="text-center">
+              <div className="text-6xl font-mono text-purple-400 bg-black p-6 border-4 border-purple-400 inline-block">
+                {game.task.data.equation}
+              </div>
+              <p className="text-yellow-400 text-xs mt-2">Enter the result as a number</p>
             </div>
           </div>
         )
@@ -115,7 +200,7 @@ export default function TaskComponent({ gameId, currentPlayerAddress, game, subm
 
   if (!game?.task) {
     return (
-      <Card className="p-6 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] text-center">
+      <Card className="p-6 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-none text-center">
         <div className="font-press-start text-white">WAITING FOR TASK...</div>
       </Card>
     )
@@ -134,52 +219,53 @@ export default function TaskComponent({ gameId, currentPlayerAddress, game, subm
           </div>
         )}
 
-        {/* Timer */}
-        <Card className="p-4 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] text-center">
-          <div className="text-lg font-press-start text-white mb-2">TIME REMAINING</div>
-          <div className="text-4xl font-bold font-press-start text-red-500 pixel-text-3d-float">
-            {timeLeft || 0}s
-          </div>
-        </Card>
+
 
         {/* Task Content */}
-        <Card className="p-6 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a]">
+        <Card className="p-6 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-none">
           {renderTaskContent()}
         </Card>
 
-        {/* Answer Form */}
-        <Card className="p-6 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a]">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-press-start text-white mb-2">
-                Your Answer:
-              </label>
-              <input
-                type="text"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Enter your answer..."
-                className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#333] text-white rounded-none focus:outline-none focus:border-blue-500"
-                disabled={submitted}
-              />
-            </div>
-            
-            <div className="flex justify-center">
-              <Button
-                type="submit"
-                variant="pixel"
-                size="pixelLarge"
-                disabled={!answer.trim() || submitted}
-              >
-                {submitted ? 'SUBMITTED' : 'SUBMIT ANSWER'}
-              </Button>
-            </div>
-          </form>
-        </Card>
+        {/* Answer Form - Only show during input phase for memory tasks */}
+        {(memoryPhase === 'input' || !['memory_words', 'memory_number'].includes(game?.task?.type)) && (
+          <Card className="p-6 bg-[#111111]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-none">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-press-start text-white mb-2">
+                  Your Answer:
+                </label>
+                <input
+                  type="text"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder={
+                    game?.task?.type === 'memory_words' ? 'word1 word2 word3' :
+                      game?.task?.type === 'memory_number' ? '12345' :
+                        game?.task?.type === 'captcha' ? 'Type the captcha' :
+                          game?.task?.type === 'math' ? 'Enter number result' :
+                            'Enter your answer...'
+                  }
+                  className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#333] text-white rounded-none focus:outline-none focus:border-blue-500 font-press-start"
+                  disabled={submitted}
+                />
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-press-start rounded-none border-2 border-green-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!answer.trim() || submitted}
+                >
+                  {submitted ? '✓ SUBMITTED' : '🚀 SUBMIT ANSWER'}
+                </button>
+              </div>
+            </form>
+          </Card>
+        )}
 
         {/* Status */}
         {submitted && (
-          <Card className="p-4 bg-green-900/20 border border-green-500 text-center">
+          <Card className="p-4 bg-green-900/20 border border-green-500 rounded-none text-center">
             <div className="font-press-start text-green-300">
               ✓ ANSWER SUBMITTED
             </div>

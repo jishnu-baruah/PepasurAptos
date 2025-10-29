@@ -11,23 +11,30 @@ class GameManager {
     this.roomCodes = new Map(); // roomCode -> gameId
     this.socketManager = socketManager; // Reference to SocketManager
     this.stakingService = new StakingService(); // Initialize staking service
+    this.gameStartTimes = new Map(); // gameId -> timestamp
+    this.phaseStartTimes = new Map(); // gameId -> timestamp
+    this.MAX_GAME_DURATION = 30 * 60 * 1000; // 30 minutes
+    this.MAX_PHASE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+    // Start monitoring service
+    this.startMonitoringService();
   }
 
   // Generate a human-readable room code
   generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let roomCode = '';
-    
+
     // Generate 6-character room code
     for (let i = 0; i < 6; i++) {
       roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    
+
     // Ensure uniqueness
     if (this.roomCodes.has(roomCode)) {
       return this.generateRoomCode(); // Recursive call to generate new code
     }
-    
+
     return roomCode;
   }
 
@@ -145,14 +152,14 @@ class GameManager {
       if (!contractGameId) {
         throw new Error('No contract gameId available for staking');
       }
-      
+
       const stakeResult = await this.stakingService.stakeForGame(contractGameId, playerAddress, roomCode);
-      
+
       // Update game staking status
       game.stakingStatus = stakeResult.gameStatus;
-      
+
       console.log(`💰 Player ${playerAddress} staked for game ${gameId}`);
-      
+
       return stakeResult;
     } catch (error) {
       console.error('❌ Error staking for game:', error);
@@ -176,12 +183,12 @@ class GameManager {
       const stakeKey = `${gameId}-${playerAddress}`;
       return game.playerStakes && game.playerStakes.has(stakeKey);
     });
-    
+
     return game.players.length >= game.minPlayers && allPlayersStaked;
   }
 
   // Record that a player has staked
-  recordPlayerStake(gameId, playerAddress, transactionHash) {
+  async recordPlayerStake(gameId, playerAddress, transactionHash) {
     console.log(`💰 recordPlayerStake called with:`, { gameId, playerAddress: typeof playerAddress === 'object' ? JSON.stringify(playerAddress) : playerAddress, transactionHash });
 
     const game = this.games.get(gameId);
@@ -199,6 +206,21 @@ class GameManager {
       stakedAt: Date.now(),
       amount: game.stakeAmount
     });
+
+    // If this is the creator staking, set isReady=true in database
+    if (addressString.toLowerCase() === game.creator.toLowerCase()) {
+      console.log(`✅ Creator ${addressString} has staked - marking game ${gameId} as ready in database`);
+      try {
+        const dbGame = await Game.findOne({ gameId });
+        if (dbGame) {
+          dbGame.isReady = true;
+          await dbGame.save();
+          console.log(`💾 Game ${gameId} marked as ready (isReady=true) in database`);
+        }
+      } catch (error) {
+        console.error('❌ Error setting isReady flag in database:', error);
+      }
+    }
 
     // Add player to game if not already in it
     if (!game.players.includes(addressString)) {
@@ -235,7 +257,7 @@ class GameManager {
         createdAt: game.createdAt || Date.now()
       });
     }
-    
+
     // Add player to StakingService game if it exists
     if (contractGameId && this.stakingService.stakedGames.has(contractGameId)) {
       const stakingGame = this.stakingService.stakedGames.get(contractGameId);
@@ -245,7 +267,7 @@ class GameManager {
         console.log(`💰 Added player ${playerAddress} to StakingService game ${contractGameId}`);
       }
     }
-    
+
     // Check if game is ready to start
     this.checkStakingStatus(gameId);
   }
@@ -356,10 +378,10 @@ class GameManager {
 
     // Don't auto-start here - let checkStakingStatus handle it with proper delay
     console.log(`Player ${playerAddress} joined game ${gameId}. Total players: ${game.players.length}`);
-    
+
     // Check if game is ready to start after adding player
     this.checkStakingStatus(gameId);
-    
+
     // Emit game state update when player joins
     if (this.socketManager) {
       try {
@@ -376,13 +398,13 @@ class GameManager {
   joinGameByRoomCode(roomCode, playerAddress) {
     console.log(`Attempting to join game with room code: ${roomCode}`);
     console.log(`Available room codes:`, Array.from(this.roomCodes.keys()));
-    
+
     const gameId = this.roomCodes.get(roomCode);
     if (!gameId) {
       console.log(`Room code ${roomCode} not found in roomCodes map`);
       throw new Error('Room code not found');
     }
-    
+
     console.log(`Found game ${gameId} for room code ${roomCode}`);
     return this.joinGame(gameId, playerAddress);
   }
@@ -397,15 +419,11 @@ class GameManager {
     return this.games.get(gameId);
   }
 
-  // Leave a game (only allowed in lobby phase)
+  // Leave a game (allowed in any phase)
   async leaveGame(gameId, playerAddress) {
     const game = this.games.get(gameId);
     if (!game) {
       throw new Error('Game not found');
-    }
-
-    if (game.phase !== 'lobby') {
-      throw new Error('Cannot leave game after it has started');
     }
 
     const playerIndex = game.players.indexOf(playerAddress);
@@ -413,60 +431,108 @@ class GameManager {
       throw new Error('Player not in this game');
     }
 
-    // Remove player from in-memory game
-    game.players.splice(playerIndex, 1);
+    const isInLobby = game.phase === 'lobby';
+    const isActiveGame = !isInLobby;
 
-    // Remove player's stake tracking
-    if (game.playerStakes && game.playerStakes.has(playerAddress)) {
-      game.playerStakes.delete(playerAddress);
-    }
+    console.log(`👋 Player ${playerAddress} leaving game ${gameId} (phase: ${game.phase})`);
 
-    console.log(`👋 Player ${playerAddress} left game ${gameId}. Remaining players: ${game.players.length}`);
+    // LOBBY PHASE: Remove player entirely
+    if (isInLobby) {
+      // Remove player from in-memory game
+      game.players.splice(playerIndex, 1);
 
-    // If creator left or no players remain, cancel the game
-    if (game.players.length === 0 || game.creator === playerAddress) {
-      console.log(`🚫 Game ${gameId} cancelled - ${game.players.length === 0 ? 'no players remain' : 'creator left'}`);
+      // Remove player's stake tracking
+      if (game.playerStakes && game.playerStakes.has(playerAddress)) {
+        game.playerStakes.delete(playerAddress);
+      }
 
-      // Remove from in-memory
-      this.games.delete(gameId);
-      this.roomCodes.delete(game.roomCode);
+      console.log(`👋 Player ${playerAddress} left lobby ${gameId}. Remaining players: ${game.players.length}`);
 
-      // Update database status
-      try {
-        const dbGame = await Game.findOne({ gameId });
-        if (dbGame) {
-          dbGame.status = 'cancelled';
-          await dbGame.save();
-          console.log(`💾 Game ${gameId} marked as cancelled in database`);
+      // If creator left or no players remain, cancel the game
+      if (game.players.length === 0 || game.creator === playerAddress) {
+        console.log(`🚫 Game ${gameId} cancelled - ${game.players.length === 0 ? 'no players remain' : 'creator left'}`);
+
+        // Remove from in-memory
+        this.games.delete(gameId);
+        this.roomCodes.delete(game.roomCode);
+
+        // Update database status
+        try {
+          const dbGame = await Game.findOne({ gameId });
+          if (dbGame) {
+            dbGame.status = 'cancelled';
+            await dbGame.save();
+            console.log(`💾 Game ${gameId} marked as cancelled in database`);
+          }
+        } catch (error) {
+          console.error('❌ Error updating game status in database:', error);
         }
-      } catch (error) {
-        console.error('❌ Error updating game status in database:', error);
+
+        // Emit game cancelled event
+        if (this.socketManager) {
+          this.socketManager.io.to(gameId).emit('game_cancelled', {
+            gameId,
+            reason: game.creator === playerAddress ? 'Creator left the game' : 'All players left'
+          });
+        }
+
+        return { cancelled: true, remainingPlayers: [] };
+      }
+    }
+    // ACTIVE GAME: Mark as eliminated, forfeit stake
+    else {
+      console.log(`⚠️ Player ${playerAddress} leaving active game ${gameId} - marking as eliminated`);
+
+      // Add to eliminated list if not already there
+      if (!game.eliminated) {
+        game.eliminated = [];
+      }
+      if (!game.eliminated.includes(playerAddress)) {
+        game.eliminated.push(playerAddress);
       }
 
-      // Emit game cancelled event
-      if (this.socketManager) {
-        this.socketManager.io.to(gameId).emit('game_cancelled', {
-          gameId,
-          reason: game.creator === playerAddress ? 'Creator left the game' : 'All players left'
-        });
-      }
+      // Stake is forfeited automatically (goes to winner pool)
+      console.log(`💸 Player ${playerAddress} forfeits stake by leaving`);
 
-      return { cancelled: true, remainingPlayers: [] };
+      // Check if game should end (too few players remaining)
+      const alivePlayers = game.players.filter(p => !game.eliminated.includes(p));
+      const minPlayers = game.minPlayers || 4;
+
+      if (alivePlayers.length < 2) {
+        console.log(`🏁 Game ${gameId} ending - only ${alivePlayers.length} alive players remain`);
+
+        // End game with remaining alive players as winners
+        await this.endGame(gameId);
+        return { cancelled: false, gameEnded: true, remainingPlayers: alivePlayers };
+      }
     }
 
     // Sync to database
     try {
       const dbGame = await Game.findOne({ gameId });
       if (dbGame) {
-        const playerIdx = dbGame.currentPlayers.indexOf(playerAddress);
-        if (playerIdx !== -1) {
-          dbGame.currentPlayers.splice(playerIdx, 1);
-          await dbGame.save();
-          console.log(`💾 Removed player ${playerAddress} from database for game ${gameId}`);
+        if (isInLobby) {
+          // Remove from currentPlayers in lobby
+          const playerIdx = dbGame.currentPlayers.indexOf(playerAddress);
+          if (playerIdx !== -1) {
+            dbGame.currentPlayers.splice(playerIdx, 1);
+            await dbGame.save();
+            console.log(`💾 Removed player ${playerAddress} from database for game ${gameId}`);
+          }
+        } else {
+          // Add to eliminated in active game
+          if (!dbGame.eliminated) {
+            dbGame.eliminated = [];
+          }
+          if (!dbGame.eliminated.includes(playerAddress)) {
+            dbGame.eliminated.push(playerAddress);
+            await dbGame.save();
+            console.log(`💾 Marked player ${playerAddress} as eliminated in database for game ${gameId}`);
+          }
         }
       }
     } catch (error) {
-      console.error('❌ Error syncing player removal to database:', error);
+      console.error('❌ Error syncing player leave to database:', error);
     }
 
     // Emit game state update
@@ -509,6 +575,10 @@ class GameManager {
     game.startedAt = Date.now();
     game.timeLeft = parseInt(process.env.GAME_TIMEOUT_SECONDS) || 30;
 
+    // Track game start time for timeout monitoring
+    this.gameStartTimes.set(gameId, Date.now());
+    this.phaseStartTimes.set(gameId, Date.now());
+
     console.log(`🎯 Game ${gameId} starting night phase with ${game.timeLeft}s timer`);
 
     // Update status in database to prevent 15-minute TTL deletion
@@ -518,7 +588,7 @@ class GameManager {
     await this.startTimer(gameId);
 
     console.log(`Game ${gameId} started with ${game.players.length} players`);
-    
+
     // Emit game state update when game starts
     if (this.socketManager) {
       try {
@@ -527,7 +597,7 @@ class GameManager {
         console.error(`❌ Error emitting game state update when game starts:`, error);
       }
     }
-    
+
     return game;
   }
 
@@ -546,14 +616,14 @@ class GameManager {
     game.timerReady = false;
     game.readyPlayers = new Set(); // Track which players are ready
     game.readyTimer = null; // Timer for auto-start after grace period
-    
+
     if (immediate) {
       // Start timer immediately (for phase transitions)
       console.log(`Starting timer immediately for game ${gameId}, phase: ${game.phase}`);
       await this.startActualTimer(gameId);
     } else {
       // Wait for players to be ready (for game start)
-    console.log(`Timer prepared for game ${gameId}, waiting for all players to be ready`);
+      console.log(`Timer prepared for game ${gameId}, waiting for all players to be ready`);
     }
   }
 
@@ -568,7 +638,7 @@ class GameManager {
 
     // Check if all active players are ready
     const activePlayers = game.players.filter(p => !game.eliminated.includes(p));
-    
+
     if (game.readyPlayers.size >= activePlayers.length) {
       console.log(`All players ready, starting timer immediately`);
       await this.startActualTimer(gameId);
@@ -613,26 +683,26 @@ class GameManager {
     console.log(`Starting timer for game ${gameId} - Phase: ${game.phase}, TimeLeft: ${game.timeLeft}`);
 
     try {
-    game.timerInterval = setInterval(async () => {
+      game.timerInterval = setInterval(async () => {
         console.log(`Timer tick for game ${gameId}: timeLeft=${game.timeLeft}, phase=${game.phase}`);
-      if (game.timeLeft > 0) {
-        game.timeLeft--;
-        console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
-        
-        // Emit game state update every second during countdown
-        if (this.socketManager) {
-          try {
-            this.socketManager.emitGameStateUpdate(gameId);
-          } catch (error) {
-            console.error(`❌ Error emitting game state update during timer countdown:`, error);
+        if (game.timeLeft > 0) {
+          game.timeLeft--;
+          console.log(`Game ${gameId} timer: ${game.timeLeft}s (Phase: ${game.phase})`);
+
+          // Emit game state update every second during countdown
+          if (this.socketManager) {
+            try {
+              this.socketManager.emitGameStateUpdate(gameId);
+            } catch (error) {
+              console.error(`❌ Error emitting game state update during timer countdown:`, error);
+            }
           }
-        }
-      } else {
-        // Timer expired, resolve current phase
+        } else {
+          // Timer expired, resolve current phase
           console.log(`Timer expired for game ${gameId}, resolving phase: ${game.phase}`);
-        await this.handleTimerExpired(gameId);
-      }
-    }, 1000);
+          await this.handleTimerExpired(gameId);
+        }
+      }, 1000);
 
       // Verify timer was started
       console.log(`Timer verification for game ${gameId}: timerInterval=${!!game.timerInterval}, timerReady=${game.timerReady}`);
@@ -651,7 +721,7 @@ class GameManager {
 
     console.log(`=== TIMER EXPIRED FOR GAME ${gameId} ===`);
     console.log(`Current phase: ${game.phase}, timeLeft: ${game.timeLeft}`);
-    
+
     // Clear timer
     if (game.timerInterval) {
       clearInterval(game.timerInterval);
@@ -717,17 +787,17 @@ class GameManager {
     const roleData = JSON.stringify(game.roles);
     const salt = crypto.randomBytes(32).toString('hex');
     const commit = crypto.createHash('sha256').update(roleData + salt).digest('hex');
-    
+
     // Store salt for later verification
     game.roleSalt = salt;
-    
+
     return commit;
   }
 
   // Submit night action
   submitNightAction(gameId, data) {
     const game = this.games.get(gameId);
-    
+
     console.log(`🌙 NIGHT ACTION SUBMISSION - DEBUG VERSION`);
     console.log(`Night action attempt for game ${gameId}:`, {
       gameExists: !!game,
@@ -736,19 +806,19 @@ class GameManager {
       timeLeft: game?.timeLeft,
       timerReady: game?.timerReady
     });
-    
+
     if (!game) {
       throw new Error('Game not found');
     }
-    
+
     if (game.phase !== 'night') {
       throw new Error(`Invalid game phase: expected 'night', got '${game.phase}'`);
     }
 
     const { playerAddress, action, commit } = data;
-    
+
     console.log(`Night action submitted by ${playerAddress}:`, action);
-    
+
     if (!game.players.includes(playerAddress)) {
       throw new Error('Player not in game');
     }
@@ -765,9 +835,9 @@ class GameManager {
     // Check if all players have submitted actions
     const activePlayers = game.players.filter(p => !game.eliminated.includes(p));
     const submittedCount = Object.keys(game.pendingActions).length;
-    
+
     console.log(`Active players: ${activePlayers.length}, Submitted actions: ${submittedCount}`);
-    
+
     if (submittedCount >= activePlayers.length) {
       console.log(`All players submitted actions, resolving night phase`);
       this.resolveNightPhase(gameId);
@@ -801,7 +871,7 @@ class GameManager {
     const mafiaKill = this.processMafiaAction(game);
     const doctorSave = this.processDoctorAction(game);
     const detectiveInvestigation = this.processDetectiveAction(game);
-    
+
     // Create detailed resolution data with player objects
     const resolution = {
       mafiaTarget: mafiaKill ? this.getPlayerObject(game, mafiaKill) : null,
@@ -812,7 +882,7 @@ class GameManager {
       savedPlayer: null,
       investigationPlayer: detectiveInvestigation.target ? this.getPlayerObject(game, detectiveInvestigation.target) : null
     };
-    
+
     // Apply results
     if (mafiaKill && mafiaKill !== doctorSave) {
       game.eliminated.push(mafiaKill);
@@ -837,6 +907,7 @@ class GameManager {
     // Move to resolution phase (10 seconds - increased for stability)
     game.phase = 'resolution';
     game.timeLeft = 10; // Increased from 5 to 10 seconds for stability
+    this.phaseStartTimes.set(gameId, Date.now()); // Track phase start time
 
     // Reset timer state for resolution phase
     if (game.timerInterval) {
@@ -903,13 +974,14 @@ class GameManager {
     game.task = this.generateTask();
     game.pendingActions = {};
     game.timeLeft = 30; // 30 seconds for task/discussion
+    this.phaseStartTimes.set(gameId, Date.now()); // Track phase start time
 
     // Start timer for task phase (same pattern as game start)
     console.log(`Starting task phase timer for game ${gameId}`);
     await this.startTimer(gameId, true);
 
     console.log(`Resolution phase resolved for game ${gameId}, moved to task phase`);
-    
+
     // Emit game state update to frontend
     if (this.socketManager) {
       try {
@@ -938,13 +1010,14 @@ class GameManager {
     game.timeLeft = 10; // 10 seconds for voting
     game.votes = {};
     game.votingResult = null;
+    this.phaseStartTimes.set(gameId, Date.now()); // Track phase start time
 
     // Start timer for voting phase (same pattern as game start)
     console.log(`Starting voting phase timer for game ${gameId}`);
     await this.startTimer(gameId, true);
 
     console.log(`Task phase resolved for game ${gameId}, moved to voting phase`);
-    
+
     // Emit game state update to frontend
     if (this.socketManager) {
       try {
@@ -1026,6 +1099,7 @@ class GameManager {
       game.day++;
       game.timeLeft = 30;
       game.pendingActions = {};
+      this.phaseStartTimes.set(gameId, Date.now()); // Track phase start time
       game.votes = {};
       game.votingResolved = false; // Reset for next voting round
       game.votingResult = null; // Reset for next voting round
@@ -1042,10 +1116,10 @@ class GameManager {
   processDetectiveAction(game) {
     const detective = game.players.find(p => game.roles[p] === 'Detective' && !game.eliminated.includes(p));
     if (!detective || !game.pendingActions[detective]) return { target: null, result: null };
-    
+
     const target = game.pendingActions[detective].action.target;
     const actualRole = game.roles[target]; // Return the actual role instead of just Mafia/Not Mafia
-    
+
     return {
       target: target,
       result: actualRole // Return actual role: 'Mafia', 'Doctor', 'Detective', 'Villager'
@@ -1056,7 +1130,7 @@ class GameManager {
   processMafiaAction(game) {
     const mafia = game.players.find(p => game.roles[p] === 'Mafia' && !game.eliminated.includes(p));
     if (!mafia || !game.pendingActions[mafia]) return null;
-    
+
     return game.pendingActions[mafia].action.target;
   }
 
@@ -1064,64 +1138,93 @@ class GameManager {
   processDoctorAction(game) {
     const doctor = game.players.find(p => game.roles[p] === 'Doctor' && !game.eliminated.includes(p));
     if (!doctor || !game.pendingActions[doctor]) return null;
-    
+
     return game.pendingActions[doctor].action.target;
   }
 
   // Generate a task
   generateTask() {
-    const taskTypes = ['sequence', 'memory', 'hash'];
+    const taskTypes = ['memory_words', 'memory_number', 'captcha', 'math'];
     const type = taskTypes[Math.floor(Math.random() * taskTypes.length)];
-    
+
     switch (type) {
-      case 'sequence':
+      case 'memory_words':
         return {
-          type: 'sequence',
-          data: this.generateSequenceTask(),
+          type: 'memory_words',
+          data: this.generateMemoryWordsTask(),
           submissions: {}
         };
-      case 'memory':
+      case 'memory_number':
         return {
-          type: 'memory',
-          data: this.generateMemoryTask(),
+          type: 'memory_number',
+          data: this.generateMemoryNumberTask(),
           submissions: {}
         };
-      case 'hash':
+      case 'captcha':
         return {
-          type: 'hash',
-          data: this.generateHashTask(),
+          type: 'captcha',
+          data: this.generateCaptchaTask(),
+          submissions: {}
+        };
+      case 'math':
+        return {
+          type: 'math',
+          data: this.generateMathTask(),
           submissions: {}
         };
     }
   }
 
-  // Generate sequence task
-  generateSequenceTask() {
-    const sequence = Array.from({ length: 4 }, () => Math.floor(Math.random() * 10));
-    return {
-      sequence,
-      shuffled: [...sequence].sort(() => Math.random() - 0.5)
-    };
+  // Generate memory words task - 3 random words
+  generateMemoryWordsTask() {
+    const wordList = [
+      'apple', 'banana', 'cherry', 'dragon', 'elephant', 'fire', 'green', 'house',
+      'ice', 'jungle', 'king', 'lion', 'moon', 'ninja', 'ocean', 'pizza',
+      'queen', 'robot', 'star', 'tiger', 'unicorn', 'volcano', 'wizard', 'xray'
+    ];
+
+    const words = [];
+    const usedIndices = new Set();
+
+    // Get 3 unique random words
+    while (words.length < 3) {
+      const randomIndex = Math.floor(Math.random() * wordList.length);
+      if (!usedIndices.has(randomIndex)) {
+        usedIndices.add(randomIndex);
+        words.push(wordList[randomIndex]);
+      }
+    }
+
+    return { words };
   }
 
-  // Generate memory task
-  generateMemoryTask() {
-    const items = ['apple', 'banana', 'cherry', 'date', 'elderberry'];
-    const selected = items.slice(0, 3);
-    return {
-      items: selected,
-      shuffled: [...selected].sort(() => Math.random() - 0.5)
-    };
+  // Generate memory number task - 5-digit number
+  generateMemoryNumberTask() {
+    const number = Math.floor(10000 + Math.random() * 90000).toString();
+    return { number };
   }
 
-  // Generate hash task
-  generateHashTask() {
-    const data = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.createHash('sha256').update(data).digest('hex');
-    return {
-      hash,
-      fragment: hash.substring(0, 8)
-    };
+  // Generate captcha task - 5-character string
+  generateCaptchaTask() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let captcha = '';
+
+    for (let i = 0; i < 5; i++) {
+      captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    return { captcha };
+  }
+
+  // Generate math task - simple arithmetic
+  generateMathTask() {
+    const num1 = Math.floor(Math.random() * 50) + 1;
+    const num2 = Math.floor(Math.random() * 50) + 1;
+    const operators = ['+', '-', '*'];
+    const operator = operators[Math.floor(Math.random() * operators.length)];
+    const equation = `${num1} ${operator} ${num2}`;
+
+    return { equation };
   }
 
   // Submit task answer
@@ -1136,16 +1239,43 @@ class GameManager {
 
     // Check if answer is correct
     const correct = this.validateTaskAnswer(game.task, answer);
-    
+
+    // Initialize task counts if not exists
+    if (!game.taskCounts) {
+      game.taskCounts = {};
+    }
+    if (!game.taskCounts[playerAddress]) {
+      game.taskCounts[playerAddress] = 0;
+    }
+
+    // Update task count based on result
+    if (correct) {
+      game.taskCounts[playerAddress] += 1;
+    } else {
+      game.taskCounts[playerAddress] = Math.max(0, game.taskCounts[playerAddress] - 1);
+    }
+
+    // Send task result announcement via socket
+    if (this.socketManager) {
+      this.socketManager.emitTaskResult(gameId, {
+        playerAddress,
+        isSuccess: correct,
+        taskCount: game.taskCounts[playerAddress]
+      });
+    }
+
+    console.log(`📊 Task result for ${playerAddress}: ${correct ? 'SUCCESS' : 'FAILURE'}, count: ${game.taskCounts[playerAddress]}`);
+
     // Check if all players submitted
     const activePlayers = game.players.filter(p => !game.eliminated.includes(p));
     const submittedCount = Object.keys(game.task.submissions).length;
-    
+
     if (submittedCount >= activePlayers.length) {
       // Move to voting phase
       game.phase = 'voting';
       game.timeLeft = 10; // 10 seconds for voting
       game.votes = {};
+      this.phaseStartTimes.set(gameId, Date.now()); // Track phase start time
     }
 
     return { correct, gameComplete: false };
@@ -1154,12 +1284,32 @@ class GameManager {
   // Validate task answer
   validateTaskAnswer(task, answer) {
     switch (task.type) {
-      case 'sequence':
-        return JSON.stringify(task.data.sequence) === JSON.stringify(answer);
-      case 'memory':
-        return JSON.stringify(task.data.items) === JSON.stringify(answer);
-      case 'hash':
-        return task.data.hash === answer;
+      case 'memory_words':
+        // Answer should be space-separated words in correct order
+        const expectedWords = task.data.words.join(' ').toLowerCase();
+        const userAnswer = answer.toLowerCase().trim();
+        return expectedWords === userAnswer;
+
+      case 'memory_number':
+        // Answer should be exact 5-digit number
+        return task.data.number === answer.trim();
+
+      case 'captcha':
+        // Answer should match captcha (case-insensitive)
+        return task.data.captcha.toLowerCase() === answer.toLowerCase().trim();
+
+      case 'math':
+        // Evaluate the equation and check if answer matches
+        try {
+          const equation = task.data.equation;
+          const expectedResult = eval(equation); // Safe since we control the equation format
+          const userAnswer = parseInt(answer.trim());
+          return expectedResult === userAnswer;
+        } catch (error) {
+          console.error('Error evaluating math equation:', error);
+          return false;
+        }
+
       default:
         return false;
     }
@@ -1240,6 +1390,10 @@ class GameManager {
 
     game.phase = 'ended';
     game.status = 'completed';
+
+    // Cleanup timeout tracking
+    this.gameStartTimes.delete(gameId);
+    this.phaseStartTimes.delete(gameId);
     game.timeLeft = 0;
 
     console.log(`Game ${gameId} ended. Winners:`, game.winners);
@@ -1251,13 +1405,13 @@ class GameManager {
     if (game.stakingRequired) {
       try {
         console.log(`💰 Processing rewards for staked game ${gameId}`);
-        
+
         // Determine winners and losers
         const winners = game.winners || [];
         const losers = game.players.filter(player => !winners.includes(player));
-        
+
         console.log(`💰 Winners: ${winners.length}, Losers: ${losers.length}`);
-        
+
         // Distribute rewards using contract gameId
         const contractGameId = game.onChainGameId;
         console.log(`💰 Game ${gameId} has onChainGameId: ${contractGameId}`);
@@ -1265,24 +1419,24 @@ class GameManager {
           console.error('❌ No contract gameId available for reward distribution');
           return game;
         }
-        
+
         console.log(`💰 Using contract gameId: ${contractGameId}`);
         console.log(`💰 Winners:`, winners);
         console.log(`💰 Losers:`, losers);
         console.log(`💰 Game roles:`, game.roles);
         console.log(`💰 Eliminated players:`, game.eliminated || []);
-        
+
         // Calculate rewards using contract gameId
         const rewards = this.stakingService.calculateRewards(contractGameId, winners, losers, game.roles, game.eliminated || []);
         console.log(`💰 Rewards calculated:`, rewards);
-        
+
         const distributionResult = await this.stakingService.distributeRewards(contractGameId, rewards);
-        
+
         console.log(`💰 Rewards distributed for game ${gameId}:`, distributionResult);
-        
+
         // Store reward info in game
         game.rewards = distributionResult;
-        
+
       } catch (error) {
         console.error('❌ Error distributing rewards:', error);
         // Don't throw error - game should still end even if rewards fail
@@ -1361,9 +1515,9 @@ class GameManager {
 
         // If player is Detective and has submitted an investigation, include target's role
         if (game.roles[playerAddress] === 'Detective' &&
-            game.phase === 'night' &&
-            game.pendingActions &&
-            game.pendingActions[playerAddress]) {
+          game.phase === 'night' &&
+          game.pendingActions &&
+          game.pendingActions[playerAddress]) {
           const action = game.pendingActions[playerAddress];
           if (action.action && action.action.target) {
             const targetAddress = action.action.target;
@@ -1398,7 +1552,7 @@ class GameManager {
     if (!this.detectiveReveals.has(gameId)) {
       this.detectiveReveals.set(gameId, []);
     }
-    
+
     this.detectiveReveals.get(gameId).push({
       ...reveal,
       timestamp: Date.now()
@@ -1548,6 +1702,92 @@ class GameManager {
     } catch (error) {
       console.warn('⚠️ Could not update game status in database:', error.message);
       // Continue - status is already tracked in memory
+    }
+  }
+
+  // Start monitoring service to prevent stuck games
+  startMonitoringService() {
+    // Check every 1 minute
+    setInterval(() => {
+      this.checkForStuckGames();
+    }, 60 * 1000);
+
+    console.log('✅ Game timeout monitoring service started');
+  }
+
+  // Check for stuck games and handle them
+  async checkForStuckGames() {
+    const now = Date.now();
+
+    for (const [gameId, game] of this.games.entries()) {
+      // Skip lobby and ended games
+      if (game.phase === 'lobby' || game.phase === 'ended') {
+        continue;
+      }
+
+      const gameStartTime = this.gameStartTimes.get(gameId);
+      const phaseStartTime = this.phaseStartTimes.get(gameId);
+
+      // Check if game exceeded maximum duration
+      if (gameStartTime && (now - gameStartTime) > this.MAX_GAME_DURATION) {
+        console.log(`⏰ Game ${gameId} exceeded max duration (30 min) - force ending`);
+
+        try {
+          // Determine winners: all alive players
+          const alivePlayers = game.players.filter(p => !game.eliminated || !game.eliminated.includes(p));
+          await this.endGame(gameId);
+
+          // Notify players
+          if (this.socketManager) {
+            this.socketManager.io.to(`game-${gameId}`).emit('game_update', {
+              type: 'game_timeout',
+              message: 'Game exceeded maximum duration and was ended',
+              timestamp: Date.now()
+            });
+          }
+        } catch (error) {
+          console.error(`❌ Error force-ending game ${gameId}:`, error);
+        }
+
+        continue;
+      }
+
+      // Check if phase is stuck
+      if (phaseStartTime && (now - phaseStartTime) > this.MAX_PHASE_DURATION) {
+        console.log(`⏰ Game ${gameId} stuck in phase ${game.phase} for >5 min - forcing phase advance`);
+
+        try {
+          // Auto-submit pending actions for inactive players
+          if (game.phase === 'night') {
+            // Auto-submit "no action" for players who haven't acted
+            for (const playerAddress of game.players) {
+              if (!game.pendingActions || !game.pendingActions[playerAddress]) {
+                console.log(`🤖 Auto-submitting no action for AFK player ${playerAddress}`);
+                // Player didn't act - they're AFK, treat as no action
+              }
+            }
+            await this.resolveNightPhase(gameId);
+          } else if (game.phase === 'task') {
+            await this.resolveTaskPhase(gameId);
+          } else if (game.phase === 'voting') {
+            await this.resolveVotingPhase(gameId);
+          }
+
+          // Update phase start time
+          this.phaseStartTimes.set(gameId, Date.now());
+
+          // Notify players
+          if (this.socketManager) {
+            this.socketManager.io.to(`game-${gameId}`).emit('game_update', {
+              type: 'phase_timeout',
+              message: 'Phase exceeded time limit and was auto-resolved',
+              timestamp: Date.now()
+            });
+          }
+        } catch (error) {
+          console.error(`❌ Error auto-resolving phase for game ${gameId}:`, error);
+        }
+      }
     }
   }
 }

@@ -210,7 +210,7 @@ module.exports = (gameManager, aptosService) => {
         return res.status(400).json({ error: 'Game ID, player address, and transaction hash are required' });
       }
 
-      gameManager.recordPlayerStake(gameId, playerAddress, transactionHash);
+      await gameManager.recordPlayerStake(gameId, playerAddress, transactionHash);
 
       const game = gameManager.getGame(gameId);
       console.log('✅ Stake recorded. Game now has players:', game?.players);

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
-import { truncateAddress, formatAPT } from "@/utils/winProbability"
+import { truncateAddress, formatAPT, calculateWinProbabilities } from "@/utils/winProbability"
 import { useWallet, type InputTransactionData } from "@aptos-labs/wallet-adapter-react"
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk"
 
@@ -75,7 +75,16 @@ export default function PublicLobbiesScreen({ onJoinLobby, onBack, playerAddress
       const data = await response.json()
 
       if (data.success) {
-        setLobbies(data.lobbies)
+        // Calculate win percentages for each lobby
+        const lobbiesWithPercentages = data.lobbies.map((lobby: PublicLobby) => {
+          const winProbs = calculateWinProbabilities(lobby.stakeAmount, lobby.playerCount, lobby.minPlayers)
+          return {
+            ...lobby,
+            mafiaWinPercent: winProbs.mafiaWinPercent,
+            nonMafiaWinPercent: winProbs.nonMafiaWinPercent
+          }
+        })
+        setLobbies(lobbiesWithPercentages)
         setError('')
       } else {
         setError('Failed to load lobbies')

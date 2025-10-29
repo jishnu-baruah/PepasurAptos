@@ -6,18 +6,17 @@ import WalletConnect from "@/components/wallet-connect"
 import LobbyScreen from "@/components/lobby-screen"
 import RoleAssignmentScreen from "@/components/role-assignment-screen"
 import GameplayScreen from "@/components/gameplay-screen"
-import RoomCodeDisplay from "@/components/room-code-display"
-import ChatComponent from "@/components/chat-component"
 import GameResultsScreen from "@/components/game-results-screen"
 import NightResolutionScreen from "@/components/night-resolution-screen"
 import DiscussionPhaseScreen from "@/components/discussion-phase-screen"
 import VotingScreen from "@/components/voting-screen"
 import StakingScreen from "@/components/staking-screen"
 import PublicLobbiesScreen from "@/components/public-lobbies-screen"
-import SoundToggle from "@/components/sound-toggle"
+
 import { useGame, Player } from "@/hooks/useGame"
+import { useAutoFullscreen } from "@/hooks/useAutoFullscreen"
 import { soundService } from "@/services/SoundService"
-import { saveGameSession, getGameSession, clearGameSession, isSessionValid } from "@/utils/sessionPersistence"
+import { saveGameSession, getGameSession, clearGameSession, isSessionValid, refreshSessionTimestamp } from "@/utils/sessionPersistence"
 
 export type GameState = "loader" | "wallet" | "room-code-input" | "staking" | "public-lobbies" | "lobby" | "role-assignment" | "night" | "resolution" | "task" | "voting" | "ended"
 export type Role = "ASUR" | "DEVA" | "RISHI" | "MANAV"
@@ -28,7 +27,7 @@ export default function Home() {
   const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null)
   const [stakingMode, setStakingMode] = useState<'create' | 'join'>('create')
   const [isLoadingGame, setIsLoadingGame] = useState(false)
-  
+
   const {
     game,
     currentPlayer,
@@ -37,15 +36,22 @@ export default function Home() {
     error,
     isConnected,
     currentGameId,
-    joinGame,
-    joinGameByRoomCode,
     setCurrentGameId,
     setCurrentPlayerFromAddress,
     refreshGame,
     submitNightAction,
     submitTaskAnswer,
     submitVote,
+    resetGame,
   } = useGame()
+
+  // Auto-fullscreen during gameplay phases (after game hook)
+  useAutoFullscreen({
+    enabled: true,
+    gamePhases: ['night', 'task', 'voting'],
+    currentPhase: game?.phase,
+    delay: 500
+  })
 
   useEffect(() => {
     if (gameState === "loader") {
@@ -56,19 +62,22 @@ export default function Home() {
     }
   }, [gameState])
 
-  const [hasSeenRole, setHasSeenRole] = useState(false)
-  const [showDisconnectedWarning, setShowDisconnectedWarning] = useState(false)
-
+  // Clear any stale sessions on app startup
   useEffect(() => {
-    if (!isConnected && gameState !== "loader") {
-      const timer = setTimeout(() => {
-        setShowDisconnectedWarning(true)
-      }, 15000)
-      return () => clearTimeout(timer)
-    } else {
-      setShowDisconnectedWarning(false)
+    const savedSession = getGameSession()
+    if (savedSession) {
+      // Check if session is older than 3 minutes - likely stale
+      const THREE_MINUTES = 3 * 60 * 1000
+      const age = Date.now() - savedSession.timestamp
+      if (age > THREE_MINUTES) {
+        console.log('🧹 Clearing stale session on app startup')
+        clearGameSession()
+      }
     }
-  }, [isConnected, gameState])
+  }, [])
+
+  const [hasSeenRole, setHasSeenRole] = useState(false)
+  const [lastEliminatedPlayer, setLastEliminatedPlayer] = useState<string | null>(null)
 
   // Save session when entering lobby or during active game
   useEffect(() => {
@@ -76,6 +85,18 @@ export default function Home() {
       saveGameSession(game.gameId, currentRoomCode, walletAddress)
     }
   }, [game?.gameId, currentRoomCode, walletAddress, game?.phase])
+
+  // Periodic session refresh every 5 minutes during active games
+  useEffect(() => {
+    if (game?.gameId && game.phase !== 'ended') {
+      const refreshInterval = setInterval(() => {
+        refreshSessionTimestamp()
+        console.log('🔄 Session timestamp refreshed')
+      }, 5 * 60 * 1000) // 5 minutes
+
+      return () => clearInterval(refreshInterval)
+    }
+  }, [game?.gameId, game?.phase])
 
   // Clear session when game ends
   useEffect(() => {
@@ -92,24 +113,37 @@ export default function Home() {
     }
   }, [game, currentGameId])
 
-  // Handle game cancellation (when game becomes null while in lobby)
+  // Handle game cancellation or not found (when game becomes null while in lobby)
   // But don't cancel immediately - give socket time to deliver game state
   useEffect(() => {
     if (!game && gameState === 'lobby' && currentGameId && !isLoadingGame) {
-      // Add a small delay to distinguish between "loading" and "cancelled"
+      // Add a small delay to distinguish between "loading" and "cancelled/not found"
       const cancelTimer = setTimeout(() => {
-        console.log('🚫 Game was cancelled, returning to staking screen')
+        console.log('🚫 Game was cancelled or not found, returning to wallet screen')
         clearGameSession()
-        setCurrentGameId(null)
+        setCurrentGameId(undefined)
         setCurrentRoomCode(null)
         setIsLoadingGame(false)
-        setGameState('staking')
+        setGameState('wallet')
         setHasSeenRole(false)
       }, 2000) // Wait 2 seconds before considering it cancelled
 
       return () => clearTimeout(cancelTimer)
     }
   }, [game, gameState, currentGameId, setCurrentGameId, isLoadingGame])
+
+  // Handle socket errors by clearing invalid sessions
+  useEffect(() => {
+    if (error && error.toLowerCase().includes('not found')) {
+      console.log('🧹 Socket error indicates invalid game, clearing session and returning to wallet')
+      clearGameSession()
+      setCurrentGameId(undefined)
+      setCurrentRoomCode(null)
+      setIsLoadingGame(false)
+      setGameState('wallet')
+      setHasSeenRole(false)
+    }
+  }, [error, setCurrentGameId])
 
   useEffect(() => {
     // Sync game phase to UI state
@@ -146,6 +180,9 @@ export default function Home() {
         console.log('🌙 Transitioning to night phase, hasSeenRole:', hasSeenRole)
         setGameState('night')
       } else if (game.phase === 'resolution' && gameState !== 'resolution') {
+        // Find the most recently eliminated player (last in the eliminated array)
+        const newlyEliminated = game.eliminated.length > 0 ? game.eliminated[game.eliminated.length - 1] : null
+        setLastEliminatedPlayer(newlyEliminated)
         setGameState('resolution')
       } else if (game.phase === 'task' && gameState !== 'task') {
         setGameState('task')
@@ -165,14 +202,20 @@ export default function Home() {
       // Check for saved game session
       const savedSession = getGameSession()
       if (savedSession && isSessionValid(address)) {
-        console.log('🔄 Restoring previous game session:', savedSession)
+        console.log('🔄 Attempting to restore previous game session:', savedSession)
 
         // Restore game state
         setCurrentGameId(savedSession.gameId)
         setCurrentRoomCode(savedSession.roomCode)
+        setIsLoadingGame(true)
 
-        // Attempt to rejoin the game
-        // The game hook will automatically fetch the game state
+        // Explicitly fetch game state - socket error handler will clear invalid sessions
+        setTimeout(() => {
+          refreshGame()
+          console.log('🔄 Fetching game state after session restoration')
+        }, 500)
+
+        // Navigate to lobby
         setGameState('lobby')
       }
     }
@@ -188,7 +231,7 @@ export default function Home() {
     setGameState("staking")
   }
 
-  const getPublicPlayerData = (players: Player[], currentPlayerId: string, showEliminatedAvatars: boolean = false) => {
+  const getPublicPlayerData = (players: Player[], currentPlayerId: string) => {
     return players.map(player => ({
       ...player,
       role: player.id === currentPlayerId ? player.role : undefined,
@@ -201,8 +244,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen gaming-bg relative overflow-hidden w-full">
-      {/* Sound Toggle Button */}
-      {/* <SoundToggle /> */}
+
 
       {error && (
         <div className="fixed top-4 right-4 z-50 bg-red-900/90 text-red-100 p-4 rounded border border-red-500">
@@ -217,12 +259,7 @@ export default function Home() {
         </div>
       )}
 
-      {showDisconnectedWarning && (
-        <div className="fixed top-4 left-4 z-50 bg-yellow-900/90 text-yellow-100 p-3 rounded border border-yellow-500">
-          <div className="font-press-start text-sm">DISCONNECTED</div>
-          <div className="text-xs">Reconnecting...</div>
-        </div>
-      )}
+
 
       {isLoading && (
         <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-40">
@@ -235,7 +272,7 @@ export default function Home() {
 
       {gameState === "loader" && <LoaderScreen />}
       {gameState === "wallet" && (
-        <WalletConnect 
+        <WalletConnect
           onAddressChange={handleWalletAddressChange}
           onJoinGame={handleJoinGame}
           onCreateLobby={handleCreateLobby}
@@ -280,25 +317,26 @@ export default function Home() {
             players={getPublicPlayerData(players, currentPlayer.id)}
             game={game}
             isConnected={isConnected}
-            onStartGame={() => {}}
+            onStartGame={() => { }}
             playerAddress={currentPlayer.address}
             onLeaveGame={() => {
-              console.log('🚪 Creator leaving game - returning to home')
+              console.log('🚪 Player leaving game - returning to home')
               clearGameSession()
-              setCurrentGameId(null)
+              resetGame()
               setCurrentRoomCode(null)
               setIsLoadingGame(false)
               setGameState('wallet')
               setHasSeenRole(false)
+              setLastEliminatedPlayer(null)
             }}
           />
         </>
       )}
       {gameState === "role-assignment" && currentPlayer?.role && currentPlayer?.avatar && (
-        <RoleAssignmentScreen 
-          role={currentPlayer.role as Role} 
+        <RoleAssignmentScreen
+          role={currentPlayer.role as Role}
           avatar={currentPlayer.avatar}
-          onAcknowledge={() => setHasSeenRole(true)} 
+          onAcknowledge={() => setHasSeenRole(true)}
         />
       )}
       {gameState === "night" && currentPlayer && (
@@ -309,20 +347,28 @@ export default function Home() {
           submitNightAction={submitNightAction}
           isConnected={isConnected}
           refreshGame={refreshGame}
-          onComplete={() => {}}
+          onComplete={() => { }}
         />
       )}
-      {gameState === "resolution" && game?.nightResolution && (
-        <NightResolutionScreen 
-          resolution={game.nightResolution}
-          onContinue={() => {}}
+      {gameState === "resolution" && game && (
+        <NightResolutionScreen
+          resolution={{
+            killedPlayer: lastEliminatedPlayer ? players.find(p => p.address === lastEliminatedPlayer) || null : null,
+            savedPlayer: null,
+            investigatedPlayer: null,
+            investigationResult: null,
+            mafiaTarget: null,
+            doctorTarget: null,
+            detectiveTarget: null
+          }}
+          onContinue={() => { }}
           game={game}
-          currentPlayer={currentPlayer}
+          currentPlayer={currentPlayer || undefined}
         />
       )}
       {gameState === "task" && (
         <DiscussionPhaseScreen
-          onComplete={() => {}}
+          onComplete={() => { }}
           game={game}
           gameId={game?.gameId}
           currentPlayerAddress={currentPlayer?.address}
@@ -332,35 +378,31 @@ export default function Home() {
       )}
       {gameState === "voting" && currentPlayer && (
         <VotingScreen
-          players={getPublicPlayerData(players, currentPlayer.id, true)}
+          players={getPublicPlayerData(players, currentPlayer.id)}
           game={game}
           currentPlayer={currentPlayer}
           submitVote={submitVote}
           isConnected={isConnected}
-          onComplete={() => {}}
+          onComplete={() => { }}
         />
       )}
       {game?.phase === 'ended' && (
         <GameResultsScreen
           game={game}
           players={players}
-          currentPlayer={currentPlayer}
+          currentPlayer={currentPlayer || undefined}
           onNewGame={() => {
+            console.log('🎮 Starting new game - resetting all state')
             clearGameSession()
-            setCurrentGameId(null)
+            resetGame()
             setCurrentRoomCode(null)
             setGameState('wallet')
             setHasSeenRole(false)
+            setLastEliminatedPlayer(null)
           }}
         />
       )}
-      {/* {currentPlayer?.address && game?.gameId && (gameState === "lobby" || gameState === "night" || gameState === "task" || gameState === "voting") && (
-        <ChatComponent 
-          gameId={game.gameId} 
-          currentPlayerAddress={currentPlayer.address}
-          players={players}
-        />
-      )} */}
+
     </main>
   )
 }

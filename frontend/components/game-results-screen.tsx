@@ -5,7 +5,9 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import RetroAnimation from "@/components/retro-animation"
 import WithdrawRewards from "@/components/withdraw-rewards"
+
 import { Player } from "@/hooks/useGame"
+import ColoredPlayerName from "@/components/colored-player-name"
 
 interface GameResultsScreenProps {
   game?: any
@@ -36,34 +38,59 @@ const PlayerResultRow = ({ player, isWinner, isEliminated, reward, game }: {
     playerRole = roleMapping[game.roles[player.address]] || game.roles[player.address]
   }
 
+  // Calculate APT reward/penalty
+  const aptAmount = parseFloat(reward?.rewardInAPT || 0)
+  const aptDisplay = aptAmount > 0 ? `+${aptAmount.toFixed(4)}` : aptAmount < 0 ? `${aptAmount.toFixed(4)}` : '+0.0000'
+
   return (
-    <div className={`p-4 rounded-lg border ${isWinner ? 'bg-green-800/30 border-green-500/30' : 'bg-red-800/30 border-red-500/30'}`}>
+    <div className={`p-3 sm:p-4 rounded-none border-2 font-press-start ${isWinner
+      ? 'bg-green-900/20 border-green-500/50'
+      : 'bg-red-900/20 border-red-500/50'
+      }`}>
       <div className="flex items-center justify-between">
+        {/* Left: Avatar + 0xColor Name + Role */}
         <div className="flex items-center space-x-3">
           {player?.avatar && player.avatar.startsWith('http') ? (
             <img
               src={player.avatar}
               alt={player?.name || 'Player'}
-              className="w-8 h-8 rounded object-cover"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-none object-cover border border-gray-600"
+              style={{ imageRendering: 'pixelated' }}
             />
           ) : (
-            <span className="text-2xl">
-              {player?.avatar || '👤'}
-            </span>
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 border border-gray-600 flex items-center justify-center">
+              <span className="text-xl">👤</span>
+            </div>
           )}
-          <div>
-            <div className="font-bold text-lg">{player?.name || 'Unknown'} ({playerRole})</div>
-            <div className={`text-sm ${isWinner ? 'text-green-300' : 'text-red-300'}`}>
-              {isWinner ? 'WINNER' : 'LOSER'}
+          <div className="space-y-1">
+            <div className="text-sm sm:text-base font-bold">
+              <ColoredPlayerName playerName={player?.name || 'Unknown'} />
+            </div>
+            <div className="text-xs sm:text-sm text-gray-300">
+              {playerRole}
             </div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-lg font-bold text-yellow-400">
-            +{parseFloat(reward?.rewardInAPT || 0).toFixed(4)} APT
+
+        {/* Center: Winner/Loser Status */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className={`text-sm sm:text-base font-bold ${isWinner ? 'text-green-400' : 'text-red-400'
+            }`}>
+            {isWinner ? '✓ WINNER' : '✗ LOSER'}
           </div>
-          <div className="text-sm text-gray-400">
-            {isEliminated ? 'Eliminated' : 'Survived'}
+        </div>
+
+        {/* Right: APT Amount + Status */}
+        <div className="text-right space-y-1">
+          <div className={`text-sm sm:text-base font-bold ${aptAmount > 0 ? 'text-yellow-400' : aptAmount < 0 ? 'text-red-400' : 'text-gray-400'
+            }`}>
+            {aptDisplay} APT
+          </div>
+          <div className={`px-2 py-1 rounded-none text-xs border ${isEliminated
+            ? 'bg-red-900/50 border-red-500/50 text-red-300'
+            : 'bg-green-900/50 border-green-500/50 text-green-300'
+            }`}>
+            {isEliminated ? '☠️ ELIMINATED' : '❤️ ALIVE'}
           </div>
         </div>
       </div>
@@ -82,7 +109,7 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
 
   if (!game || !showResults) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
+      <div className="min-h-screen flex items-center justify-center pt-8 p-4 gaming-bg scanlines">
         <RetroAnimation>
           <div className="text-white text-xl">Loading results...</div>
         </RetroAnimation>
@@ -146,33 +173,45 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
   })
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 gaming-bg scanlines">
-      <Card className="w-full max-w-4xl p-4 sm:p-6 lg:p-8 bg-black/80 border-2 sm:border-4 border-white/20 text-white backdrop-blur-sm">
-        <div className="space-y-4 sm:space-y-6 lg:space-y-8 text-center">
+    <div className="min-h-screen flex items-center justify-center py-6 px-4 sm:py-8 sm:px-6 gaming-bg scanlines">
+      <Card className="w-full max-w-4xl p-3 sm:p-4 lg:p-6 bg-black/80 border-2 sm:border-4 border-white/20 text-white backdrop-blur-sm">
+        <div className="space-y-3 sm:space-y-4 lg:space-y-6 text-center">
           {/* Title Section */}
-          <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-            <div className="text-4xl sm:text-6xl lg:text-8xl">{result.emoji}</div>
-            <h1 
-              className="text-2xl sm:text-3xl lg:text-5xl font-bold tracking-wider"
+          <div className="space-y-2 sm:space-y-3 lg:space-y-4 pt-4 sm:pt-6">
+            <div className="text-3xl sm:text-5xl lg:text-6xl">{result.emoji}</div>
+            <h1
+              className="text-xl sm:text-2xl lg:text-4xl font-bold tracking-wider"
               style={{ color: result.color }}
             >
               {result.title}
             </h1>
-            <p className="text-lg sm:text-xl lg:text-2xl text-gray-300">
+            <p className="text-base sm:text-lg lg:text-xl text-gray-300">
               {result.message}
             </p>
           </div>
 
           {/* Player Results - Show for all games (staked and non-staked) */}
-          <Card className="p-3 sm:p-4 lg:p-6 bg-gray-900/50 border-gray-500/50 backdrop-blur-sm">
-            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-300 mb-3 sm:mb-4 lg:mb-6 flex items-center justify-center gap-2">
+          <Card className="p-2 sm:p-3 lg:p-4 bg-gray-900/50 border-gray-500/50 backdrop-blur-sm">
+            <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-300 mb-2 sm:mb-3 lg:mb-4 flex items-center justify-center gap-2">
               📊 PLAYER RESULTS
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-2 sm:space-y-3">
               {players.map((player, index) => {
                 const reward = game.rewards?.distributions?.find((d: any) => d.playerAddress === player.address);
-                const isWinner = winnerAddresses.includes(player.address);
                 const isEliminated = eliminatedPlayers.some(p => p.address === player.address);
+
+                // Determine if player is ASUR
+                let isAsur = false;
+                if (game.roles && game.roles[player.address] === 'Mafia') {
+                  isAsur = true;
+                } else if (player.role === 'ASUR') {
+                  isAsur = true;
+                }
+
+                // Winner logic:
+                // - If villagers won (!mafiaWon): All non-ASUR players are winners (even if eliminated)
+                // - If ASUR won (mafiaWon): Only ASUR players are winners
+                const isWinner = mafiaWon ? isAsur : !isAsur;
 
                 return (
                   <PlayerResultRow
@@ -189,67 +228,47 @@ export default function GameResultsScreen({ game, players, currentPlayer, onNewG
           </Card>
 
 
-          {/* Settlement Transaction */}
-          {game.rewards?.settlementTxHash && (
-            <div className="text-center text-yellow-300 mt-4">
-              <p className="text-lg">Settlement Transaction:</p>
-              <p className="font-mono text-sm break-all bg-black/50 p-2 rounded">
-                {game.rewards.settlementTxHash}
-              </p>
-            </div>
-          )}
-
-          {/* Withdraw Component for Current Player Only */}
-          {(() => {
-            // Normalize addresses for comparison (case-insensitive)
+          {/* Unified Transaction Details & Withdraw */}
+          {game.rewards?.settlementTxHash && currentPlayer?.address && (() => {
             const normalizeAddress = (addr: string) => addr?.toLowerCase().replace(/^0x/, '') || '';
-
-            // Get current player's reward with normalized address comparison
-            const currentPlayerReward = currentPlayer?.address && game.rewards?.distributions?.find(
+            const currentPlayerReward = game.rewards?.distributions?.find(
               (reward: any) => normalizeAddress(reward.playerAddress) === normalizeAddress(currentPlayer.address!)
             );
 
-            console.log('Withdraw Rewards Debug:', {
-              currentPlayerAddress: currentPlayer?.address,
-              normalizedCurrentAddress: normalizeAddress(currentPlayer?.address || ''),
-              distributions: game.rewards?.distributions?.map((d: any) => ({
-                address: d.playerAddress,
-                normalized: normalizeAddress(d.playerAddress),
-                rewardInAPT: d.rewardInAPT
-              })),
-              foundReward: currentPlayerReward
-            });
+            if (!currentPlayerReward) return null;
 
-            if (currentPlayerReward && parseFloat(currentPlayerReward.rewardInAPT) > 0) {
-              return (
+            // Only show withdraw for players with rewards > 0
+            const hasRewards = parseFloat(currentPlayerReward.rewardInAPT) > 0;
+
+            if (!hasRewards) return null;
+
+            return (
+              <div className="my-6">
                 <WithdrawRewards
-                  key={currentPlayerReward.playerAddress}
-                  gameId={game.rewards.gameId || game.gameId}
-                  playerAddress={currentPlayerReward.playerAddress}
+                  gameId={game.gameId}
+                  playerAddress={currentPlayer.address}
                   rewardAmount={currentPlayerReward.rewardAmount}
                   rewardInAPT={currentPlayerReward.rewardInAPT}
+                  settlementTxHash={game.rewards.settlementTxHash}
                 />
-              );
-            }
-
-            console.log('⚠️ No reward found for current player');
-            return null;
+              </div>
+            );
           })()}
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-6 justify-center pt-2 sm:pt-3 lg:pt-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 justify-center pt-1 sm:pt-2 lg:pt-3">
             {onNewGame && (
-              <Button 
+              <Button
                 onClick={onNewGame}
-                className="px-6 sm:px-8 lg:px-12 py-2 sm:py-3 lg:py-4 text-sm sm:text-lg lg:text-xl bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg"
+                className="px-4 sm:px-6 lg:px-8 py-2 sm:py-3 text-sm sm:text-base lg:text-lg bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg"
               >
                 🎮 Start New Game
               </Button>
             )}
-            <Button 
+            <Button
               onClick={() => window.location.reload()}
               variant="outline"
-              className="px-6 sm:px-8 lg:px-12 py-2 sm:py-3 lg:py-4 text-sm sm:text-lg lg:text-xl border-white/50 text-white hover:bg-white/10 font-bold rounded-lg shadow-lg"
+              className="px-4 sm:px-6 lg:px-8 py-2 sm:py-3 text-sm sm:text-base lg:text-lg border-white/50 text-white hover:bg-white/10 font-bold rounded-lg shadow-lg"
             >
               🔄 Refresh Page
             </Button>

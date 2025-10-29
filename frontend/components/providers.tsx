@@ -24,9 +24,13 @@ export function Providers({ children }: ProvidersProps) {
     <AptosWalletAdapterProvider
       autoConnect={true}
       dappConfig={{
-        network: Network.DEVNET,
+        network: Network.TESTNET,
         aptosApiKeys: {
-          devnet: process.env.NEXT_PUBLIC_APTOS_API_KEY,
+          testnet: process.env.NEXT_PUBLIC_APTOS_API_KEY,
+        },
+        aptosConnect: {
+          // Disable social login providers (Google, Apple)
+          socialProviders: []
         }
       }}
       onError={(error) => {

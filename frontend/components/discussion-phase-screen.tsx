@@ -7,6 +7,7 @@ import { PixelInput } from "@/components/ui/pixel-input"
 import { useSocket } from "@/contexts/SocketContext"
 import { Player } from "@/hooks/useGame" // Add this line
 import TaskComponent from "./task-component"
+import ColoredPlayerName from "@/components/colored-player-name"
 
 interface DiscussionPhaseScreenProps {
   onComplete: () => void
@@ -17,14 +18,7 @@ interface DiscussionPhaseScreenProps {
   players?: Player[] // Add players prop
 }
 
-interface Task {
-  id: string
-  title: string
-  description: string
-  type: 'decode' | 'puzzle' | 'quiz'
-  completed: boolean
-  reward: string
-}
+
 
 export default function DiscussionPhaseScreen({ onComplete, game, gameId, currentPlayerAddress, submitTaskAnswer, players }: DiscussionPhaseScreenProps) {
   const [timeLeft, setTimeLeft] = useState(30) // 30 seconds for discussion
@@ -32,40 +26,7 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
   const [activeTab, setActiveTab] = useState<'chat' | 'tasks'>('chat')
   const [hasTransitioned, setHasTransitioned] = useState(false)
   const { socket, sendChatMessage } = useSocket()
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Decode Space Signal',
-      description: 'Decode the binary message from the space station',
-      type: 'decode',
-      completed: false,
-      reward: '+50 XP'
-    },
-    {
-      id: '2', 
-      title: 'Identify Suspicious Behavior',
-      description: 'Find clues about who might be the ASUR',
-      type: 'puzzle',
-      completed: false,
-      reward: '+75 XP'
-    },
-    {
-      id: '3',
-      title: 'Vote Analysis',
-      description: 'Analyze voting patterns to find the mafia',
-      type: 'quiz',
-      completed: false,
-      reward: '+100 XP'
-    },
-    {
-      id: '4',
-      title: 'Evidence Collection',
-      description: 'Gather evidence from the night phase',
-      type: 'puzzle',
-      completed: false,
-      reward: '+60 XP'
-    }
-  ])
+
   const [messages, setMessages] = useState<Array<{
     id: string
     playerAddress: string
@@ -92,7 +53,7 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
       }
 
       socket.on('chat_message', handleChatMessage)
-      
+
       return () => {
         socket.off('chat_message', handleChatMessage)
       }
@@ -103,7 +64,7 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
   useEffect(() => {
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
-      
+
       // Start local countdown to match backend
       if (game.timeLeft > 0) {
         const timer = setTimeout(() => {
@@ -123,7 +84,7 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
           message: message.trim(),
           timestamp: Date.now()
         })
-      setMessage("")
+        setMessage("")
         console.log('Chat message sent:', message.trim())
       } catch (error) {
         console.error('Failed to send chat message:', error)
@@ -131,17 +92,21 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
     }
   }
 
-  const handleTaskComplete = (taskId: string) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, completed: true } : task
-    ))
-  }
 
-  const completedTasks = tasks.filter(task => task.completed).length
-  const totalTasks = tasks.length
+
+  // Get current player's task count from game state
+  const currentPlayerTaskCount = game?.taskCounts?.[currentPlayerAddress || ''] || 0
+  const maxTaskCount = 4 // Global task count target
+
+  // Log task count updates for debugging
+  useEffect(() => {
+    if (currentPlayerAddress && game?.taskCounts) {
+      console.log(`📊 Current player task count: ${currentPlayerTaskCount}/${maxTaskCount}`)
+    }
+  }, [currentPlayerTaskCount, maxTaskCount, currentPlayerAddress, game?.taskCounts])
 
   return (
-    <div className="min-h-screen gaming-bg p-2 sm:p-4">
+    <div className="min-h-screen gaming-bg pt-8 p-2 sm:p-4">
       <div className="max-w-7xl mx-auto h-screen flex flex-col">
         {/* Header */}
         <div className="p-2 sm:p-3 lg:p-4 border-b-2 border-[#4A8C4A] bg-gradient-to-r from-[#0A0A0A] to-[#1A1A1A] relative">
@@ -162,23 +127,25 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
           <div className="flex space-x-2 mt-3 sm:mt-4">
             <button
               onClick={() => setActiveTab('chat')}
-              className={`px-3 sm:px-4 py-2 font-press-start text-xs sm:text-sm border-2 transition-all ${
-                activeTab === 'chat'
-                  ? 'bg-[#4A8C4A] border-[#4A8C4A] pixel-text-3d-white tab-active'
-                  : 'bg-[#A259FF]/20 border-[#A259FF] pixel-text-3d-white hover:bg-[#A259FF]/30'
-              }`}
+              className={`px-3 sm:px-4 py-2 font-press-start text-xs sm:text-sm border-2 transition-all ${activeTab === 'chat'
+                ? 'bg-[#4A8C4A] border-[#4A8C4A] pixel-text-3d-white tab-active'
+                : 'bg-[#A259FF]/20 border-[#A259FF] pixel-text-3d-white hover:bg-[#A259FF]/30'
+                }`}
             >
               💬 CHAT
             </button>
             <button
               onClick={() => setActiveTab('tasks')}
-              className={`px-3 sm:px-4 py-2 font-press-start text-xs sm:text-sm border-2 transition-all ${
-                activeTab === 'tasks'
-                  ? 'bg-[#4A8C4A] border-[#4A8C4A] pixel-text-3d-white tab-active'
-                  : 'bg-[#A259FF]/20 border-[#A259FF] pixel-text-3d-white hover:bg-[#A259FF]/30'
-              }`}
+              className={`px-3 sm:px-4 py-2 font-press-start text-xs sm:text-sm border-2 transition-all ${activeTab === 'tasks'
+                ? 'bg-[#4A8C4A] border-[#4A8C4A] pixel-text-3d-white tab-active'
+                : currentPlayerTaskCount >= maxTaskCount
+                  ? 'bg-green-600/30 border-green-400 text-green-300 hover:bg-green-600/40'
+                  : currentPlayerTaskCount > 0
+                    ? 'bg-yellow-600/30 border-yellow-400 text-yellow-300 hover:bg-yellow-600/40'
+                    : 'bg-[#A259FF]/20 border-[#A259FF] pixel-text-3d-white hover:bg-[#A259FF]/30'
+                }`}
             >
-              🎯 TASKS ({completedTasks}/{totalTasks})
+              🎯 TASKS ({currentPlayerTaskCount}/{maxTaskCount})
             </button>
           </div>
         </div>
@@ -194,31 +161,53 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
                     No messages yet. Start the discussion!
                   </div>
                 ) : (
-                  messages.map((msg) => {
+                  messages.map((msg, index) => {
                     const messagePlayer = players?.find(p => p.address === msg.playerAddress)
-                    const isCurrentPlayer = msg.playerAddress === currentPlayerAddress
+                    const isCurrentPlayer = msg.playerAddress === currentPlayerAddress && msg.playerAddress !== 'SYSTEM'
+                    const isTaskAnnouncement = msg.type === 'task_success' || msg.type === 'task_failure'
+                    const isSystemMessage = msg.type === 'system' || isTaskAnnouncement || msg.playerAddress === 'SYSTEM'
+
                     return (
-                      <div key={msg.id} className="font-press-start text-xs sm:text-sm md:text-base pixel-text-3d-white bg-[#1A1A1A]/80 p-2 sm:p-3 md:p-4 border border-[#2A2A2A] chat-message-glow chat-message-enter">
+                      <div key={`${msg.id}-${index}`} className={`font-press-start text-xs sm:text-sm md:text-base pixel-text-3d-white p-2 sm:p-3 md:p-4 border chat-message-glow chat-message-enter ${isTaskAnnouncement
+                        ? msg.type === 'task_success'
+                          ? 'bg-green-900/40 border-green-500/50'
+                          : 'bg-red-900/40 border-red-500/50'
+                        : isSystemMessage
+                          ? 'bg-blue-900/40 border-blue-500/50'
+                          : 'bg-[#1A1A1A]/80 border-[#2A2A2A]'
+                        }`}>
                         <div className="flex items-center space-x-2">
-                          {/* Player avatar - should always be available */}
-                          {messagePlayer?.avatar && messagePlayer.avatar.startsWith('http') ? (
+                          {/* Player avatar - show for all message types */}
+                          {(messagePlayer?.avatar || msg.avatarUrl) && (messagePlayer?.avatar?.startsWith('http') || msg.avatarUrl?.startsWith('http')) ? (
                             <img
-                              src={messagePlayer.avatar}
-                              alt={messagePlayer.name}
-                              className="w-6 h-6 sm:w-8 sm:h-8 rounded-none object-cover"
+                              src={messagePlayer?.avatar || msg.avatarUrl}
+                              alt={messagePlayer?.name || msg.playerName || 'Player'}
+                              className="w-6 h-6 sm:w-8 sm:h-8 rounded-none object-cover border border-gray-600"
                               style={{ imageRendering: 'pixelated' }}
                             />
                           ) : (
                             <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-700 flex items-center justify-center text-xs">?</div>
                           )}
-                          <span className="text-[#4A8C4A]">
-                            {isCurrentPlayer ? 'You' : messagePlayer?.name || 'Player'}
+                          <span className={isCurrentPlayer ? "text-[#4A8C4A]" : ""}>
+                            {isTaskAnnouncement ? (
+                              <span className={msg.type === 'task_success' ? 'text-green-400' : 'text-red-400'}>
+                                📊 TASK RESULT
+                              </span>
+                            ) : msg.playerAddress === 'SYSTEM' ? (
+                              <span className="text-yellow-400">🤖 SYSTEM</span>
+                            ) : isCurrentPlayer ? 'You' : (
+                              <ColoredPlayerName
+                                playerName={messagePlayer?.name || msg.playerName || 'Player'}
+                              />
+                            )}
                           </span>
                           <span className="text-gray-400 text-xs">
                             {new Date(msg.timestamp).toLocaleTimeString()}
                           </span>
                         </div>
-                        <div className="mt-1">{msg.message}</div>
+                        <div className={`mt-1 ${isTaskAnnouncement ? (msg.type === 'task_success' ? 'text-green-300' : 'text-red-300') : ''}`}>
+                          {msg.message}
+                        </div>
                       </div>
                     )
                   })
@@ -228,8 +217,34 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
           ) : (
             /* Tasks Tab - Real Task Component */
             <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto min-h-0">
+              {/* Task Counts Display */}
+              {game?.taskCounts && players && (
+                <div className="mb-4 p-3 bg-gray-900/50 border border-gray-600 rounded-none">
+                  <h4 className="text-sm font-press-start text-yellow-400 mb-2">📊 TASK COUNTS</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {players.map(player => {
+                      const taskCount = game.taskCounts[player.address] || 0;
+                      return (
+                        <div key={player.address} className="flex items-center space-x-2 text-xs">
+                          <img
+                            src={player.avatar}
+                            alt={player.name}
+                            className="w-4 h-4 rounded-none object-cover"
+                            style={{ imageRendering: 'pixelated' }}
+                          />
+                          <ColoredPlayerName playerName={player.name} />
+                          <span className={`font-bold ${taskCount > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                            {taskCount}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {gameId && currentPlayerAddress && submitTaskAnswer ? (
-                <TaskComponent 
+                <TaskComponent
                   gameId={gameId}
                   currentPlayerAddress={currentPlayerAddress}
                   game={game}

@@ -16,6 +16,9 @@ import RetroAnimation from "@/components/retro-animation"
 import { Player } from "@/hooks/useGame"
 import { Game } from "@/services/api"
 import { clearGameSession } from "@/utils/sessionPersistence"
+import { canLeaveGame } from "@/utils/connectivityChecker"
+import FullscreenToggle from "@/components/fullscreen-toggle"
+import ColoredPlayerName from "@/components/colored-player-name"
 
 interface LobbyScreenProps {
   players: Player[]
@@ -34,7 +37,8 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
   const [isLeavingGame, setIsLeavingGame] = useState(false)
   const [copied, setCopied] = useState(false)
-  
+  const [leaveMethod, setLeaveMethod] = useState<'normal' | 'force_local' | null>(null)
+
   // Debug player updates
   useEffect(() => {
     console.log('Lobby players updated:', {
@@ -57,6 +61,8 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
       setIsPublic(game.isPublic || false)
     }
   }, [game])
+
+
 
   // Check if current player is the creator
   const isCreator = playerAddress && game?.creator === playerAddress
@@ -111,12 +117,56 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
     }
   }
 
+  // Check leave game options
+  const handleLeaveGameClick = async () => {
+    if (!game?.gameId || !playerAddress) return
+
+    try {
+      const leaveOptions = await canLeaveGame()
+      console.log('🚪 Leave game options:', leaveOptions)
+
+      if (leaveOptions.forceLocal) {
+        setLeaveMethod('force_local')
+      } else {
+        setLeaveMethod('normal')
+      }
+
+      setShowLeaveDialog(true)
+    } catch (error) {
+      console.error('❌ Error checking leave options:', error)
+      // Default to normal leave if check fails
+      setLeaveMethod('normal')
+      setShowLeaveDialog(true)
+    }
+  }
+
   // Handle leave game
   const handleLeaveGame = async () => {
     if (!game?.gameId || !playerAddress) return
 
     try {
       setIsLeavingGame(true)
+
+      if (leaveMethod === 'force_local') {
+        // Force local leave - don't contact server
+        console.log('🔌 Server unreachable, performing local leave')
+
+        // Clear session immediately
+        clearGameSession()
+
+        // Close dialog
+        setShowLeaveDialog(false)
+
+        // Call parent callback
+        if (onLeaveGame) {
+          onLeaveGame()
+        }
+
+        console.log('✅ Local leave completed')
+        return
+      }
+
+      // Normal server leave
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/game/leave`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -129,7 +179,7 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
       const data = await response.json()
 
       if (data.success) {
-        console.log('✅ Successfully left game')
+        console.log('✅ Successfully left game via server')
 
         // Clear session
         clearGameSession()
@@ -143,11 +193,35 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
         }
       } else {
         console.error('❌ Failed to leave game:', data.error)
-        alert(`Failed to leave game: ${data.error}`)
+
+        // If server error, offer local leave as fallback
+        const fallbackConfirm = confirm(
+          `Server error: ${data.error}\n\nWould you like to leave locally instead? (Your session will be cleared but the server won't be notified)`
+        )
+
+        if (fallbackConfirm) {
+          clearGameSession()
+          setShowLeaveDialog(false)
+          if (onLeaveGame) {
+            onLeaveGame()
+          }
+        }
       }
     } catch (error) {
       console.error('❌ Error leaving game:', error)
-      alert('An error occurred while leaving the game')
+
+      // If network error, offer local leave as fallback
+      const fallbackConfirm = confirm(
+        `Network error: ${error}\n\nWould you like to leave locally instead? (Your session will be cleared but the server won't be notified)`
+      )
+
+      if (fallbackConfirm) {
+        clearGameSession()
+        setShowLeaveDialog(false)
+        if (onLeaveGame) {
+          onLeaveGame()
+        }
+      }
     } finally {
       setIsLeavingGame(false)
     }
@@ -167,7 +241,7 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 gaming-bg scanlines">
+    <div className="min-h-screen flex items-center justify-center pt-8 p-2 sm:p-4 gaming-bg scanlines">
       <div className="w-full max-w-4xl space-y-2 sm:space-y-3 lg:space-y-4">
         {/* Header */}
         <div className="text-center">
@@ -176,7 +250,7 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
               LOBBY
             </h1>
           </RetroAnimation>
-          
+
           {!isConnected && (
             <div className="text-xs text-yellow-400 mt-1 font-press-start">⚠️ DISCONNECTED</div>
           )}
@@ -259,15 +333,14 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
           {Array.from({ length: 4 }, (_, index) => {
             const player = players[index]
             const isEmpty = !player
-            
+
             return (
-              <Card 
-                key={index} 
-                className={`p-2 sm:p-3 text-center transition-all duration-300 ${
-                  isEmpty 
-                    ? 'bg-[#111111]/50 border border-[#2a2a2a] opacity-50' 
-                    : 'bg-card border-2 border-border hover:border-primary/50'
-                }`}
+              <Card
+                key={index}
+                className={`p-2 sm:p-3 text-center transition-all duration-300 ${isEmpty
+                  ? 'bg-[#111111]/50 border border-[#2a2a2a] opacity-50'
+                  : 'bg-card border-2 border-border hover:border-primary/50'
+                  }`}
               >
                 <div className="space-y-1 sm:space-y-2">
                   <div className="text-lg sm:text-xl lg:text-2xl">
@@ -291,11 +364,19 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
                       </RetroAnimation>
                     )}
                   </div>
-                  
-                  <div className="text-xs font-press-start pixel-text-3d-white">
-                    {isEmpty ? "EMPTY SLOT" : getPlayerDisplayName(player, index)}
+
+                  <div className="text-xs font-press-start">
+                    {isEmpty ? (
+                      <span className="pixel-text-3d-white">EMPTY SLOT</span>
+                    ) : (
+                      <ColoredPlayerName
+                        playerName={player.name}
+                        isCurrentPlayer={player.isCurrentPlayer}
+                        showYouIndicator={true}
+                      />
+                    )}
                   </div>
-                  
+
                   {player && (
                     <div className="text-xs text-green-400 font-press-start">
                       ✅ READY
@@ -314,7 +395,7 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
           </div>
         )}
 
-        {/* Chat Toggle & Leave Game (Creator Only) */}
+        {/* Chat Toggle, Fullscreen & Leave Game (All Players) */}
         <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
           <Button
             onClick={() => setChatEnabled(!chatEnabled)}
@@ -324,16 +405,18 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
           >
             {chatEnabled ? "💬 CHAT ENABLED" : "💬 ENABLE CHAT"}
           </Button>
-          {isCreator && (
-            <Button
-              onClick={() => setShowLeaveDialog(true)}
-              variant="outline"
-              size="pixel"
-              className="text-xs sm:text-sm border-red-500/50 text-red-400 hover:bg-red-900/20"
-            >
-              🚪 LEAVE GAME
-            </Button>
-          )}
+          <FullscreenToggle
+            variant="button"
+            className="text-xs sm:text-sm"
+          />
+          <Button
+            onClick={handleLeaveGameClick}
+            variant="outline"
+            size="pixel"
+            className="text-xs sm:text-sm border-red-500/50 text-red-400 hover:bg-red-900/20"
+          >
+            🚪 LEAVE GAME
+          </Button>
         </div>
 
         {/* Leave Game Confirmation Dialog */}
@@ -345,11 +428,27 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
               </DialogTitle>
             </DialogHeader>
             <div className="text-center space-y-2 pt-4">
-              <div className="text-base font-press-start text-red-400">
-                YOUR STAKE WILL BE LOST!
-              </div>
+              {/* Connectivity Status */}
+              {leaveMethod === 'force_local' && (
+                <div className="text-sm font-press-start text-yellow-400 mb-2">
+                  🔌 SERVER UNREACHABLE
+                </div>
+              )}
+
+              {game?.stakingRequired && (
+                <div className="text-base font-press-start text-red-400">
+                  YOUR STAKE WILL BE LOST!
+                </div>
+              )}
+
               <div className="text-sm text-gray-300">
-                Are you sure you want to leave the lobby? Your staked APT will not be returned.
+                {leaveMethod === 'force_local' ? (
+                  'Server is unreachable. Leaving will clear your local session, but the server won\'t be notified until it\'s back online.'
+                ) : (
+                  game?.stakingRequired
+                    ? 'Are you sure you want to leave the lobby? Your staked APT will not be returned.'
+                    : 'Are you sure you want to leave this lobby?'
+                )}
               </div>
             </div>
             <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -369,7 +468,9 @@ export default function LobbyScreen({ players, game, isConnected, onStartGame, p
                 disabled={isLeavingGame}
                 className="w-full sm:w-auto border-red-500 text-red-400 hover:bg-red-900/50"
               >
-                {isLeavingGame ? '⏳ LEAVING...' : '🚪 LEAVE & LOSE STAKE'}
+                {isLeavingGame ? '⏳ LEAVING...' :
+                  leaveMethod === 'force_local' ? '🔌 LEAVE LOCALLY' :
+                    game?.stakingRequired ? '🚪 LEAVE & LOSE STAKE' : '🚪 LEAVE'}
               </Button>
             </DialogFooter>
           </DialogContent>

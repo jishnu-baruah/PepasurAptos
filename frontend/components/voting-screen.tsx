@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card"
 import { Player } from "@/hooks/useGame"
 import { Game } from "@/services/api"
 import { soundService } from "@/services/SoundService"
+import ColoredPlayerName from "@/components/colored-player-name"
+import TipBar from "@/components/tip-bar"
 
 interface VotingScreenProps {
   players: Player[]
@@ -24,13 +26,14 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
   const [eliminatedPlayerAvatar, setEliminatedPlayerAvatar] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState(0)
   const [resultShown, setResultShown] = useState(false)
+  const [eliminatedCountBeforeVoting, setEliminatedCountBeforeVoting] = useState<number>(0)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState<number>(0)
 
   // Real-time timer sync with backend
   useEffect(() => {
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
-      
+
       // Start local countdown to match backend
       if (game.timeLeft > 0) {
         const timer = setTimeout(() => {
@@ -58,6 +61,14 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
         console.log('🔄 Resetting voting result flags for new round')
         setResultShown(false)
         setShowResult(false)
+        setEliminatedPlayer(null)
+        setEliminatedPlayerAvatar(null)
+      }
+
+      // Track eliminated count at start of voting phase
+      if (!game?.votingResolved) {
+        setEliminatedCountBeforeVoting(game?.eliminated?.length || 0)
+        console.log('🔄 Tracking eliminated count before voting:', game?.eliminated?.length || 0)
       }
     }
   }, [game?.phase, game?.votingResolved, resultShown])
@@ -69,7 +80,10 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
       votingResolved: game?.votingResolved,
       resultShown,
       showResult,
-      eliminatedCount: game?.eliminated?.length
+      eliminatedCount: game?.eliminated?.length,
+      eliminatedCountBeforeVoting,
+      votingResult: game?.votingResult,
+      eliminated: game?.eliminated
     })
 
     // Show result when voting is resolved
@@ -77,20 +91,32 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
       // Only process elimination data if we haven't shown the result yet
       if (!resultShown) {
         console.log('🎯 Showing voting result for the first time')
-        // Check if someone was eliminated in this voting round
-        if (game.eliminated && game.eliminated.length > 0) {
+
+        // Check if someone was eliminated in THIS voting round by comparing counts
+        const currentEliminatedCount = game.eliminated?.length || 0
+        const wasPlayerEliminatedThisRound = currentEliminatedCount > eliminatedCountBeforeVoting
+
+        console.log('🎯 Elimination check:', {
+          currentCount: currentEliminatedCount,
+          beforeVotingCount: eliminatedCountBeforeVoting,
+          wasEliminatedThisRound: wasPlayerEliminatedThisRound,
+          votingResult: game.votingResult
+        })
+
+        if (wasPlayerEliminatedThisRound && game.eliminated && game.eliminated.length > 0) {
+          // Someone was eliminated in this voting round
           const lastEliminated = game.eliminated[game.eliminated.length - 1]
           const eliminated = players.find(p => p.address === lastEliminated)
           if (eliminated) {
-            console.log('🎯 Player eliminated:', eliminated.name)
+            console.log('🎯 Player eliminated in this voting round:', eliminated.name)
             setEliminatedPlayer(eliminated)
             setEliminatedPlayerAvatar(eliminated.avatar) // Cache the avatar to prevent alternation
             // Play elimination sound
             soundService.playElimination()
           }
         } else {
-          // No one was eliminated
-          console.log('🎯 No one eliminated')
+          // No one was eliminated in this voting round (tie, no votes, or no new eliminations)
+          console.log('🎯 No one eliminated in this voting round')
           setEliminatedPlayer(null)
           setEliminatedPlayerAvatar(null)
         }
@@ -174,7 +200,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
             {/* Main Avatar Section - Only show if someone was eliminated */}
             {eliminatedPlayer && (
               <div className="space-y-6">
-                <div className="text-4xl sm:text-5xl">⚰️</div>
+
                 <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">PLAYER ELIMINATED</div>
 
                 {/* Eliminated Player Avatar */}
@@ -192,20 +218,22 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
                     />
                   ) : null}
                   <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-[#333333] border-2 border-[#666666] flex items-center justify-center shadow-lg" style={{ display: eliminatedPlayerAvatar && eliminatedPlayerAvatar.startsWith('http') ? 'none' : 'flex' }}>
-                    <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">💀</span>
+                    <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">?</span>
                   </div>
                 </div>
 
                 {/* Player Info */}
                 <div className="space-y-2">
-                  <div className="text-xl sm:text-2xl md:text-3xl font-press-start pixel-text-3d-white">{eliminatedPlayer.name}</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl font-press-start">
+                    <ColoredPlayerName playerName={eliminatedPlayer.name} />
+                  </div>
                   {eliminatedPlayer.role && (
                     <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">Role: {eliminatedPlayer.role}</div>
                   )}
                 </div>
               </div>
             )}
-            
+
             {/* Context-aware message based on voting result */}
             <div className="space-y-6">
               {votingResult === 'INNOCENT_ELIMINATED' ? (
@@ -245,7 +273,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
               ) : noVotesCast ? (
                 // No votes cast
                 <>
-                  <div className="text-4xl sm:text-5xl">🗳️</div>
+
                   <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-yellow pixel-text-3d-float">
                     NO VOTES CAST
                   </div>
@@ -256,7 +284,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
               ) : (
                 // Voting tie
                 <>
-                  <div className="text-4xl sm:text-5xl">🤝</div>
+
                   <div className="text-2xl sm:text-3xl font-bold font-press-start pixel-text-3d-blue pixel-text-3d-float">
                     VOTING TIE
                   </div>
@@ -266,7 +294,7 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
                 </>
               )}
             </div>
-            
+
             <div className="text-lg sm:text-xl md:text-2xl font-press-start pixel-text-3d-white">
               {timeLeft > 0 ? `Continuing in ${timeLeft}s...` : 'The game continues...'}
             </div>
@@ -277,49 +305,71 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-between p-4 gaming-bg text-white font-press-start">
+    <div className="min-h-screen flex flex-col items-center justify-between pt-8 p-4 gaming-bg text-white font-press-start">
       {/* Top Section: Title, Timer, and Instruction Bar */}
       <div className="w-full max-w-7xl text-center">
         <h1 className="text-4xl md:text-5xl font-bold pixel-text-3d-white pixel-text-3d-float-long">VOTING PHASE</h1>
-        <div className="text-5xl md:text-7xl font-bold pixel-text-3d-blue my-4">{timeLeft}</div>
+        <div className="text-5xl md:text-7xl font-bold pixel-text-3d-blue my-2">{timeLeft}</div>
         <div className={`w-full bg-black/50 border-2 p-3 text-lg md:text-xl ${selectedVote && !submitted ? 'border-yellow-400 text-yellow-400 animate-pulse' : 'border-gray-500 text-gray-300'}`}>
           {submitted
             ? "Vote confirmed. Waiting for others..."
             : selectedVote
-            ? `You selected ${players.find(p => p.id === selectedVote)?.name}. Click again to confirm.`
-            : "Click a player to cast your vote."
+              ? `You selected ${players.find(p => p.id === selectedVote)?.name}. Click again to confirm.`
+              : "Click a player to cast your vote."
           }
         </div>
+
+        {/* Voting Phase Tips */}
+        <TipBar
+          phase="voting"
+          tips={[
+            "Vote to eliminate a player you suspect is ASUR (mafia).",
+            "The player with the most votes will be eliminated.",
+            "In case of a tie, no one gets eliminated.",
+            "Use information from night phase eliminations and investigations.",
+            "Pay attention to voting patterns - ASURs might vote together.",
+            "Once you confirm your vote, you cannot change it."
+          ]}
+          className="mt-4"
+        />
       </div>
 
       {/* Main Content Area - This will now be centered by space-between */}
       <div className="flex-grow flex items-center justify-center w-full max-w-7xl">
         {/* Player Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-12">
-          {players.filter(player => player.isAlive).map(player => {
+          {players.map(player => {
             const isSelected = selectedVote === player.id;
             const isConfirmed = isSelected && submitted;
+            const isEliminated = !player.isAlive;
+
+            // Calculate vote count for this player
+            const voteCount = game?.votes ? Object.values(game.votes).filter(vote => vote === player.id).length : 0;
+            const hasVotes = voteCount > 0;
 
             return (
               <Card
                 key={player.id}
-                className={`p-6 bg-black/20 text-center transition-all duration-200 ease-in-out transform hover:-translate-y-1 outline-4 outline-offset-[-4px] ${
-                  isConfirmed
-                    ? 'outline-white bg-black/50' // Locked-in vote
-                    : isSelected
-                    ? 'outline-yellow-400 bg-yellow-400/20 animate-pulse' // Selected, not yet confirmed
-                    : submitted
-                    ? 'opacity-50 cursor-not-allowed' // Vote submitted, this player wasn't chosen
-                    : 'outline-transparent hover:outline-yellow-400 cursor-pointer' // Default state
-                }`}
-                onClick={() => handleVote(player.id)}
+                className={`p-6 bg-black/20 rounded-none text-center transition-all duration-200 ease-in-out transform outline-4 outline-offset-[-4px] border-4 border-gray-600 ${isEliminated
+                  ? 'opacity-40 cursor-not-allowed outline-red-500/50 bg-red-900/20' // Eliminated player
+                  : hasVotes && !isSelected
+                    ? 'outline-orange-400 bg-orange-400/20' // Has votes from others
+                    : isConfirmed
+                      ? 'outline-white bg-black/50' // Locked-in vote
+                      : isSelected
+                        ? 'outline-yellow-400 bg-yellow-400/20 animate-pulse' // Selected, not yet confirmed
+                        : submitted
+                          ? 'opacity-50 cursor-not-allowed' // Vote submitted, this player wasn't chosen
+                          : 'outline-transparent hover:outline-yellow-400 cursor-pointer hover:-translate-y-1' // Default state
+                  }`}
+                onClick={() => !isEliminated && handleVote(player.id)}
               >
                 <div className="relative">
                   {player.avatar && player.avatar.startsWith('http') ? (
                     <img
                       src={player.avatar}
                       alt={player.name}
-                      className="w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 rounded-none object-cover mx-auto"
+                      className={`w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 rounded-none object-cover mx-auto ${isEliminated ? 'grayscale' : ''}`}
                       style={{ imageRendering: 'pixelated' }}
                     />
                   ) : (
@@ -327,10 +377,29 @@ export default function VotingScreen({ players, game, currentPlayer, submitVote,
                       <span className="text-4xl">?</span>
                     </div>
                   )}
+                  {isEliminated && (
+                    <div className="absolute inset-0 bg-black/60 rounded-none"></div>
+                  )}
+
+                  {/* Vote Count Indicator */}
+                  {hasVotes && !isEliminated && (
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-orange-500 border-2 border-white rounded-none flex items-center justify-center">
+                      <span className="text-white font-bold text-sm font-press-start">{voteCount}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="mt-2 text-sm md:text-base pixel-text-3d-white">
-                  {player.name}
-                  {player.id === currentPlayer?.id && <span className="text-yellow-400"> (You)</span>}
+                <div className="mt-2 text-sm md:text-base">
+                  <ColoredPlayerName
+                    playerName={player.name}
+                    isCurrentPlayer={player.id === currentPlayer?.id}
+                    showYouIndicator={true}
+                  />
+                  {isEliminated && (
+                    <div className="mt-1 px-2 py-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs font-press-start rounded-none">
+                      ☠️ ELIMINATED
+                    </div>
+                  )}
+
                 </div>
               </Card>
             );

@@ -16,7 +16,10 @@
       "mcp__aptos-mcp__get_aptos_build_applications",
       "mcp__aptos-mcp__create_aptos_build_api_resource_application",
       "mcp__aptos-mcp__create_aptos_build_api_key",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__aptos-mcp__build_dapp_on_aptos_guidance_prompt",
+      "WebSearch",
+      "Bash(git clone:*)"
     ],
     "deny": [],
     "ask": []

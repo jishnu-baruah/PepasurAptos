@@ -20,13 +20,13 @@ export function calculateWinProbabilities(
 
   // Assuming 1 mafia, rest are non-mafia
   const mafiaCount = 1;
-  const nonMafiaCount = minPlayers - mafiaCount;
+  const nonMafiaCount = playerCount - mafiaCount;
 
-  const mafiaWinPercent = playerCount > 0
+  const mafiaWinPercent = playerCount > 0 && nonMafiaCount > 0
     ? Math.round(((netPot / mafiaCount) / stakeAmount - 1) * 100)
     : 0;
 
-  const nonMafiaWinPercent = playerCount > 0
+  const nonMafiaWinPercent = playerCount > 0 && nonMafiaCount > 0
     ? Math.round(((netPot / nonMafiaCount) / stakeAmount - 1) * 100)
     : 0;
 

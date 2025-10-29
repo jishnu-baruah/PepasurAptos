@@ -467,7 +467,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm font-press-start text-gray-300">NETWORK</div>
                 <div className="text-base sm:text-lg font-bold text-white">
-                  {connected ? '✅ Aptos Devnet' : '❌ Not Connected'}
+                  {connected ? '✅ Aptos Testnet' : '❌ Not Connected'}
                 </div>
                 {!connected && (
                   <div className="text-xs sm:text-sm text-yellow-400">

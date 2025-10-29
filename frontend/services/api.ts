@@ -16,6 +16,7 @@ export interface Game {
   maxPlayers: number
   pendingActions: Record<string, any>
   task: any
+  taskCounts: Record<string, number>
   votes: Record<string, string>
   eliminated: string[]
   winners: string[]
@@ -78,7 +79,7 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
-    
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -89,7 +90,7 @@ class ApiService {
 
     try {
       const response = await fetch(url, config)
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
@@ -99,13 +100,13 @@ class ApiService {
       return data
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error)
-      
+
       // Handle network errors gracefully
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
         console.error('Network error - backend server may be down')
         throw new Error('Unable to connect to game server. Please check your connection and try again.')
       }
-      
+
       throw error
     }
   }
@@ -142,10 +143,10 @@ class ApiService {
   }
 
   async getGame(gameId: string, playerAddress?: string) {
-    const url = playerAddress 
+    const url = playerAddress
       ? `/api/game/${gameId}?playerAddress=${encodeURIComponent(playerAddress)}`
       : `/api/game/${gameId}`
-    
+
     return this.request<{
       success: boolean
       game: Game

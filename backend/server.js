@@ -85,9 +85,9 @@ app.use('/api/game', gameRoutes(gameManager, aptosService));
 app.use('/api/detective', detectiveRoutes(gameManager));
 app.use('/api/staking', stakingRoutes);
 
-app.use('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     clientIP: req.ip,
     origin: req.get('Origin')
@@ -97,7 +97,7 @@ app.use('/api/health', (req, res) => {
 // Socket.IO connection handling with enhanced logging
 io.on('connection', (socket) => {
   console.log(`🔌 Client connected: ${socket.id} from ${socket.handshake.address}`);
-  
+
   socket.on('join_game', (data) => {
     console.log(`🎮 Join game request from ${socket.id}:`, data);
     socketManager.handleJoinGame(socket, data);

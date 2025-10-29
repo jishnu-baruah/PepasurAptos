@@ -31,7 +31,7 @@ export function saveGameSession(gameId: string, roomCode: string, walletAddress:
 
 /**
  * Get saved game session from localStorage
- * Returns null if no session or session is too old (> 2 hours)
+ * Returns null if no session or session is too old (> 15 minutes)
  */
 export function getGameSession(): GameSession | null {
   try {
@@ -40,12 +40,12 @@ export function getGameSession(): GameSession | null {
 
     const session: GameSession = JSON.parse(stored);
 
-    // Check if session is not too old (2 hours = 7200000ms)
-    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    // Check if session is not too old (15 minutes = 900000ms)
+    const FIFTEEN_MINUTES = 15 * 60 * 1000;
     const age = Date.now() - session.timestamp;
 
-    if (age > TWO_HOURS) {
-      console.log('⏰ Game session expired (> 2 hours), clearing...');
+    if (age > FIFTEEN_MINUTES) {
+      console.log('⏰ Game session expired (> 15 minutes), clearing...');
       clearGameSession();
       return null;
     }

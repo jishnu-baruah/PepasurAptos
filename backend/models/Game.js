@@ -28,6 +28,11 @@ const gameSchema = new mongoose.Schema({
     default: false,
     index: true
   },
+  isReady: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
   stakeAmount: {
     type: Number,
     required: true,
@@ -94,6 +99,7 @@ gameSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 86400, partialFilterExp
 gameSchema.statics.getPublicLobbies = function() {
   return this.find({
     isPublic: true,
+    isReady: true,
     status: 'lobby',
     // Only return lobbies that aren't full
     $expr: { $lt: [{ $size: '$currentPlayers' }, '$minPlayers'] }

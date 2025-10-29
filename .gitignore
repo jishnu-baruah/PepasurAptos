@@ -57,6 +57,7 @@ yarn-error.log*
 /marketplace/node_modules/
 /pepasur-ens-minimal/node_modules/
 /flowContracts/node_modules/
+smoothsend-demo/
 
 # Documentation files (ignore all .md files)
 *.md

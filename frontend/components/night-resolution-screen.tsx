@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import RetroAnimation from "@/components/retro-animation"
 import { Player } from "@/hooks/useGame"
+import ColoredPlayerName from "@/components/colored-player-name"
 
 interface NightResolutionScreenProps {
   resolution: {
@@ -61,18 +62,27 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
     }
   }, [showResults, timeLeft]);
 
-  const { killedPlayer } = resolution;
+  const { killedPlayer, savedPlayer } = resolution;
 
-  const headerText = {
-    peaceful: 'PEACEFUL NIGHT',
-    kill: `${killedPlayer?.name?.toUpperCase() || 'A PLAYER'} WAS ELIMINATED!`,
-    save: 'A PLAYER WAS SAVED!',
+  // Check if current player was killed
+  const wasCurrentPlayerKilled = currentPlayer && killedPlayer &&
+    (currentPlayer.address === killedPlayer.address || currentPlayer.id === killedPlayer.id);
+
+  const getHeaderText = () => {
+    if (outcome === 'peaceful') return 'PEACEFUL NIGHT';
+    if (outcome === 'kill') {
+      return wasCurrentPlayerKilled ? 'YOU WERE ELIMINATED!' : 'PLAYER ELIMINATED!';
+    }
+    if (outcome === 'save') {
+      return wasCurrentPlayerKilled ? 'YOU WERE SAVED!' : 'PLAYER SAVED!';
+    }
+    return 'NIGHT RESOLVED';
   };
 
   const flavorText = {
     peaceful: 'Everyone survived the night... for now.',
-    kill: 'The ASURs have drawn first blood. Find them!',
-    save: 'The DEVA has protected the town!',
+    kill: wasCurrentPlayerKilled ? 'You have been eliminated from the game.' : `${killedPlayer?.name || 'A player'} was eliminated during the night.`,
+    save: wasCurrentPlayerKilled ? 'The DEVA has saved your life!' : 'The DEVA has protected the town!',
   };
 
   const headerColor = {
@@ -82,7 +92,7 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 gaming-bg scanlines">
+    <div className="min-h-screen flex items-center justify-center pt-8 p-4 gaming-bg scanlines">
       <Card className="w-full max-w-2xl p-8 bg-black/80 border-2 border-gray-700 text-center">
         {!showResults ? (
           <div className="space-y-4">
@@ -95,15 +105,37 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Dynamic Header */}
-            <h1 className={`text-3xl md:text-4xl font-bold font-press-start pixel-text-3d-float ${headerColor[outcome]}`}>
-              {headerText[outcome]}
-            </h1>
+            {/* Only show content if someone was eliminated */}
+            {outcome === 'kill' && killedPlayer && (
+              <>
+                {/* Player Avatar */}
+                <div className="flex justify-center">
+                  <img
+                    src={killedPlayer.avatar}
+                    alt={killedPlayer.name}
+                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-none object-cover border-2 border-gray-600"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                </div>
 
-            {/* Flavor Text */}
-            <p className="text-lg md:text-xl text-gray-300">
-              {flavorText[outcome]}
-            </p>
+                {/* Player Name + Elimination Status */}
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="text-2xl md:text-3xl font-press-start">
+                    <ColoredPlayerName playerName={killedPlayer.name || 'Unknown Player'} />
+                  </div>
+                  <div className="text-xl md:text-2xl text-red-400 font-press-start">
+                    WAS ELIMINATED
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Peaceful night message */}
+            {outcome === 'peaceful' && (
+              <div className="text-2xl md:text-3xl font-press-start text-green-400">
+                PEACEFUL NIGHT
+              </div>
+            )}
 
             {/* Countdown Timer */}
             <div className="space-y-2">

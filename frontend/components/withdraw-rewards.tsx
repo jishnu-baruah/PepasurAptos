@@ -17,9 +17,12 @@ interface WithdrawRewardsProps {
   playerAddress: string
   rewardAmount: string
   rewardInAPT: string
+  onWithdrawSuccess?: (transactionHash: string) => void
+  renderButton?: boolean
+  settlementTxHash?: string
 }
 
-export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, rewardInAPT }: WithdrawRewardsProps) {
+export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, rewardInAPT, onWithdrawSuccess, renderButton = true, settlementTxHash }: WithdrawRewardsProps) {
   const [isWithdrawing, setIsWithdrawing] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [transactionHash, setTransactionHash] = useState<string>('')
@@ -72,6 +75,9 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
         console.log('✅ Withdrawal transaction confirmed:', response.hash)
         setTransactionHash(response.hash)
         setIsSuccess(true)
+        if (onWithdrawSuccess) {
+          onWithdrawSuccess(response.hash)
+        }
       } catch (txError) {
         console.error('❌ Transaction failed:', txError)
         setError('Transaction failed. Please try again.')
@@ -87,15 +93,29 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
   // Handle successful withdrawal
   if (isSuccess && transactionHash) {
     return (
-      <Card className="p-4 bg-green-900/50 border-green-500/50">
-        <div className="text-center">
+      <Card className="p-4 bg-green-900/50 border-green-500/50 rounded-none backdrop-blur-sm">
+        <div className="text-center space-y-1">
           <div className="text-green-400 text-2xl mb-2">✅</div>
-          <div className="text-green-300 font-bold">Rewards Withdrawn!</div>
-          <div className="text-sm text-green-200 mt-2">
-            Transaction: <span className="font-mono break-all text-xs">{transactionHash}</span>
+          <div className="text-green-300 font-bold font-press-start mb-3">Rewards Withdrawn!</div>
+
+          {/* Settlement Hash */}
+          {settlementTxHash && (
+            <div className="text-xs font-press-start">
+              <span className="text-yellow-300">Settlement: </span>
+              <span className="font-mono text-gray-300 break-all">{settlementTxHash}</span>
+            </div>
+          )}
+
+          {/* Withdrawal Transaction */}
+          <div className="text-xs font-press-start">
+            <span className="text-green-300">Transaction: </span>
+            <span className="font-mono text-gray-300 break-all">{transactionHash}</span>
           </div>
-          <div className="text-sm text-green-200">
-            Amount: {rewardInAPT} APT
+
+          {/* Amount */}
+          <div className="text-xs font-press-start">
+            <span className="text-blue-300">Amount: </span>
+            <span className="text-white font-bold">{rewardInAPT} APT</span>
           </div>
         </div>
       </Card>
@@ -103,13 +123,22 @@ export default function WithdrawRewards({ gameId, playerAddress, rewardAmount, r
   }
 
   return (
-    <Card className="p-4 bg-yellow-900/50 border-yellow-500/50">
+    <Card className="p-4 bg-gray-900/50 border-gray-500/50 rounded-none backdrop-blur-sm">
       <div className="text-center space-y-3">
-        <div className="text-yellow-400 text-lg font-bold">
-          💰 Withdraw Rewards
-        </div>
-        <div className="text-yellow-300">
-          You have {rewardInAPT} APT waiting to be withdrawn
+        <h3 className="text-sm font-bold text-yellow-400 font-press-start mb-3">💰 TRANSACTION DETAILS</h3>
+
+        {/* Settlement Hash */}
+        {settlementTxHash && (
+          <div className="text-xs font-press-start mb-2">
+            <span className="text-yellow-300">Settlement: </span>
+            <span className="font-mono text-gray-300 break-all">{settlementTxHash}</span>
+          </div>
+        )}
+
+        {/* Amount */}
+        <div className="text-xs font-press-start mb-4">
+          <span className="text-blue-300">Amount: </span>
+          <span className="text-white font-bold">{rewardInAPT} APT</span>
         </div>
         <Button
           onClick={handleWithdraw}

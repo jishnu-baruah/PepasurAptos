@@ -4,6 +4,9 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Player } from "@/hooks/useGame"
 import { Game, apiService } from "@/services/api"
+import FullscreenToggle from "@/components/fullscreen-toggle"
+import ColoredPlayerName from "@/components/colored-player-name"
+import TipBar from "@/components/tip-bar"
 
 interface GameplayScreenProps {
   currentPlayer: Player
@@ -24,7 +27,11 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
   const [showTimeUp, setShowTimeUp] = useState(false)
   const [lastShownElimination, setLastShownElimination] = useState<string | null>(null)
   const [announcementShown, setAnnouncementShown] = useState(false)
-  const [investigationResult, setInvestigationResult] = useState<{player: string, role: string, color: string, emoji: string} | null>(null)
+  const [investigationResult, setInvestigationResult] = useState<{ player: string, role: string, color: string, emoji: string } | null>(null)
+  const [keyboardFocusIndex, setKeyboardFocusIndex] = useState<number>(0)
+
+  // Check if current player is eliminated
+  const isCurrentPlayerEliminated = game?.eliminated?.includes(currentPlayer?.address || currentPlayer?.id) || !currentPlayer?.isAlive
 
   // Debug game state
   useEffect(() => {
@@ -47,14 +54,14 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         console.log("Auto-refreshing game state (timer expired)")
         refreshGame()
       }, 3000)
-      
+
       return () => clearInterval(interval)
     } else if (game?.timeLeft !== undefined && game.timeLeft > 0) {
       // When timer is running, refresh every 3 seconds (reduced frequency)
       const interval = setInterval(() => {
         refreshGame()
       }, 3000) // Consolidated to single 3-second interval
-      
+
       return () => clearInterval(interval)
     }
   }, [game?.timeLeft, refreshGame])
@@ -78,7 +85,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
   useEffect(() => {
     if (game?.timeLeft !== undefined) {
       setTimeLeft(game.timeLeft)
-      
+
       // Start local countdown to match backend
       if (game.timeLeft > 0) {
         const timer = setTimeout(() => {
@@ -86,7 +93,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         }, 1000)
         return () => clearTimeout(timer)
       }
-      
+
       // Show time up popup when timer reaches zero
       if (game.timeLeft === 0) {
         setShowTimeUp(true)
@@ -155,6 +162,54 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
     }
   }, [game?.eliminated, game?.phase, players, onComplete, lastShownElimination, announcementShown])
 
+  const canSelectPlayers = !isCurrentPlayerEliminated && (currentPlayer.role === "ASUR" || currentPlayer.role === "DEVA" || currentPlayer.role === "RISHI")
+
+  // Keyboard navigation (arrow keys + Enter) - hidden feature
+  useEffect(() => {
+    if (actionTaken || isCurrentPlayerEliminated || game?.phase !== 'night') return
+
+    const selectablePlayers = players.filter(p => {
+      if (!p.isAlive) return false
+
+      // ASUR and RISHI cannot target themselves
+      if ((currentPlayer.role === "ASUR" || currentPlayer.role === "RISHI") && p.id === currentPlayer.id) {
+        return false
+      }
+
+      // DEVA can save anyone including themselves
+      if (currentPlayer.role === "DEVA") {
+        return true
+      }
+
+      return p.id !== currentPlayer.id
+    })
+
+    if (selectablePlayers.length === 0 || !canSelectPlayers) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Arrow keys for navigation
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setKeyboardFocusIndex(prev => (prev + 1) % selectablePlayers.length)
+        const nextPlayer = selectablePlayers[(keyboardFocusIndex + 1) % selectablePlayers.length]
+        setSelectedPlayer(nextPlayer.id)
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setKeyboardFocusIndex(prev => (prev - 1 + selectablePlayers.length) % selectablePlayers.length)
+        const prevPlayer = selectablePlayers[(keyboardFocusIndex - 1 + selectablePlayers.length) % selectablePlayers.length]
+        setSelectedPlayer(prevPlayer.id)
+      }
+      // Enter to confirm
+      else if (e.key === 'Enter' && selectedPlayer) {
+        e.preventDefault()
+        handlePlayerSelect(selectedPlayer)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [actionTaken, isCurrentPlayerEliminated, game?.phase, players, selectedPlayer, keyboardFocusIndex, currentPlayer.role, currentPlayer.id, canSelectPlayers])
+
   const handlePlayerSelect = async (playerId: string) => {
     console.log('🎯 handlePlayerSelect called:', {
       playerId,
@@ -162,107 +217,120 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
       actionTaken,
       gamePhase: game?.phase,
       currentPlayerRole: currentPlayer?.role,
-      currentPlayerAddress: currentPlayer?.address
+      currentPlayerAddress: currentPlayer?.address,
+      isEliminated: isCurrentPlayerEliminated
     })
 
+    // Eliminated players cannot take actions
+    if (isCurrentPlayerEliminated) {
+      console.log('❌ Eliminated player cannot take actions')
+      return
+    }
+
     if (timeLeft > 0 && !actionTaken && game?.phase === 'night') {
-      setSelectedPlayer(playerId)
-      setActionTaken(true)
+      // If clicking the same player that's already selected, confirm and submit
+      if (selectedPlayer === playerId) {
+        setActionTaken(true)
 
-      try {
-        // Map frontend roles to backend roles
-        const roleMapping: Record<string, string> = {
-          'ASUR': 'Mafia',
-          'DEVA': 'Doctor',
-          'RISHI': 'Detective',
-          'MANAV': 'Villager'
-        }
+        try {
+          // Map frontend roles to backend roles
+          const roleMapping: Record<string, string> = {
+            'ASUR': 'Mafia',
+            'DEVA': 'Doctor',
+            'RISHI': 'Detective',
+            'MANAV': 'Villager'
+          }
 
-        const backendRole = roleMapping[currentPlayer.role || '']
-        if (!backendRole) {
-          console.error('Unknown role:', currentPlayer.role)
-          return
-        }
+          const backendRole = roleMapping[currentPlayer.role || '']
+          if (!backendRole) {
+            console.error('Unknown role:', currentPlayer.role)
+            return
+          }
 
-        console.log(`🎯 Submitting action: ${backendRole} targeting ${playerId}`)
-        console.log(`📊 Game state before action:`, {
-          gamePhase: game?.phase,
-          timeLeft: game?.timeLeft,
-          timerReady: game?.timerReady,
-          gameId: game?.gameId
-        })
+          console.log(`🎯 Submitting action: ${backendRole} targeting ${playerId}`)
+          console.log(`📊 Game state before action:`, {
+            gamePhase: game?.phase,
+            timeLeft: game?.timeLeft,
+            timerReady: game?.timerReady,
+            gameId: game?.gameId
+          })
 
-        // Double-check phase hasn't changed (race condition protection)
-        if (game?.phase !== 'night') {
-          console.log('⚠️ Game phase changed, action cancelled')
-          setActionTaken(false)
-          return
-        }
+          // Double-check phase hasn't changed (race condition protection)
+          if (game?.phase !== 'night') {
+            console.log('⚠️ Game phase changed, action cancelled')
+            setActionTaken(false)
+            return
+          }
 
-        // Submit action to backend
-        await submitNightAction({
-          type: backendRole.toLowerCase(),
-          target: playerId
-        })
+          // Submit action to backend
+          await submitNightAction({
+            type: backendRole.toLowerCase(),
+            target: playerId
+          })
 
-        console.log(`✅ Action submitted successfully: ${backendRole} targeting ${playerId}`)
+          console.log(`✅ Action submitted successfully: ${backendRole} targeting ${playerId}`)
 
-        // If detective, immediately fetch investigation result
-        if (currentPlayer.role === 'RISHI' && game?.gameId) {
-          console.log('🔍 Detective investigation - fetching result')
+          // If detective and not eliminated, immediately fetch investigation result
+          if (currentPlayer.role === 'RISHI' && game?.gameId && !isCurrentPlayerEliminated) {
+            console.log('🔍 Detective investigation - fetching result')
 
-          // Wait a moment for backend to process, then fetch game state
-          setTimeout(async () => {
-            try {
-              const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/game/${game.gameId}?playerAddress=${currentPlayer.address}`)
-              const data = await response.json()
+            // Wait a moment for backend to process, then fetch game state
+            setTimeout(async () => {
+              try {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/game/${game.gameId}?playerAddress=${currentPlayer.address}`)
+                const data = await response.json()
 
-              if (data.success && data.game?.roles) {
-                const targetPlayer = players.find(p => p.id === playerId)
-                const targetRole = data.game.roles[playerId]
+                if (data.success && data.game?.roles) {
+                  const targetPlayer = players.find(p => p.id === playerId)
+                  const targetRole = data.game.roles[playerId]
 
-                console.log('🔍 Investigation result:', { targetPlayer: targetPlayer?.name, targetRole })
+                  console.log('🔍 Investigation result:', { targetPlayer: targetPlayer?.name, targetRole })
 
-                // Map backend role to frontend display
-                const roleInfo: Record<string, { name: string, emoji: string, color: string }> = {
-                  'Mafia': { name: 'ASUR', emoji: '🔴', color: '#FF4444' },
-                  'Doctor': { name: 'DEVA', emoji: '🛡️', color: '#44AA44' },
-                  'Detective': { name: 'RISHI', emoji: '🔍', color: '#4444FF' },
-                  'Villager': { name: 'MANAV', emoji: '👤', color: '#AAAAAA' }
+                  // Map backend role to frontend display
+                  const roleInfo: Record<string, { name: string, emoji: string, color: string }> = {
+                    'Mafia': { name: 'ASUR', emoji: '🔴', color: '#FF4444' },
+                    'Doctor': { name: 'DEVA', emoji: '🛡️', color: '#44AA44' },
+                    'Detective': { name: 'RISHI', emoji: '🔍', color: '#4444FF' },
+                    'Villager': { name: 'MANAV', emoji: '👤', color: '#AAAAAA' }
+                  }
+
+                  const info = roleInfo[targetRole] || { name: 'UNKNOWN', emoji: '❓', color: '#AAAAAA' }
+
+                  setInvestigationResult({
+                    player: targetPlayer?.name || 'Unknown',
+                    role: info.name,
+                    color: info.color,
+                    emoji: info.emoji
+                  })
                 }
-
-                const info = roleInfo[targetRole] || { name: 'UNKNOWN', emoji: '❓', color: '#AAAAAA' }
-
-                setInvestigationResult({
-                  player: targetPlayer?.name || 'Unknown',
-                  role: info.name,
-                  color: info.color,
-                  emoji: info.emoji
-                })
+              } catch (err) {
+                console.error('❌ Failed to fetch investigation result:', err)
               }
-            } catch (err) {
-              console.error('❌ Failed to fetch investigation result:', err)
-            }
-          }, 500)
+            }, 500)
+          }
+
+          console.log(`📊 Game state after action:`, {
+            gamePhase: game?.phase,
+            timeLeft: game?.timeLeft,
+            timerReady: game?.timerReady
+          })
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error)
+
+          // Check if it's a phase-related error (game ended/transitioned)
+          if (errorMessage.includes('phase') || errorMessage.includes('ended')) {
+            console.log('⚠️ Game phase changed during action submission:', errorMessage)
+          } else {
+            console.error('❌ Failed to submit action:', error)
+          }
+
+          setActionTaken(false)
+          setSelectedPlayer(null)
         }
-
-        console.log(`📊 Game state after action:`, {
-          gamePhase: game?.phase,
-          timeLeft: game?.timeLeft,
-          timerReady: game?.timerReady
-        })
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-
-        // Check if it's a phase-related error (game ended/transitioned)
-        if (errorMessage.includes('phase') || errorMessage.includes('ended')) {
-          console.log('⚠️ Game phase changed during action submission:', errorMessage)
-        } else {
-          console.error('❌ Failed to submit action:', error)
-        }
-
-        setActionTaken(false)
-        setSelectedPlayer(null)
+      } else {
+        // Select this player
+        setSelectedPlayer(playerId)
+        console.log('👉 Selected player:', playerId)
       }
     } else {
       console.log('❌ Cannot submit action:', {
@@ -305,19 +373,24 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
     }
   }
 
-  const canSelectPlayers = currentPlayer.role === "ASUR" || currentPlayer.role === "DEVA" || currentPlayer.role === "RISHI"
+
 
   // Get role-specific instruction and color
   const getRoleInstruction = () => {
+    // If player is eliminated, show observer message
+    if (isCurrentPlayerEliminated) {
+      return { text: "YOU ARE ELIMINATED - OBSERVING ONLY", color: "#666666", bgColor: "bg-gray-900/50", borderColor: "border-gray-700" }
+    }
+
     switch (currentPlayer.role) {
       case "ASUR":
-        return { text: "ASUR: CHOOSE YOUR TARGET", color: "#FF0000", bgColor: "bg-red-900/30", borderColor: "border-red-600" }
+        return { text: "ASUR: CHOOSE YOUR TARGET", color: "#EF4444", bgColor: "bg-red-900/30", borderColor: "border-red-600" }
       case "DEVA":
-        return { text: "DEVA: CHOOSE A PLAYER TO SAVE", color: "#00FF00", bgColor: "bg-green-900/30", borderColor: "border-green-600" }
+        return { text: "DEVA: CHOOSE A PLAYER TO SAVE", color: "#22C55E", bgColor: "bg-green-900/30", borderColor: "border-green-600" }
       case "RISHI":
-        return { text: "RISHI: CHOOSE A PLAYER TO INVESTIGATE", color: "#FFA500", bgColor: "bg-orange-900/30", borderColor: "border-orange-600" }
+        return { text: "RISHI: CHOOSE A PLAYER TO INVESTIGATE", color: "#F97316", bgColor: "bg-orange-900/30", borderColor: "border-orange-600" }
       case "MANAV":
-        return { text: "MANAV: OBSERVE AND WAIT", color: "#888888", bgColor: "bg-gray-900/30", borderColor: "border-gray-600" }
+        return { text: "MANAV: OBSERVE AND WAIT", color: "#9333EA", bgColor: "bg-purple-900/30", borderColor: "border-purple-600" }
       default:
         return { text: "WAITING...", color: "#888888", bgColor: "bg-gray-900/30", borderColor: "border-gray-600" }
     }
@@ -325,235 +398,232 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
 
   const roleInstruction = getRoleInstruction()
 
-  // Get pixel-art style hover border color for interactive sprites
-  const getHoverBorderColor = () => {
-    switch (currentPlayer.role) {
-      case "ASUR":
-        return "#FF0000" // Solid red
-      case "DEVA":
-        return "#00FF00" // Solid green
-      case "RISHI":
-        return "#FFAA00" // Solid orange/yellow
-      default:
-        return "transparent"
-    }
+  // Get role-specific header color
+  const getRoleHeaderColor = () => {
+    return "pixel-text-3d-white" // Neutral color for all roles
   }
 
-  const hoverBorderColor = getHoverBorderColor()
+  const roleHeaderColor = getRoleHeaderColor()
 
   return (
-    <div className="min-h-screen p-4 flex flex-col">
-      <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col space-y-6">
+    <div className="min-h-screen flex flex-col items-center justify-between pt-16 p-4 gaming-bg text-white font-press-start">
+      {/* Top Section: Title, Timer, and Instruction Bar */}
+      <div className="w-full max-w-7xl text-center space-y-4">
         {/* Debug Refresh Button (top right) */}
         {!isConnected && (
           <div className="absolute top-4 right-4 text-xs text-yellow-400">⚠️ DISCONNECTED</div>
         )}
-        <button
-          onClick={() => refreshGame()}
-          className="absolute top-4 left-4 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded z-10"
-        >
-          🔄 Refresh
-        </button>
-
-        {/* Phase Title */}
-        <div className="text-center">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-press-start pixel-text-3d-white pixel-text-3d-float">
-            NIGHT PHASE
-          </h1>
-          <div className="text-xs sm:text-sm text-gray-400 mt-1">OBSERVE AND WAIT</div>
-        </div>
-
-        {/* Role-Specific Instruction Bar */}
-        <Card className={`p-4 ${roleInstruction.bgColor} border-2 ${roleInstruction.borderColor}`}>
-          <div
-            className="text-center text-lg sm:text-xl lg:text-2xl font-bold font-press-start"
-            style={{ color: roleInstruction.color, textShadow: `0 0 10px ${roleInstruction.color}` }}
+        <div className="absolute top-4 left-4 flex gap-2 z-10">
+          <button
+            onClick={() => refreshGame()}
+            className="w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded flex items-center justify-center"
+            title="Refresh Game State"
           >
-            {roleInstruction.text}
-          </div>
-        </Card>
-
-        {/* Timer - Centered and Prominent */}
-        <div className="text-center">
-          <div className="text-sm sm:text-base font-press-start text-gray-400 mb-2">TIME REMAINING</div>
-          <div className="text-5xl sm:text-6xl lg:text-7xl font-bold font-press-start pixel-text-3d-red pixel-text-3d-float">
-            {timeLeft}s
+            🔄
+          </button>
+          <div className="w-8 h-8 bg-black/60 rounded flex items-center justify-center">
+            <FullscreenToggle variant="icon" className="text-white text-sm" />
           </div>
         </div>
 
-        {/* Players Grid - Large and Centered */}
-        <div className="flex-1 flex items-center justify-center">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 max-w-4xl mx-auto">
-            {players
-              .filter((p) => p.isAlive)
-              .map((player) => {
-                const isCurrentPlayer = player.id === currentPlayer.id
-                const isSelected = selectedPlayer === player.id
-                const cardColor = isSelected ? getActionColor() : "transparent"
+        <h1 className={`text-4xl md:text-5xl font-bold ${roleHeaderColor} pixel-text-3d-float-long`}>NIGHT PHASE</h1>
+        <div className="text-5xl md:text-7xl font-bold pixel-text-3d-red my-2">{timeLeft}</div>
+        <div
+          className={`w-full bg-black/50 border-2 p-3 text-lg md:text-xl ${selectedPlayer && !actionTaken ? 'border-yellow-400 text-yellow-400 animate-pulse' : 'border-gray-500 text-gray-300'
+            }`}
+          style={{ color: selectedPlayer && !actionTaken ? roleInstruction.color : undefined }}
+        >
+          {actionTaken
+            ? "Action confirmed. Waiting for others..."
+            : selectedPlayer
+              ? `You selected ${players.find(p => p.id === selectedPlayer)?.name}. Click again to confirm.`
+              : roleInstruction.text
+          }
+        </div>
 
-                // Determine if this player can be selected based on role
-                const canSelectThisPlayer = (() => {
-                  if (!canSelectPlayers || timeLeft <= 0 || actionTaken) return false
+        {/* Night Phase Tips */}
+        <TipBar
+          phase="night"
+          tips={[
+            "ASUR: Choose a player to eliminate. Work with other ASURs if there are multiple.",
+            "DEVA: Save a player from elimination. You can save yourself or others.",
+            "RISHI: Investigate a player to learn their role. Use this information wisely.",
+            "MANAV: Observe and wait. Pay attention to who gets eliminated and saved.",
+            "Actions are final once confirmed. Choose carefully!",
+            "The timer shows how much time is left in this phase."
+          ]}
+          className="mt-4"
+        />
+      </div>
 
-                  // ASUR and RISHI cannot target themselves
-                  if ((currentPlayer.role === "ASUR" || currentPlayer.role === "RISHI") && isCurrentPlayer) {
-                    return false
-                  }
+      {/* Main Content Area - Same as Voting Screen */}
+      <div className="flex-grow flex items-center justify-center w-full max-w-7xl">
+        {/* Player Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-12">
+          {players
+            .map((player) => {
+              const isCurrentPlayer = player.id === currentPlayer.id
+              const isSelected = selectedPlayer === player.id
+              const cardColor = isSelected ? getActionColor() : "transparent"
+              const isEliminated = !player.isAlive
 
-                  // DEVA can save anyone including themselves
-                  if (currentPlayer.role === "DEVA") {
-                    return true
-                  }
+              // Check if any action has been performed on this player
+              const hasActionPerformed = game?.pendingActions && Object.values(game.pendingActions).some((action: any) =>
+                action?.action?.target === player.id
+              )
 
-                  return !isCurrentPlayer
-                })()
+              // Determine if this player can be selected based on role
+              const canSelectThisPlayer = (() => {
+                if (!canSelectPlayers || timeLeft <= 0 || actionTaken || isEliminated) return false
 
-                const isDisabled = !canSelectThisPlayer && canSelectPlayers
-
-                // Border logic: No border for MANAV, hover-only border for action roles
-                const getBorderClass = () => {
-                  if (!canSelectPlayers) {
-                    // MANAV - no border at all
-                    return "border-0"
-                  }
-                  // Action roles - show border only on hover or selection
-                  if (isSelected) {
-                    return "border-4"
-                  }
-                  return "border-0"
+                // ASUR and RISHI cannot target themselves
+                if ((currentPlayer.role === "ASUR" || currentPlayer.role === "RISHI") && isCurrentPlayer) {
+                  return false
                 }
 
-                return (
-                  <div
-                    key={player.id}
-                    className={`
-                      relative p-4 ${getBorderClass()} rounded-none text-center transition-none
-                      ${canSelectThisPlayer ? "cursor-pointer hover:scale-105" : ""}
-                      ${isDisabled ? "cursor-not-allowed opacity-40" : ""}
+                // DEVA can save anyone including themselves (but not eliminated players)
+                if (currentPlayer.role === "DEVA") {
+                  return true
+                }
+
+                return !isCurrentPlayer
+              })()
+
+              const isDisabled = !canSelectThisPlayer && canSelectPlayers
+
+              return (
+                <Card
+                  key={player.id}
+                  className={`
+                      relative p-6 bg-black/20 rounded-none text-center transition-all duration-200 ease-in-out transform outline-4 outline-offset-[-4px] border-4 border-gray-600
+                      ${canSelectThisPlayer ? "cursor-pointer hover:-translate-y-1" : ""}
+                      ${isDisabled || isEliminated ? "cursor-not-allowed opacity-40" : ""}
                       ${!canSelectPlayers ? "opacity-100" : ""}
                       ${isSelected ? "scale-110" : ""}
+                      ${isEliminated ? "opacity-60 outline-red-500/50 bg-red-900/20" : ""}
+                      ${isSelected ? `outline-yellow-400 bg-yellow-400/20 animate-pulse` : "outline-transparent"}
                       group
                     `}
-                    style={{
-                      backgroundColor: isSelected ? `${cardColor}20` : "rgba(17, 17, 17, 0.8)",
-                      borderColor: isSelected ? cardColor : "transparent",
-                      borderWidth: isSelected ? "3px" : "0px",
-                      borderStyle: "solid",
-                    }}
-                    onClick={() => canSelectThisPlayer && handlePlayerSelect(player.id)}
-                  >
-                    {/* Pixel-art hover border overlay */}
-                    {canSelectThisPlayer && (
-                      <div
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none"
-                        style={{
-                          border: `3px solid ${hoverBorderColor}`,
-                          boxShadow: `inset 0 0 0 1px ${hoverBorderColor}`,
+                  onClick={() => canSelectThisPlayer && handlePlayerSelect(player.id)}
+                >
+                  {/* Player Avatar - Same as Voting Screen */}
+                  <div className="mb-3 relative">
+                    {player.avatar && player.avatar.startsWith('http') ? (
+                      <img
+                        src={player.avatar}
+                        alt={player.name}
+                        className={`w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 rounded-none object-cover mx-auto ${isEliminated ? 'grayscale' : ''}`}
+                        style={{ imageRendering: 'pixelated' }}
+                        onError={(e) => {
+                          console.error('Failed to load avatar for player:', player.name);
                         }}
                       />
-                    )}
-                    {/* Player Avatar - Scaled Up */}
-                    <div className="mb-3">
-                      {player.avatar && player.avatar.startsWith('http') ? (
-                        <img
-                          src={player.avatar}
-                          alt={player.name}
-                          className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-none object-cover mx-auto"
-                          style={{ imageRendering: 'pixelated' }}
-                          onError={(e) => {
-                            console.error('Failed to load avatar for player:', player.name);
-                          }}
-                        />
-                      ) : (
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 bg-[#333333] border-2 border-[#666666] mx-auto flex items-center justify-center">
-                          <span className="text-xs text-red-500">⚠️</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Player Name - Clear White Font */}
-                    <div className="font-press-start text-sm sm:text-base lg:text-lg text-white mb-1">
-                      {player.name}
-                    </div>
-
-                    {/* Current Player Indicator + Role */}
-                    {isCurrentPlayer && (
-                      <div className="space-y-1">
-                        <div className="font-press-start text-xs sm:text-sm text-[#4A8C4A]">
-                          (YOU)
-                        </div>
-                        <div
-                          className="font-press-start text-xs sm:text-sm font-bold"
-                          style={{ color: roleInstruction.color, textShadow: `0 0 5px ${roleInstruction.color}` }}
-                        >
-                          {currentPlayer.role}
-                        </div>
+                    ) : (
+                      <div className="w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 bg-[#333] border-2 border-[#666] mx-auto flex items-center justify-center">
+                        <span className="text-4xl">?</span>
                       </div>
                     )}
-
-                    {/* Selection Indicator */}
-                    {isSelected && !isCurrentPlayer && (
-                      <div
-                        className="mt-2 text-xs sm:text-sm font-press-start font-bold"
-                        style={{ color: cardColor }}
-                      >
-                        {currentPlayer.role === "ASUR" ? "⚔️ TARGETED" :
-                         currentPlayer.role === "DEVA" ? "🛡️ PROTECTED" :
-                         currentPlayer.role === "RISHI" ? "🔍 INVESTIGATING" : "✓ SELECTED"}
-                      </div>
-                    )}
-
-                    {/* Disabled Indicator */}
-                    {isDisabled && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-none">
-                        <span className="text-2xl">🚫</span>
-                      </div>
+                    {isEliminated && (
+                      <div className="absolute inset-0 bg-black/60 rounded-none"></div>
                     )}
                   </div>
-                )
-              })}
-          </div>
+
+                  {/* Player Name - Colored Font with YOU indicator inline */}
+                  <div className="font-press-start text-sm sm:text-base lg:text-lg mb-1">
+                    <ColoredPlayerName
+                      playerName={player.name}
+                      isCurrentPlayer={isCurrentPlayer}
+                      showYouIndicator={true}
+                    />
+                  </div>
+
+                  {/* Role for Current Player */}
+                  {isCurrentPlayer && (
+                    <div className="space-y-1">
+                      {isCurrentPlayerEliminated && (
+                        <div className="font-press-start text-xs sm:text-sm text-red-400">
+                          ELIMINATED
+                        </div>
+                      )}
+                      <div
+                        className="font-press-start text-xs sm:text-sm font-bold"
+                        style={{ color: roleInstruction.color, textShadow: `0 0 5px ${roleInstruction.color}` }}
+                      >
+                        {currentPlayer.role}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Eliminated Tag for Other Players */}
+                  {!isCurrentPlayer && isEliminated && (
+                    <div className="mt-1 px-1 py-1 bg-red-900/50 border border-red-500/50 text-red-300 text-xs font-press-start rounded-none">
+                      ☠️ ELIMINATED
+                    </div>
+                  )}
+
+
+
+                  {/* Selection Indicator */}
+                  {isSelected && !isCurrentPlayer && (
+                    <div
+                      className="mt-2 text-xs sm:text-sm font-press-start font-bold"
+                      style={{ color: cardColor }}
+                    >
+                      {currentPlayer.role === "ASUR" ? "⚔️ TARGETED" :
+                        currentPlayer.role === "DEVA" ? "🛡️ PROTECTED" :
+                          currentPlayer.role === "RISHI" ? "🔍 INVESTIGATING" : "✓ SELECTED"}
+                    </div>
+                  )}
+
+
+                </Card>
+              )
+            })}
         </div>
       </div>
 
       {/* Time Up Popup */}
-      {showTimeUp && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <Card className="p-8 bg-card border-4 border-destructive text-center">
-            <div className="text-4xl font-bold font-press-start text-destructive pixel-text-3d-red pixel-text-3d-float">⏰ TIME'S UP!</div>
-          </Card>
-        </div>
-      )}
+      {
+        showTimeUp && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <Card className="p-8 bg-card border-4 border-destructive rounded-none text-center">
+              <div className="text-4xl font-bold font-press-start text-destructive pixel-text-3d-red pixel-text-3d-float">⏰ TIME'S UP!</div>
+            </Card>
+          </div>
+        )
+      }
 
       {/* Detective Investigation Result */}
-      {investigationResult && currentPlayer.role === 'RISHI' && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md p-6 bg-[#111111]/95 border-4 border-[#4444FF] text-center space-y-4">
-            <div className="text-4xl">{investigationResult.emoji}</div>
-            <div className="text-xl font-bold font-press-start text-[#4444FF] pixel-text-3d-glow">
-              🔍 INVESTIGATION RESULT
-            </div>
-            <div className="text-lg font-press-start pixel-text-3d-white">
-              <span className="text-gray-300">{investigationResult.player}</span>
-              <br />
-              <span className="text-sm">is</span>
-              <br />
-              <span style={{ color: investigationResult.color }} className="text-2xl font-bold">
-                {investigationResult.role}
-              </span>
-            </div>
-            <div className="pt-4 border-t border-[#2a2a2a]">
-              <button
-                onClick={() => setInvestigationResult(null)}
-                className="px-6 py-2 bg-[#4444FF] hover:bg-[#3333DD] text-white font-press-start text-sm rounded"
-              >
-                ✓ UNDERSTOOD
-              </button>
-            </div>
-          </Card>
-        </div>
-      )}
+      {
+        investigationResult && currentPlayer.role === 'RISHI' && !isCurrentPlayerEliminated && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md p-6 bg-[#111111]/95 border-4 border-[#4444FF] rounded-none text-center space-y-4">
+              <div className="text-4xl">{investigationResult.emoji}</div>
+              <div className="text-xl font-bold font-press-start text-[#4444FF] pixel-text-3d-glow">
+                🔍 INVESTIGATION RESULT
+              </div>
+              <div className="text-lg font-press-start pixel-text-3d-white">
+                <span className="text-gray-300">{investigationResult.player}</span>
+                <br />
+                <span className="text-sm">is</span>
+                <br />
+                <span style={{ color: investigationResult.color }} className="text-2xl font-bold">
+                  {investigationResult.role}
+                </span>
+              </div>
+              <div className="pt-4 border-t border-[#2a2a2a]">
+                <button
+                  onClick={() => setInvestigationResult(null)}
+                  className="px-6 py-2 bg-[#4444FF] hover:bg-[#3333DD] text-white font-press-start text-sm rounded-none border-2 border-[#3333DD]"
+                >
+                  ✓ UNDERSTOOD
+                </button>
+              </div>
+            </Card>
+          </div>
+        )
+      }
 
-    </div>
+    </div >
   )
 }
