@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import RetroAnimation from "@/components/retro-animation"
@@ -28,17 +28,20 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
   const [timeLeft, setTimeLeft] = useState(game?.timeLeft || 8);
   const [outcome, setOutcome] = useState<'peaceful' | 'kill' | 'save'>('peaceful');
 
+  // Memoize player data to prevent re-renders and avatar re-fetches
+  const killedPlayerMemo = useMemo(() => resolution.killedPlayer, [resolution.killedPlayer?.address]);
+  const savedPlayerMemo = useMemo(() => resolution.savedPlayer, [resolution.savedPlayer?.address]);
+
   // Determine outcome
   useEffect(() => {
-    const { killedPlayer, savedPlayer } = resolution;
-    if (killedPlayer && savedPlayer && killedPlayer.address === savedPlayer.address) {
+    if (killedPlayerMemo && savedPlayerMemo && killedPlayerMemo.address === savedPlayerMemo.address) {
       setOutcome('save');
-    } else if (killedPlayer) {
+    } else if (killedPlayerMemo) {
       setOutcome('kill');
     } else {
       setOutcome('peaceful');
     }
-  }, [resolution]);
+  }, [killedPlayerMemo, savedPlayerMemo]);
 
   // Transition logic
   useEffect(() => {
@@ -62,11 +65,9 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
     }
   }, [showResults, timeLeft]);
 
-  const { killedPlayer, savedPlayer } = resolution;
-
-  // Check if current player was killed
-  const wasCurrentPlayerKilled = currentPlayer && killedPlayer &&
-    (currentPlayer.address === killedPlayer.address || currentPlayer.id === killedPlayer.id);
+  // Check if current player was killed (using memoized player)
+  const wasCurrentPlayerKilled = currentPlayer && killedPlayerMemo &&
+    (currentPlayer.address === killedPlayerMemo.address || currentPlayer.id === killedPlayerMemo.id);
 
   const getHeaderText = () => {
     if (outcome === 'peaceful') return 'PEACEFUL NIGHT';
@@ -81,7 +82,7 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
 
   const flavorText = {
     peaceful: 'Everyone survived the night... for now.',
-    kill: wasCurrentPlayerKilled ? 'You have been eliminated from the game.' : `${killedPlayer?.name || 'A player'} was eliminated during the night.`,
+    kill: wasCurrentPlayerKilled ? 'You have been eliminated from the game.' : `${killedPlayerMemo?.name || 'A player'} was eliminated during the night.`,
     save: wasCurrentPlayerKilled ? 'The DEVA has saved your life!' : 'The DEVA has protected the town!',
   };
 
@@ -106,22 +107,26 @@ export default function NightResolutionScreen({ resolution, onContinue, game, cu
         ) : (
           <div className="space-y-8">
             {/* Only show content if someone was eliminated */}
-            {outcome === 'kill' && killedPlayer && (
+            {outcome === 'kill' && killedPlayerMemo && (
               <>
-                {/* Player Avatar */}
-                <div className="flex justify-center">
-                  <img
-                    src={killedPlayer.avatar}
-                    alt={killedPlayer.name}
-                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-none object-cover border-2 border-gray-600"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
-                </div>
+                {/* Player Avatar - Only show if avatar is already loaded/valid */}
+                {killedPlayerMemo.avatar && killedPlayerMemo.avatar.startsWith('http') && (
+                  <div className="flex justify-center">
+                    <img
+                      src={killedPlayerMemo.avatar}
+                      alt={killedPlayerMemo.name}
+                      className="w-24 h-24 sm:w-32 sm:h-32 rounded-none object-cover border-2 border-gray-600"
+                      style={{ imageRendering: 'pixelated' }}
+                      loading="eager"
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  </div>
+                )}
 
                 {/* Player Name + Elimination Status */}
                 <div className="flex flex-col items-center space-y-2">
                   <div className="text-2xl md:text-3xl font-press-start">
-                    <ColoredPlayerName playerName={killedPlayer.name || 'Unknown Player'} />
+                    <ColoredPlayerName playerName={killedPlayerMemo.name || 'Unknown Player'} />
                   </div>
                   <div className="text-xl md:text-2xl text-red-400 font-press-start">
                     WAS ELIMINATED

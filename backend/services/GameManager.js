@@ -973,7 +973,7 @@ class GameManager {
     game.phase = 'task';
     game.task = this.generateTask();
     game.pendingActions = {};
-    game.timeLeft = 30; // 30 seconds for task/discussion
+    game.timeLeft = 30; // 30 seconds for task/discussion (keep this as is)
     this.phaseStartTimes.set(gameId, Date.now()); // Track phase start time
 
     // Start timer for task phase (same pattern as game start)
@@ -1097,7 +1097,7 @@ class GameManager {
       // Transition to night phase
       game.phase = 'night';
       game.day++;
-      game.timeLeft = 30;
+      game.timeLeft = parseInt(process.env.GAME_TIMEOUT_SECONDS) || 30;
       game.pendingActions = {};
       this.phaseStartTimes.set(gameId, Date.now()); // Track phase start time
       game.votes = {};
@@ -1235,6 +1235,13 @@ class GameManager {
     }
 
     const { playerAddress, answer } = data;
+
+    // Check if this player has already submitted for this task
+    if (game.task.submissions[playerAddress] !== undefined) {
+      console.log(`⚠️ Player ${playerAddress} already submitted for task ${game.task.id}`);
+      return { correct: this.validateTaskAnswer(game.task, answer) };
+    }
+
     game.task.submissions[playerAddress] = answer;
 
     // Check if answer is correct
@@ -1262,6 +1269,22 @@ class GameManager {
         isSuccess: correct,
         taskCount: game.taskCounts[playerAddress]
       });
+
+      // Send announcement message to chat (server-side to prevent duplicates)
+      const player = game.players.find(p => p === playerAddress);
+      if (player) {
+        const taskWord = correct ? '✅ completed' : '❌ failed';
+        const message = `Task ${taskWord}`;
+
+        this.socketManager.emitChatMessage(gameId, {
+          playerAddress: 'SYSTEM',
+          playerName: 'SYSTEM',
+          message: message,
+          type: correct ? 'task_success' : 'task_failure',
+          taskPlayerAddress: playerAddress, // Include player info for frontend to use avatar
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     console.log(`📊 Task result for ${playerAddress}: ${correct ? 'SUCCESS' : 'FAILURE'}, count: ${game.taskCounts[playerAddress]}`);

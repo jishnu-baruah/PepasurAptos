@@ -162,10 +162,11 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
                   </div>
                 ) : (
                   messages.map((msg, index) => {
-                    const messagePlayer = players?.find(p => p.address === msg.playerAddress)
-                    const isCurrentPlayer = msg.playerAddress === currentPlayerAddress && msg.playerAddress !== 'SYSTEM'
                     const isTaskAnnouncement = msg.type === 'task_success' || msg.type === 'task_failure'
-                    const isSystemMessage = msg.type === 'system' || isTaskAnnouncement || msg.playerAddress === 'SYSTEM'
+                    // For task announcements, use taskPlayerAddress to find the player
+                    const messagePlayer = players?.find(p => p.address === (isTaskAnnouncement ? msg.taskPlayerAddress : msg.playerAddress))
+                    const isCurrentPlayer = msg.playerAddress === currentPlayerAddress && msg.playerAddress !== 'SYSTEM'
+                    const isSystemMessage = msg.type === 'system' || msg.playerAddress === 'SYSTEM'
 
                     return (
                       <div key={`${msg.id}-${index}`} className={`font-press-start text-xs sm:text-sm md:text-base pixel-text-3d-white p-2 sm:p-3 md:p-4 border chat-message-glow chat-message-enter ${isTaskAnnouncement
@@ -190,9 +191,15 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
                           )}
                           <span className={isCurrentPlayer ? "text-[#4A8C4A]" : ""}>
                             {isTaskAnnouncement ? (
-                              <span className={msg.type === 'task_success' ? 'text-green-400' : 'text-red-400'}>
-                                📊 TASK RESULT
-                              </span>
+                              messagePlayer ? (
+                                <ColoredPlayerName
+                                  playerName={messagePlayer.name}
+                                />
+                              ) : (
+                                <span className={msg.type === 'task_success' ? 'text-green-400' : 'text-red-400'}>
+                                  Player
+                                </span>
+                              )
                             ) : msg.playerAddress === 'SYSTEM' ? (
                               <span className="text-yellow-400">🤖 SYSTEM</span>
                             ) : isCurrentPlayer ? 'You' : (
@@ -218,22 +225,22 @@ export default function DiscussionPhaseScreen({ onComplete, game, gameId, curren
             /* Tasks Tab - Real Task Component */
             <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto min-h-0">
               {/* Task Counts Display */}
-              {game?.taskCounts && players && (
-                <div className="mb-4 p-3 bg-gray-900/50 border border-gray-600 rounded-none">
+              {game?.taskCounts && players && players.length > 0 && (
+                <div className="mb-4 p-3 bg-gray-900/50 border border-gray-600 rounded-none" style={{ minHeight: '120px' }}>
                   <h4 className="text-sm font-press-start text-yellow-400 mb-2">📊 TASK COUNTS</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {players.map(player => {
                       const taskCount = game.taskCounts[player.address] || 0;
                       return (
-                        <div key={player.address} className="flex items-center space-x-2 text-xs">
+                        <div key={player.address} className="flex items-center space-x-2 text-xs h-6">
                           <img
                             src={player.avatar}
                             alt={player.name}
-                            className="w-4 h-4 rounded-none object-cover"
+                            className="w-4 h-4 rounded-none object-cover flex-shrink-0"
                             style={{ imageRendering: 'pixelated' }}
                           />
                           <ColoredPlayerName playerName={player.name} />
-                          <span className={`font-bold ${taskCount > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                          <span className={`font-bold ml-auto flex-shrink-0 ${taskCount > 0 ? 'text-green-400' : 'text-gray-400'}`}>
                             {taskCount}
                           </span>
                         </div>

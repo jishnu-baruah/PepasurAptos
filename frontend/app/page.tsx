@@ -182,6 +182,7 @@ export default function Home() {
       } else if (game.phase === 'resolution' && gameState !== 'resolution') {
         // Find the most recently eliminated player (last in the eliminated array)
         const newlyEliminated = game.eliminated.length > 0 ? game.eliminated[game.eliminated.length - 1] : null
+        console.log('🔍 Resolution phase - newly eliminated:', newlyEliminated, 'all eliminated:', game.eliminated)
         setLastEliminatedPlayer(newlyEliminated)
         setGameState('resolution')
       } else if (game.phase === 'task' && gameState !== 'task') {
@@ -353,7 +354,12 @@ export default function Home() {
       {gameState === "resolution" && game && (
         <NightResolutionScreen
           resolution={{
-            killedPlayer: lastEliminatedPlayer ? players.find(p => p.address === lastEliminatedPlayer) || null : null,
+            killedPlayer: (() => {
+              if (!lastEliminatedPlayer) return null;
+              const found = players.find(p => p.address === lastEliminatedPlayer);
+              console.log('🔍 Looking for eliminated player:', lastEliminatedPlayer, 'found:', found?.name);
+              return found || null;
+            })(),
             savedPlayer: null,
             investigatedPlayer: null,
             investigationResult: null,

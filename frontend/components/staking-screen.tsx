@@ -9,6 +9,7 @@ import GifLoader from "@/components/gif-loader"
 import RetroAnimation from "@/components/retro-animation"
 import { useWallet, type InputTransactionData } from "@aptos-labs/wallet-adapter-react"
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk"
+import { smoothSendClient } from "@/lib/smoothsend"
 
 // Initialize Aptos client
 const config = new AptosConfig({
@@ -59,6 +60,7 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
 
   const [stakeAmountInput, setStakeAmountInput] = useState('0.001');
   const [isPublic, setIsPublic] = useState(false);
+  const [gaslessMode, setGaslessMode] = useState(true); // Default to gasless on testnet
 
   // Update room code when initialRoomCode changes (e.g., from public lobbies)
   useEffect(() => {
@@ -80,7 +82,65 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
   const stakeAmountInAPT = (stakeAmount / 100000000).toFixed(4);
 
   // Aptos wallet hooks
-  const { account, connected, signAndSubmitTransaction } = useWallet()
+  const { account, connected, signAndSubmitTransaction, signTransaction } = useWallet()
+
+  // Helper function to execute gasless transaction
+  const executeGaslessTransaction = async (contractGameId: string) => {
+    if (!account?.address || !signTransaction) {
+      throw new Error('Wallet not properly connected for gasless transactions')
+    }
+
+    console.log('🌟 [Gasless] Testnet: Using simple transfer with fee payer...')
+
+    // Step 1: Initialize Aptos SDK with TESTNET (critical!)
+    const { Aptos: AptosSDK, AptosConfig, Network: AptosNetwork } = await import('@aptos-labs/ts-sdk')
+    const aptosConfig = new AptosConfig({ network: AptosNetwork.TESTNET })
+    const aptosClient = new AptosSDK(aptosConfig)
+
+    console.log('🌟 [Gasless] Building transaction with withFeePayer flag...')
+
+    // Step 2: Build transaction with withFeePayer flag (testnet gasless mode)
+    const rawTransaction = await aptosClient.transaction.build.simple({
+      sender: account.address,
+      withFeePayer: true, // Critical: This enables gasless transactions
+      data: {
+        function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
+        functionArguments: [contractGameId],
+      }
+    })
+
+    console.log('🌟 [Gasless] Signing transaction...')
+
+    // Step 3: Sign the transaction
+    const signResponse = await signTransaction({ transactionOrPayload: rawTransaction })
+
+    if (!signResponse || !signResponse.authenticator) {
+      throw new Error('Failed to sign transaction')
+    }
+
+    console.log('🌟 [Gasless] Serializing and submitting to relayer...')
+
+    // Step 4: Serialize and submit to SmoothSend
+    const transactionBytes = rawTransaction.bcsToBytes()
+    const authenticatorBytes = signResponse.authenticator.bcsToBytes()
+
+    const submitResponse = await smoothSendClient.submitSignedTransaction(
+      Array.from(transactionBytes),
+      Array.from(authenticatorBytes)
+    )
+
+    if (!submitResponse.success) {
+      throw new Error(submitResponse.message || 'Gasless transaction failed')
+    }
+
+    const txHash = submitResponse.txnHash || submitResponse.hash
+    if (!txHash) {
+      throw new Error('No transaction hash returned')
+    }
+
+    console.log('🌟 [Gasless] ✅ Testnet transaction successful!', submitResponse)
+    return txHash
+  }
 
   // Fetch account balance
   useEffect(() => {
@@ -282,26 +342,39 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
             // Now stake from user's wallet to join the game
             console.log('💰 User staking to join created game:', result.contractGameId)
 
-            const transaction: InputTransactionData = {
-              data: {
-                function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
-                functionArguments: [result.contractGameId],
-              },
-            }
+            let txHash: string
 
-            const txResponse = await signAndSubmitTransaction(transaction)
-
-            // Wait for transaction confirmation
-            try {
-              await aptos.waitForTransaction({ transactionHash: txResponse.hash })
-              console.log('✅ Transaction confirmed:', txResponse.hash)
+            if (gaslessMode) {
+              // Use gasless transaction
+              txHash = await executeGaslessTransaction(result.contractGameId)
+              // Wait for confirmation
+              await aptos.waitForTransaction({ transactionHash: txHash })
+              console.log('✅ Gasless transaction confirmed:', txHash)
               setHasProcessedSuccess(true)
-              // Pass gameId and roomCode directly from result
-              handleStakeSuccess(txResponse.hash, result.gameId, result.roomCode)
-            } catch (error) {
-              console.error('❌ Transaction failed:', error)
-              setError('Transaction failed. Please try again.')
-              setIsStaking(false)
+              handleStakeSuccess(txHash, result.gameId, result.roomCode)
+            } else {
+              // Use normal transaction
+              const transaction: InputTransactionData = {
+                data: {
+                  function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
+                  functionArguments: [result.contractGameId],
+                },
+              }
+
+              const txResponse = await signAndSubmitTransaction(transaction)
+
+              // Wait for transaction confirmation
+              try {
+                await aptos.waitForTransaction({ transactionHash: txResponse.hash })
+                console.log('✅ Transaction confirmed:', txResponse.hash)
+                setHasProcessedSuccess(true)
+                // Pass gameId and roomCode directly from result
+                handleStakeSuccess(txResponse.hash, result.gameId, result.roomCode)
+              } catch (error) {
+                console.error('❌ Transaction failed:', error)
+                setError('Transaction failed. Please try again.')
+                setIsStaking(false)
+              }
             }
           } else {
             console.error('❌ Backend create failed:', result.error)
@@ -339,51 +412,73 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
           // Now stake to join the game
           console.log('💰 Staking to join game:', gameData.contractGameId)
 
-          const transaction: InputTransactionData = {
-            data: {
-              function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
-              functionArguments: [gameData.contractGameId],
-            },
-          }
-
-          const txResponse = await signAndSubmitTransaction(transaction)
-
-          // Wait for transaction confirmation
-          try {
-            await aptos.waitForTransaction({ transactionHash: txResponse.hash })
-            console.log('✅ Transaction confirmed:', txResponse.hash)
+          if (gaslessMode) {
+            // Use gasless transaction
+            const txHash = await executeGaslessTransaction(gameData.contractGameId)
+            // Wait for confirmation
+            await aptos.waitForTransaction({ transactionHash: txHash })
+            console.log('✅ Gasless transaction confirmed:', txHash)
             setHasProcessedSuccess(true)
-            // Pass gameId directly instead of relying on state (which updates async)
-            handleStakeSuccess(txResponse.hash, gameData.gameId, gameData.roomCode)
-          } catch (error) {
-            console.error('❌ Transaction failed:', error)
-            setError('Transaction failed. Please try again.')
-            setIsStaking(false)
+            handleStakeSuccess(txHash, gameData.gameId, gameData.roomCode)
+          } else {
+            // Use normal transaction
+            const transaction: InputTransactionData = {
+              data: {
+                function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
+                functionArguments: [gameData.contractGameId],
+              },
+            }
+
+            const txResponse = await signAndSubmitTransaction(transaction)
+
+            // Wait for transaction confirmation
+            try {
+              await aptos.waitForTransaction({ transactionHash: txResponse.hash })
+              console.log('✅ Transaction confirmed:', txResponse.hash)
+              setHasProcessedSuccess(true)
+              // Pass gameId directly instead of relying on state (which updates async)
+              handleStakeSuccess(txResponse.hash, gameData.gameId, gameData.roomCode)
+            } catch (error) {
+              console.error('❌ Transaction failed:', error)
+              setError('Transaction failed. Please try again.')
+              setIsStaking(false)
+            }
           }
         } else {
           // We already have gameId, just stake
           console.log('💰 Staking to join game:', gameId)
 
-          const transaction: InputTransactionData = {
-            data: {
-              function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
-              functionArguments: [gameId],
-            },
-          }
-
-          const txResponse = await signAndSubmitTransaction(transaction)
-
-          // Wait for transaction confirmation
-          try {
-            await aptos.waitForTransaction({ transactionHash: txResponse.hash })
-            console.log('✅ Transaction confirmed:', txResponse.hash)
+          if (gaslessMode) {
+            // Use gasless transaction
+            const txHash = await executeGaslessTransaction(gameId)
+            // Wait for confirmation
+            await aptos.waitForTransaction({ transactionHash: txHash })
+            console.log('✅ Gasless transaction confirmed:', txHash)
             setHasProcessedSuccess(true)
-            // Pass gameId directly (roomCode will be from state)
-            handleStakeSuccess(txResponse.hash, gameId)
-          } catch (error) {
-            console.error('❌ Transaction failed:', error)
-            setError('Transaction failed. Please try again.')
-            setIsStaking(false)
+            handleStakeSuccess(txHash, gameId)
+          } else {
+            // Use normal transaction
+            const transaction: InputTransactionData = {
+              data: {
+                function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
+                functionArguments: [gameId],
+              },
+            }
+
+            const txResponse = await signAndSubmitTransaction(transaction)
+
+            // Wait for transaction confirmation
+            try {
+              await aptos.waitForTransaction({ transactionHash: txResponse.hash })
+              console.log('✅ Transaction confirmed:', txResponse.hash)
+              setHasProcessedSuccess(true)
+              // Pass gameId directly (roomCode will be from state)
+              handleStakeSuccess(txResponse.hash, gameId)
+            } catch (error) {
+              console.error('❌ Transaction failed:', error)
+              setError('Transaction failed. Please try again.')
+              setIsStaking(false)
+            }
           }
         }
       }
@@ -501,6 +596,26 @@ export default function StakingScreen({ gameId, playerAddress, onStakeSuccess, o
               </div>
             </Card>
           )}
+
+          {/* Gasless Mode Toggle */}
+          <Card className="p-2 sm:p-3 bg-[#1a1a1a]/50 border border-[#333333]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs sm:text-sm font-press-start text-gray-300">GAS FEES</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {gaslessMode ? '✨ FREE - No gas fees!' : '⛽ Pay small gas fee'}
+                </div>
+              </div>
+              <Button
+                onClick={() => setGaslessMode(!gaslessMode)}
+                variant={gaslessMode ? 'pixel' : 'outline'}
+                size="pixel"
+                className="text-xs"
+              >
+                {gaslessMode ? '✨ GASLESS' : '⛽ NORMAL'}
+              </Button>
+            </div>
+          </Card>
 
           {/* Stake Amount Input - Only show for create mode */}
           {mode === 'create' && (

@@ -185,7 +185,7 @@ export function useGame(gameId?: string): GameState & GameActions {
     if (!game?.gameId || !sendChatMessage) return
 
     // Create unique key for this announcement to prevent duplicates
-    const announcementKey = `${player.address}-${isSuccess}-${game.task?.id || 'unknown'}`
+    const announcementKey = `${player.address}-${isSuccess}-${game.task?.id || 'unknown'}-${game?.day || 1}`
 
     // Check if we've already sent this announcement
     if (sentAnnouncements.has(announcementKey)) {
@@ -193,10 +193,16 @@ export function useGame(gameId?: string): GameState & GameActions {
       return
     }
 
-    // Mark this announcement as sent
-    setSentAnnouncements(prev => new Set([...prev, announcementKey]))
+    // Mark this announcement as sent immediately
+    setSentAnnouncements(prev => {
+      const newSet = new Set(prev)
+      newSet.add(announcementKey)
+      return newSet
+    })
 
     const announcement = generateTaskAnnouncement(player, isSuccess)
+
+    console.log('📢 Sending task announcement:', announcementKey, announcement.message)
 
     sendChatMessage({
       gameId: game.gameId,
@@ -207,7 +213,7 @@ export function useGame(gameId?: string): GameState & GameActions {
       type: announcement.type,
       timestamp: new Date().toISOString()
     })
-  }, [game?.gameId, game?.task?.id, sendChatMessage, generateTaskAnnouncement, sentAnnouncements])
+  }, [game?.gameId, game?.task?.id, game?.day, sendChatMessage, generateTaskAnnouncement, sentAnnouncements])
 
   // Reset game state and clear session
   const resetGame = useCallback(() => {
@@ -297,10 +303,10 @@ export function useGame(gameId?: string): GameState & GameActions {
     }
 
     const handleTaskResult = (data: { playerAddress: string; isSuccess: boolean; taskCount: number }) => {
-      console.log('🎮 Task result:', data)
+      console.log('🎮 Task result received:', data)
 
-      // Create unique key for this task result (without timestamp to prevent duplicates)
-      const resultKey = `${data.playerAddress}-${data.taskCount}-${data.isSuccess}-${game?.task?.id || 'unknown'}`
+      // Create unique key for this task result (more specific to prevent duplicates)
+      const resultKey = `${data.playerAddress}-${data.isSuccess}-${game?.task?.id || 'unknown'}-${game?.day || 1}`
 
       // Check if we've already processed this result (prevent duplicates)
       if (processedTaskResults.has(resultKey)) {
@@ -308,8 +314,12 @@ export function useGame(gameId?: string): GameState & GameActions {
         return
       }
 
-      // Mark this result as processed
-      setProcessedTaskResults(prev => new Set([...prev, resultKey]))
+      // Mark this result as processed immediately
+      setProcessedTaskResults(prev => {
+        const newSet = new Set(prev)
+        newSet.add(resultKey)
+        return newSet
+      })
 
       // Update task counts in game state
       if (game) {
@@ -322,13 +332,9 @@ export function useGame(gameId?: string): GameState & GameActions {
         } : null)
       }
 
-      // Find the player who completed the task
-      const taskPlayer = players.find(p => p.address === data.playerAddress)
-      if (taskPlayer) {
-        // Send announcement to chat (only once per result)
-        sendTaskAnnouncement(taskPlayer, data.isSuccess)
-        console.log(`📢 Task announcement sent for ${taskPlayer.name}: ${data.isSuccess ? 'SUCCESS' : 'FAILURE'}, count: ${data.taskCount}`)
-      }
+      // Note: Task announcements are now sent from the server to prevent duplicates
+      // No need to send from client side anymore
+      console.log(`📢 Task result processed for ${data.playerAddress}: ${data.isSuccess ? 'SUCCESS' : 'FAILURE'}, count: ${data.taskCount}`)
     }
 
     const handleChatMessage = (data: any) => {

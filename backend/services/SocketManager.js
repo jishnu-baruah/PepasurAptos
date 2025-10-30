@@ -233,6 +233,19 @@ class SocketManager {
     });
   }
 
+  // Emit chat message from server (e.g., task announcements, system messages)
+  emitChatMessage(gameId, data) {
+    try {
+      console.log(`📢 Emitting chat message for game ${gameId}:`, data);
+      this.io.to(`game-${gameId}`).emit('chat_message', {
+        gameId,
+        ...data
+      });
+    } catch (error) {
+      console.error(`❌ Error emitting chat message for game ${gameId}:`, error);
+    }
+  }
+
   // Broadcast game state updates
   broadcastGameUpdate(gameId, update) {
     this.io.to(`game-${gameId}`).emit('game_update', {

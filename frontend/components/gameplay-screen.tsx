@@ -26,6 +26,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
   const [timeLeft, setTimeLeft] = useState(0)
   const [showTimeUp, setShowTimeUp] = useState(false)
   const [lastShownElimination, setLastShownElimination] = useState<string | null>(null)
+  const [lastShownDay, setLastShownDay] = useState<number>(0) // Track which day we showed elimination for
   const [announcementShown, setAnnouncementShown] = useState(false)
   const [investigationResult, setInvestigationResult] = useState<{ player: string, role: string, color: string, emoji: string } | null>(null)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState<number>(0)
@@ -140,17 +141,19 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
       return
     }
 
-    if (game?.eliminated && game.eliminated.length > 0) {
+    if (game?.eliminated && game.eliminated.length > 0 && game?.day) {
       const lastEliminated = game.eliminated[game.eliminated.length - 1]
+      const currentDay = game.day
 
-      // Only show if we haven't already shown this elimination
-      if (lastEliminated !== lastShownElimination) {
+      // Only show if we haven't already shown this elimination for this day
+      if (lastEliminated !== lastShownElimination || currentDay !== lastShownDay) {
         const eliminatedPlayer = players.find(p => p.address === lastEliminated)
         if (eliminatedPlayer) {
-          console.log('🔔 Showing death announcement for:', eliminatedPlayer.name)
+          console.log('🔔 Showing death announcement for:', eliminatedPlayer.name, 'on day', currentDay)
           setKilledPlayer(eliminatedPlayer)
           setShowDeathAnnouncement(true)
           setLastShownElimination(lastEliminated)
+          setLastShownDay(currentDay) // Track which day we showed this for
           setAnnouncementShown(true) // Mark that we've shown the announcement
 
           setTimeout(() => {
@@ -160,7 +163,7 @@ export default function GameplayScreen({ currentPlayer, players, game, submitNig
         }
       }
     }
-  }, [game?.eliminated, game?.phase, players, onComplete, lastShownElimination, announcementShown])
+  }, [game?.eliminated, game?.phase, game?.day, players, onComplete, lastShownElimination, lastShownDay, announcementShown])
 
   const canSelectPlayers = !isCurrentPlayerEliminated && (currentPlayer.role === "ASUR" || currentPlayer.role === "DEVA" || currentPlayer.role === "RISHI")
 

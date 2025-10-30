@@ -16,6 +16,7 @@ import RetroAnimation from "@/components/retro-animation"
 import { truncateAddress, formatAPT, calculateWinProbabilities } from "@/utils/winProbability"
 import { useWallet, type InputTransactionData } from "@aptos-labs/wallet-adapter-react"
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk"
+import { smoothSendClient } from "@/lib/smoothsend"
 
 // Initialize Aptos client
 const config = new AptosConfig({
@@ -58,9 +59,10 @@ export default function PublicLobbiesScreen({ onJoinLobby, onBack, playerAddress
   const [stakingError, setStakingError] = useState('')
   const [balance, setBalance] = useState<number>(0)
   const [balanceLoading, setBalanceLoading] = useState(true)
+  const [gaslessMode, setGaslessMode] = useState(true) // Default to gasless on testnet
 
   // Wallet hooks
-  const { account, signAndSubmitTransaction } = useWallet()
+  const { account, signAndSubmitTransaction, signTransaction } = useWallet()
 
   // Fetch public lobbies
   const fetchLobbies = async (isInitial = false) => {
@@ -133,6 +135,64 @@ export default function PublicLobbiesScreen({ onJoinLobby, onBack, playerAddress
     fetchBalance()
   }, [account?.address])
 
+  // Helper function to execute gasless transaction
+  const executeGaslessTransaction = async (contractGameId: string) => {
+    if (!account?.address || !signTransaction) {
+      throw new Error('Wallet not properly connected for gasless transactions')
+    }
+
+    console.log('🌟 [Gasless] Testnet: Using simple transfer with fee payer...')
+
+    // Step 1: Initialize Aptos SDK with TESTNET (critical!)
+    const { Aptos: AptosSDK, AptosConfig, Network: AptosNetwork } = await import('@aptos-labs/ts-sdk')
+    const aptosConfig = new AptosConfig({ network: AptosNetwork.TESTNET })
+    const aptosClient = new AptosSDK(aptosConfig)
+
+    console.log('🌟 [Gasless] Building transaction with withFeePayer flag...')
+
+    // Step 2: Build transaction with withFeePayer flag (testnet gasless mode)
+    const rawTransaction = await aptosClient.transaction.build.simple({
+      sender: account.address,
+      withFeePayer: true, // Critical: This enables gasless transactions
+      data: {
+        function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
+        functionArguments: [contractGameId],
+      }
+    })
+
+    console.log('🌟 [Gasless] Signing transaction...')
+
+    // Step 3: Sign the transaction
+    const signResponse = await signTransaction({ transactionOrPayload: rawTransaction })
+
+    if (!signResponse || !signResponse.authenticator) {
+      throw new Error('Failed to sign transaction')
+    }
+
+    console.log('🌟 [Gasless] Serializing and submitting to relayer...')
+
+    // Step 4: Serialize and submit to SmoothSend
+    const transactionBytes = rawTransaction.bcsToBytes()
+    const authenticatorBytes = signResponse.authenticator.bcsToBytes()
+
+    const submitResponse = await smoothSendClient.submitSignedTransaction(
+      Array.from(transactionBytes),
+      Array.from(authenticatorBytes)
+    )
+
+    if (!submitResponse.success) {
+      throw new Error(submitResponse.message || 'Gasless transaction failed')
+    }
+
+    const txHash = submitResponse.txnHash || submitResponse.hash
+    if (!txHash) {
+      throw new Error('No transaction hash returned')
+    }
+
+    console.log('🌟 [Gasless] ✅ Testnet transaction successful!', submitResponse)
+    return txHash
+  }
+
   // Handle join lobby click
   const handleJoinClick = (lobby: PublicLobby) => {
     setSelectedLobby(lobby)
@@ -170,19 +230,32 @@ export default function PublicLobbiesScreen({ onJoinLobby, onBack, playerAddress
 
       // Submit staking transaction
       console.log('💰 Staking to join game:', gameData.contractGameId)
-      const transaction: InputTransactionData = {
-        data: {
-          function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
-          functionArguments: [gameData.contractGameId],
-        },
+
+      let txHash: string
+
+      if (gaslessMode) {
+        // Use gasless transaction
+        txHash = await executeGaslessTransaction(gameData.contractGameId)
+        // Wait for confirmation
+        await aptos.waitForTransaction({ transactionHash: txHash })
+        console.log('✅ Gasless transaction confirmed:', txHash)
+      } else {
+        // Use normal transaction
+        const transaction: InputTransactionData = {
+          data: {
+            function: `${process.env.NEXT_PUBLIC_PEPASUR_CONTRACT_ADDRESS}::pepasur::join_game`,
+            functionArguments: [gameData.contractGameId],
+          },
+        }
+
+        const txResponse = await signAndSubmitTransaction(transaction)
+        console.log('📝 Transaction submitted:', txResponse.hash)
+
+        // Wait for confirmation
+        await aptos.waitForTransaction({ transactionHash: txResponse.hash })
+        console.log('✅ Transaction confirmed:', txResponse.hash)
+        txHash = txResponse.hash
       }
-
-      const txResponse = await signAndSubmitTransaction(transaction)
-      console.log('📝 Transaction submitted:', txResponse.hash)
-
-      // Wait for confirmation
-      await aptos.waitForTransaction({ transactionHash: txResponse.hash })
-      console.log('✅ Transaction confirmed:', txResponse.hash)
 
       // Record stake in backend
       const recordResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/game/record-stake`, {
@@ -191,7 +264,7 @@ export default function PublicLobbiesScreen({ onJoinLobby, onBack, playerAddress
         body: JSON.stringify({
           gameId: gameData.gameId,
           playerAddress: playerAddress,
-          transactionHash: txResponse.hash
+          transactionHash: txHash
         }),
       })
 
@@ -418,6 +491,26 @@ export default function PublicLobbiesScreen({ onJoinLobby, onBack, playerAddress
                   <div className="p-2 bg-yellow-900/20 rounded border border-yellow-500/30">
                     <span className="text-xs font-press-start text-yellow-300">OTHERS WIN:</span>
                     <span className="ml-2 text-sm font-bold text-yellow-400">+{selectedLobby.nonMafiaWinPercent}%</span>
+                  </div>
+
+                  {/* Gasless Mode Toggle */}
+                  <div className="p-3 bg-[#1a1a1a]/50 rounded border border-[#333333]">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-press-start text-gray-300">GAS FEES</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {gaslessMode ? '✨ FREE - No gas fees!' : '⛽ Pay small gas fee'}
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => setGaslessMode(!gaslessMode)}
+                        variant={gaslessMode ? 'pixel' : 'outline'}
+                        size="sm"
+                        className="text-xs"
+                      >
+                        {gaslessMode ? '✨ GASLESS' : '⛽ NORMAL'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
